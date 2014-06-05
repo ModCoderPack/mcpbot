@@ -1,6 +1,7 @@
 import asyncore, socket
 import Logger
 import Queue
+import time
 from IRCHandler import CmdGenerator
 
 class AsyncSocket(asyncore.dispatcher):
@@ -59,6 +60,8 @@ class AsyncSocket(asyncore.dispatcher):
             self.logger.debug("Send >" + msg.strip())
             self.send(msg)
             self.sendBuffer.task_done()
+        else:
+            time.sleep(1)
             
         #for ircmsg in self.sendBuffer:
         #    self.logger.debug("Send >" + ircmsg.strip())
