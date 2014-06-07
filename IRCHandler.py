@@ -339,6 +339,9 @@ class CmdHandler(object):
     # User defined commands
     def onCOMMAND(self, sender, dest, command):
         self.logger.info("COMMAND> %s"%command)
+        if command.strip() == "":
+            return
+        
         if not command.split()[0] in self.commands.keys():
             return
 
