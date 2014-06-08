@@ -18,11 +18,11 @@ class DCCHandler(asyncore.dispatcher):
         self.logger  = Logger.getLogger(__name__+".DCCHandler", bot.lognormal, bot.logerrors)
 
     def __del__(self):
-        self.logger.info("Connection with %s errored"%self.sender)
+        self.logger.info("Connection with %s timedout"%self.sender)
         if self.sender.nick in self.bot.users:
             self.bot.users[self.sender.nick].dccSocket = None
         self.close()
-        super(DCCHandler, self).__del__()
+        #super(DCCHandler, self).__del__()
 
     def sendMsg(self, msg):
         self.sendBuffer.put_nowait(msg + EOL)
@@ -71,9 +71,9 @@ class DCCSocket(asyncore.dispatcher):
     def __init__(self, bot):
         self.bot = bot
         asyncore.dispatcher.__init__(self)
-        self.create_socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.create_socket(socket.AF_INET & socket.AF_INET6, socket.SOCK_STREAM)
         self.set_reuse_addr()
-        self.bind(('5.254.124.17', 0))
+        self.bind(('', 0))
         self.listen(5)
 
         self.logger  = Logger.getLogger(__name__+".DCCSocket", bot.lognormal, bot.logerrors)        
@@ -104,8 +104,18 @@ class DCCSocket(asyncore.dispatcher):
             self.bot.sendMessage(sender.nick, "DCC Session activated")
 
     def getAddr(self):
-        return self.socket.getsockname()[0], self.socket.getsockname()[1]
+        return socket.gethostbyname(self.bot.hostname), self.socket.getsockname()[1]
+        #return self.socket.getsockname()[0], self.socket.getsockname()[1]
 
     def addPending(self, sender):
-        self.logger.debug("Adding %s - %s to the pending list"%(socket.gethostbyname(sender.host), sender))
-        self.pending[socket.gethostbyname(sender.host)] = sender
+        try:
+            self.logger.debug("Adding %s - %s to the pending list"%(socket.gethostbyname(sender.host), sender))
+            self.pending[socket.gethostbyname(sender.host)] = sender
+            return True
+        except Exception as e:
+            print str(e)
+            if "Address family for hostname not supported" in str(e):
+                self.bot.sendNotice(sender.nick, "Support for IPv6 pending.")                
+            else:
+                self.bot.sendNotice(sender.nick, "Error while initialiasing DCC connection.")
+            return False

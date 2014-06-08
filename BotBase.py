@@ -25,6 +25,7 @@ class BotBase(object):
         self.autoJoin   = self.config.getboolean('BOT', 'AUTOJOIN')
         self.lognormal  = self.config.get('BOT', 'LOGNORMAL')
         self.logerrors  = self.config.get('BOT', 'LOGERRORS')
+        self.hostname   = self.config.get('BOT', 'HOSTNAME')
 
         self.logger = Logger.getLogger(__name__, self.lognormal, self.logerrors)
         
@@ -172,8 +173,8 @@ class BotBase(object):
     # DCC Request command, in by default
     def requestDCC(self, bot, sender, dest, cmd, args):
             host, port = self.dccSocket.getAddr()
-            self.dccSocket.addPending(sender)
-            self.sendRaw(CmdGenerator.getDCCCHAT(sender.nick, host, port))
+            if self.dccSocket.addPending(sender):
+                self.sendRaw(CmdGenerator.getDCCCHAT(sender.nick, host, port))
 
     # Config update
     def updateConfig(self):
