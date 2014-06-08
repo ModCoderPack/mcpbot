@@ -359,7 +359,13 @@ class CmdHandler(object):
 
         self.bot.sendRaw(self.bot.nickAuth.format(nick=sender.nick) + EOL)
         self.bot.sendRaw(CmdGenerator.getWHOIS(sender.nick))
-        self.bot.users[sender.nick] = sender
+
+        if sender.nick in self.bot.users:
+            dccSock = self.bot.users[sender.nick].dccSocket
+            self.bot.users[sender.nick] = sender
+            self.bot.users[sender.nick].dccSocket = dccSock
+        else:
+            self.bot.users[sender.nick] = sender
 
         #We start the command thread
         cmdThread = threading.Thread(target=self.threadedCommand, name=sender.toString(), args=(callback, cmd, self.bot, sender, dest, args))
