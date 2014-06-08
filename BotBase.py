@@ -18,6 +18,7 @@ class BotBase(object):
         self.channels   = sets.Set(self.config.get('SERVER','CHANNELS').split(';') if self.config.get('SERVER','CHANNELS').strip() else [])
         self.nickAuth   = self.config.get('SERVER', 'NICKAUTH')
         self.authRegex  = self.config.get('SERVER', 'AUTHREGEX')
+        self.floodLimit = float(self.config.get('SERVER', 'FLOODLIMIT'))
         self.nick       = self.config.get('BOT', 'NICK')
         self.cmdChar    = self.config.get('BOT', 'CMDCHAR')
         self.autoInvite = self.config.getboolean('BOT', 'AUTOACCEPT')
@@ -45,19 +46,22 @@ class BotBase(object):
         self.isIdentified = False   #Turn to true when nick/ident commands are sent
         self.isReady      = False   #Turn to true after RPL_ENDOFMOTD. Every join/nick etc commands should be sent once this is True.
 
-        self.socket = AsyncSocket.AsyncSocket(self, self.host, self.port)
+        self.socket = AsyncSocket.AsyncSocket(self, self.host, self.port, self.floodLimit)
         self.dccSocket = DCCSocket.DCCSocket(self)
         self.cmdHandler = CmdHandler(self, self.socket)         
 
 
         self.registerCommand('dcc', self.requestDCC,  ['wip'], 0, 0, None)
-        self.registerCommand('adduser', self.adduser, ['admin'], 2, 2, "adduser <user> <group>")
-        self.registerCommand('rmuser',  self.rmuser,  ['admin'], 2, 2, "rmuser <user> <group>")
-        self.registerCommand('getuser', self.getuser, ['admin'], 1, 1, "getuser <user>")        
+        self.registerCommand('adduser',  self.adduser,  ['admin'], 2, 2, "adduser <user> <group>")
+        self.registerCommand('rmuser',   self.rmuser,   ['admin'], 2, 2, "rmuser <user> <group>")
+        self.registerCommand('getuser',  self.getuser,  ['admin'], 1, 1, "getuser <user>")        
+        self.registerCommand('getusers', self.getusers, ['admin'], 0, 0, "getusers")
 
         self.registerCommand('addgroup',  self.addgroup,  ['admin'], 2, 2, "addgroup <group> <cmd>")
         self.registerCommand('rmgroup',   self.rmgroup,   ['admin'], 2, 2, "rmgroup <group> <cmd>")
         self.registerCommand('getgroups', self.getgroups, ['admin'], 0, 0, "getgroups")    
+        
+        self.registerCommand('help', self.helpcmd, ['any'], 0, 0, "help")
 
     # User handling commands
     def adduser(self, bot, sender, dest, cmd, args):
@@ -104,6 +108,22 @@ class BotBase(object):
         msg = "%s : %s"%(args[0], ", ".join(self.authUsers[user]))
         bot.sendNotice(sender.nick, msg)        
 
+    def getusers(self, bot, sender, dest, cmd, args):
+        groups = {}
+        for user,groupset in self.authUsers.items():
+            for group in groupset:
+                if not group in groups:
+                    groups[group] = sets.Set()
+                groups[group].add(user)
+        
+        maxlen    = len(max(groups.keys(), key=len))
+        formatstr = "%%%ds : %%s"%(maxlen * -1)
+        
+        print formatstr        
+        
+        for k,v in groups.items():
+            bot.sendNotice(sender.nick, formatstr%(k,list(v)))
+
     # Group handling commands
     def addgroup(self, bot, sender, dest, cmd, args):
         group  = args[0].lower()
@@ -137,6 +157,21 @@ class BotBase(object):
         for group,cmds in self.groups.items():
             bot.sendNotice(sender.nick, "%s : %s"%(group, ", ".join(cmds)))
 
+    # Default help command
+    def helpcmd(self, bot, sender, dest, cmd, args):
+        maxlen    = len(max(self.cmdHandler.commands.keys(), key=len))
+        formatstr = "%%%ds : %%s"%(maxlen * -1)
+        
+        for cmd, cmdval in self.cmdHandler.commands.items():
+            if 'any' in cmdval['groups']:
+                bot.sendNotice(sender.nick, formatstr%(cmd, cmdval['desc']))
+            elif sender.nick.lower() in self.authUsers:
+                groups = self.authUsers[sender.nick.lower()]
+                if 'admin' in groups:
+                    bot.sendNotice(sender.nick, formatstr%(cmd, cmdval['desc']))
+                elif len(groups.intersection(sets.Set(cmdval['groups']))) > 0:
+                    bot.sendNotice(sender.nick, formatstr%(cmd, cmdval['desc']))
+
     # DCC Request command, in by default
     def requestDCC(self, bot, sender, dest, cmd, args):
             host, port = self.dccSocket.getAddr()
@@ -148,9 +183,41 @@ class BotBase(object):
         fp = open(self.configfile, 'w')
         self.config.set('SERVER', 'CHANNELS', ';'.join(self.channels))
         
+        # We remove the missing commands from the config file
+        for group,commands in self.groups.items():
+            nullCommands = []            
+            
+            for cmd in commands:
+                if not cmd in self.cmdHandler.commands:
+                    nullCommands.append(cmd)
+            for cmd in nullCommands:
+                commands.remove(cmd)
+        
+        # We clean up the groups by removing those without commands
+        nullGroups = []
+        for group,commands in self.groups.items():
+            if not len(commands) > 0:
+                nullGroups.append(group)
+        
+        for group in nullGroups:
+            self.groups.pop(group, None)
+            self.config.remove_option('GROUPS', group)
+        
+        # We write down groups
         for group,commands in self.groups.items():
             self.config.set('GROUPS',group, ';'.join(commands))
 
+        # We clean up the users by removing those without a group
+        nullUsers = []
+        for user, group in self.authUsers.items():
+            if not len(group) > 0:
+                nullUsers.append(user)
+
+        for user in nullUsers:
+            self.authUsers.pop(user, None)
+            self.config.remove_option('USERS', user)
+
+        # We write down all the users
         for user,group in self.authUsers.items():
             self.config.set('USERS',user, ';'.join(group))
 
@@ -172,13 +239,16 @@ class BotBase(object):
     #IRC COMMANDS QUICK ACCESS
     def sendRaw(self, msg):
         self.socket.sendBuffer.put_nowait(msg)
+        
     def join(self, chan):
         self.sendRaw(CmdGenerator.getJOIN(chan))
+        
     def sendNotice(self, target, msg):
         if target in self.users and self.users[target].dccSocket != None:
             pass
         else:
             self.sendRaw(CmdGenerator.getNOTICE(target, msg))
+            
     def sendMessage(self, target, msg):
         if target in self.users and self.users[target].dccSocket != None:
             pass

@@ -6,7 +6,7 @@ from IRCHandler import CmdGenerator
 
 class AsyncSocket(asyncore.dispatcher):
 
-    def __init__(self, bot, host, port):
+    def __init__(self, bot, host, port, floodlimit):
         self.bot  = bot
         self.host = host
         self.port = port
@@ -16,6 +16,9 @@ class AsyncSocket(asyncore.dispatcher):
         asyncore.dispatcher.__init__(self)
         self.create_socket(socket.AF_INET, socket.SOCK_STREAM)
         self.logger  = Logger.getLogger(__name__, bot.lognormal, bot.logerrors)
+
+        self.floodLimit    = floodlimit
+        self.timeLastWrite = time.time()
 
         self.logger.debug("%s:%s"%(host, port))
 
@@ -55,15 +58,11 @@ class AsyncSocket(asyncore.dispatcher):
 
 
     def handle_write(self):
-        if not self.sendBuffer.empty():
+        if not self.sendBuffer.empty() and (time.time() - self.timeLastWrite > self.floodLimit):
             msg = self.sendBuffer.get_nowait()
             self.logger.debug("Send >" + msg.strip())
             self.send(msg)
             self.sendBuffer.task_done()
+            self.timeLastWrite = time.time()
         else:
-            time.sleep(1)
-            
-        #for ircmsg in self.sendBuffer:
-        #    self.logger.debug("Send >" + ircmsg.strip())
-        #    self.send(ircmsg)
-        #self.sendBuffer = []
+            time.sleep(0.001)
