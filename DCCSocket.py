@@ -2,6 +2,7 @@ import asyncore, socket
 import Logger
 import time
 import Queue
+import urllib
 from IRCHandler import CmdGenerator
 
 EOL = "\r\n"
@@ -104,7 +105,8 @@ class DCCSocket(asyncore.dispatcher):
             self.bot.sendMessage(sender.nick, "DCC Session activated")
 
     def getAddr(self):
-        return socket.gethostbyname(self.bot.hostname), self.socket.getsockname()[1]
+        return urllib.urlopen('http://icanhazip.com/').readlines()[0].strip(), self.socket.getsockname()[1]
+        #return socket.gethostbyname(self.bot.hostname), self.socket.getsockname()[1]
         #return self.socket.getsockname()[0], self.socket.getsockname()[1]
 
     def addPending(self, sender):

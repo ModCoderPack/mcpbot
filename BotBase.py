@@ -26,7 +26,7 @@ class BotBase(object):
         self.autoJoin   = bool(self.getConfig('BOT', 'AUTOJOIN', "true"))
         self.lognormal  = self.getConfig('BOT', 'LOGNORMAL', "botlog.log")
         self.logerrors  = self.getConfig('BOT', 'LOGERRORS', "errors.log")
-        self.hostname   = self.getConfig('BOT', 'HOSTNAME', "localhost")
+        #self.hostname   = self.getConfig('BOT', 'HOSTNAME', "localhost")
 
         self.logger = Logger.getLogger(__name__, self.lognormal, self.logerrors)
         
