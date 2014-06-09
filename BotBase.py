@@ -13,22 +13,27 @@ class BotBase(object):
         self.config     = ConfigParser.RawConfigParser()
         self.config.read(self.configfile)
 
-        self.host       = self.config.get('SERVER', 'HOST')
-        self.port       = self.config.getint('SERVER', 'PORT')
-        self.channels   = sets.Set(self.config.get('SERVER','CHANNELS').split(';') if self.config.get('SERVER','CHANNELS').strip() else [])
-        self.nickAuth   = self.config.get('SERVER', 'NICKAUTH')
-        self.authRegex  = self.config.get('SERVER', 'AUTHREGEX')
-        self.floodLimit = float(self.config.get('SERVER', 'FLOODLIMIT'))
-        self.servpass   = self.config.get('SERVER', 'PASSWORD')        
-        self.nick       = self.config.get('BOT', 'NICK')
-        self.cmdChar    = self.config.get('BOT', 'CMDCHAR')
-        self.autoInvite = self.config.getboolean('BOT', 'AUTOACCEPT')
-        self.autoJoin   = self.config.getboolean('BOT', 'AUTOJOIN')
-        self.lognormal  = self.config.get('BOT', 'LOGNORMAL')
-        self.logerrors  = self.config.get('BOT', 'LOGERRORS')
-        self.hostname   = self.config.get('BOT', 'HOSTNAME')
+        self.host       = self.getConfig('SERVER', 'HOST', '')
+        self.port       = int(self.getConfig('SERVER', 'PORT', '6667'))
+        self.channels   = sets.Set(self.getConfig('SERVER','CHANNELS', "").split(';') if self.getConfig('SERVER','CHANNELS', "").strip() else [])
+        self.nickAuth   = self.getConfig('SERVER', 'NICKAUTH',"PRIVMSG nickserv :acc {nick}")
+        self.authRegex  = self.getConfig('SERVER', 'AUTHREGEX',"(?P<nick>.+) ACC (?P<level>[0-9])")
+        self.floodLimit = float(self.getConfig('SERVER', 'FLOODLIMIT', "0.75"))
+        self.servpass   = self.getConfig('SERVER', 'PASSWORD', "")        
+        self.nick       = self.getConfig('BOT', 'NICK', "PyBot")
+        self.cmdChar    = self.getConfig('BOT', 'CMDCHAR', "*")
+        self.autoInvite = bool(self.getConfig('BOT', 'AUTOACCEPT', "true"))
+        self.autoJoin   = bool(self.getConfig('BOT', 'AUTOJOIN', "true"))
+        self.lognormal  = self.getConfig('BOT', 'LOGNORMAL', "botlog.log")
+        self.logerrors  = self.getConfig('BOT', 'LOGERRORS', "errors.log")
+        self.hostname   = self.getConfig('BOT', 'HOSTNAME', "localhost")
 
         self.logger = Logger.getLogger(__name__, self.lognormal, self.logerrors)
+        
+        if not self.config.has_section('GROUPS')        :
+            self.config.add_section('GROUPS')
+        if not self.config.has_section('USERS')        :
+            self.config.add_section('USERS')
         
         # We collect the list of groups (<group> = <authorised commands separated by ;>)
         self.groups = {}
@@ -63,6 +68,16 @@ class BotBase(object):
         self.registerCommand('getgroups', self.getgroups,  ['admin'], 0, 0, "getgroups")    
         
         self.registerCommand('help',      self.helpcmd,    ['any'],   0, 0, "help")
+
+    def getConfig(self, section, option, default):
+        if not self.config.has_section(section):
+            self.config.add_section(section)
+        
+        if self.config.has_option(section, option):
+            return self.config.get(section, option)
+        else:
+            self.config.set(section, option, default)
+            return self.config.get(section, option)
 
     # User handling commands
     def adduser(self, bot, sender, dest, cmd, args):
@@ -224,6 +239,10 @@ class BotBase(object):
         fp.close()
 
     def run(self):
+        if self.host == "":
+            self.logger.info("Please set an IRC server in the config file.")
+            return
+        
         self.connect()
         try:
             asyncore.loop()
