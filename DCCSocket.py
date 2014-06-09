@@ -3,7 +3,7 @@ import Logger
 import time
 import Queue
 import urllib
-from IRCHandler import CmdGenerator
+from IRCHandler import CmdGenerator, Sender
 
 EOL = "\r\n"
 CTCPTAG = chr(1)
@@ -83,6 +83,8 @@ class DCCSocket(asyncore.dispatcher):
         self.pending = {}
         self.open    = {}
 
+        self.indexAnon = 0
+
     def handle_accept(self):
         pair = self.accept()
         if pair is not None:
@@ -90,11 +92,29 @@ class DCCSocket(asyncore.dispatcher):
             self.logger.debug('Incoming connection from %s' % repr(addr))
 
             targip = addr[0]
-            sender = self.pending[targip]
+            sender = None
+            welcomeMsg = []
 
-            if not targip in self.pending:
+            if targip in self.pending:
+                sender = self.pending[targip]                
+                welcomeMsg.append("DCC Session activated")
+                welcomeMsg.append("You can use 'help' to see the available commands.")
+                welcomeMsg.append("Have a nice day !")
+
+            if not targip in self.pending and not self.bot.dccAllowAnon:
                 self.logger.error("Address %s not found in the pending connection list !"%targip)
                 return
+
+            if not targip in self.pending and self.bot.dccAllowAnon:
+                sender = Sender("AnonUser_%04d!~AnonUser_%04d@dev.null"%(self.indexAnon, self.indexAnon))
+                self.bot.users[sender.nick] = sender
+                self.pending[targip] = sender
+                self.indexAnon = self.indexAnon + 1
+                welcomeMsg.append("DCC Session activated")
+                welcomeMsg.append("You have been dropped to read-only because your IP couldn't be tied to a nick")
+                welcomeMsg.append("This might be due to a problem with your bouncer if you are using one")                
+                welcomeMsg.append("You can use 'help' to see the available commands.")
+                welcomeMsg.append("Have a nice day !")
 
             self.open[targip] = sender
             del self.pending[targip]
@@ -102,7 +122,8 @@ class DCCSocket(asyncore.dispatcher):
             handler = DCCHandler(self.bot, sock, sender)
             sender.dccSocket = handler
 
-            self.bot.sendMessage(sender.nick, "DCC Session activated")
+            for msg in welcomeMsg:
+                self.bot.sendMessage(sender.nick, msg)
 
     def getAddr(self):
         return urllib.urlopen('http://icanhazip.com/').readlines()[0].strip(), self.socket.getsockname()[1]

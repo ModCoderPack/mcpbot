@@ -3,6 +3,7 @@ import Logger
 import re
 import traceback
 import sets
+import time
 
 EOL = "\r\n"
 CTCPTAG = chr(1)
@@ -19,6 +20,7 @@ class Sender(object):
         self.authEvent  = threading.Event()
         self.whoisEvent = threading.Event()
         self.dccSocket = None
+        self.lastAuth  = 0
 
         if not '!' in sender:
             self.nick = sender[1:]
@@ -29,6 +31,12 @@ class Sender(object):
 
     def __repr__(self):
         return "%s!%s@%s"%(self.nick, self.ident, self.host)
+
+    def __eq__(self, other):
+        return self.nick == other.nick and self.ident == other.ident and self.host == other.host
+    
+    def __ne__(self, other):
+        return self.nick != other.nick or  self.ident != other.ident or  self.host != other.host
 
     def toString(self):
         return "%s!%s@%s"%(self.nick, self.ident, self.host)
@@ -42,6 +50,9 @@ class Sender(object):
     def authenticate(self, level):
         self.auth = level
         self.authEvent.set()
+        self.lastAuth = time.time()
+
+###########################################################################################################
 
 class CmdGenerator(object):
 
@@ -148,6 +159,7 @@ class CmdHandler(object):
         }
 
         self.rplcmds = {
+        001 : {'name':'RPL_WELCOME ', 'callback':self.onRPL_WELCOME},
         376 : {'name':'RPL_ENDOFMOTD', 'callback':self.onRPL_ENDOFMOTD},
         330 : {'name':'RPL_WHOISACCOUNT', 'callback':self.onRPL_WHOISACCOUNT}
         }
@@ -320,16 +332,24 @@ class CmdHandler(object):
             self.logger.debug("%03d [S: %s] [M: %s]"%(cmd, sender.nick, " ".join(params)))
         self.handleEvents(int(cmd), sender, params)
 
-
-
-    def onRPL_ENDOFMOTD(self, sender, params):
+    def onRPL_WELCOME(self, sender, params):
         self.logger.debug("[S : %s] [M : %s]"%(sender.nick, " ".join(params)))        
         if self.bot.autoJoin and not self.bot.isReady:
             self.bot.isReady = True
             for chan in self.bot.channels:
                 if not chan.strip() or not chan[0] == '#':
                     continue
-                self.bot.join(chan)          
+                self.bot.join(chan) 
+
+    def onRPL_ENDOFMOTD(self, sender, params):
+        pass
+        #self.logger.debug("[S : %s] [M : %s]"%(sender.nick, " ".join(params)))        
+        #if self.bot.autoJoin and not self.bot.isReady:
+        #    self.bot.isReady = True
+        #    for chan in self.bot.channels:
+        #        if not chan.strip() or not chan[0] == '#':
+        #            continue
+        #        self.bot.join(chan)          
 
     def onRPL_WHOISACCOUNT(self, sender, params):
         self.logger.debug("[S : %s] [M : %s]"%(sender.nick, " ".join(params)))  
@@ -361,34 +381,63 @@ class CmdHandler(object):
                 self.bot.sendNotice(sender.nick, "Wrong number of arguments : min = %s, max = %s"%(cmd['minarg'], cmd['maxarg']))
                 return                
 
-        self.bot.sendRaw(self.bot.nickAuth.format(nick=sender.nick) + EOL)
-        self.bot.sendRaw(CmdGenerator.getWHOIS(sender.nick))
+        #We already know this sender
+        if sender.nick in self.bot.users and sender == self.bot.users[sender.nick]:
+            self.logger.debug("Found user %s in current users"%sender.nick)
+            
+            if self.bot.authtimeout > -1 and time.time() - self.bot.users[sender.nick].lastAuth > self.bot.authtimeout:
+                self.bot.users[sender.nick].unauthenticate()
+            
+            # If current auth is not 3, we retry to authenticate the account but resending the request and resetting the flags
+            if self.bot.users[sender.nick].auth != 3:
+                self.logger.debug("Reauthenticating user %s"%sender.nick)
+                self.bot.users[sender.nick].unauthenticate()
+                self.bot.sendRaw(self.bot.nickAuth.format(nick=sender.nick) + EOL)
+                self.bot.sendRaw(CmdGenerator.getWHOIS(sender.nick))
+            
+            cmdThread = threading.Thread(target=self.threadedCommand, name=sender.toString(), args=(callback, cmd, self.bot, self.bot.users[sender.nick], dest, args))
+            cmdThread.start()
 
-        if sender.nick in self.bot.users:
-            dccSock = self.bot.users[sender.nick].dccSocket
-            self.bot.users[sender.nick] = sender
-            self.bot.users[sender.nick].dccSocket = dccSock
         else:
+            self.logger.debug("Adding and authenticating user %s"%sender.nick)
             self.bot.users[sender.nick] = sender
-
-        #We start the command thread
-        cmdThread = threading.Thread(target=self.threadedCommand, name=sender.toString(), args=(callback, cmd, self.bot, sender, dest, args))
-        cmdThread.start()
-
+            self.bot.sendRaw(self.bot.nickAuth.format(nick=sender.nick) + EOL)
+            self.bot.sendRaw(CmdGenerator.getWHOIS(sender.nick))
+            
+            cmdThread = threading.Thread(target=self.threadedCommand, name=sender.toString(), args=(callback, cmd, self.bot, self.bot.users[sender.nick], dest, args))
+            cmdThread.start()
+            
     def threadedCommand(self, callback, cmd, bot, sender, dest, args):
         try:
-            #We block until we received the answer from nickserv and we start the command if the nick is registered.
-            #TODO :  If the nick is not registered, send back a msg asking for registration.
-            if not bot.users[sender.nick].authEvent.wait(10):
+
+            #We request the AUTH level of the nick
+            if not sender.authEvent.wait(10):
                 bot.sendNotice(sender.nick, "Error contacting nickserv. Please retry later.")
                 return
 
-            if not bot.users[sender.nick].auth == 3:
-                bot.sendNotice(sender.nick, "You need to register your nick before using the bot.")
-                return                
+            #If we don't accept unregistered usage, we check for AUTH 3 and the WHOIS event
+            if not bot.allowunregistered:
+                if not sender.auth == 3:
+                    bot.sendNotice(sender.nick, "You need to register your nick before using the bot.")
+                    return                
 
-            if not bot.users[sender.nick].whoisEvent.wait(10):
-                bot.sendNotice(sender.nick, "Error doing a whois. Please retry later.")
+            if sender.auth == 3:
+                if not sender.whoisEvent.wait(10):
+                    bot.sendNotice(sender.nick, "Error doing a whois. Please retry later.")
+                    return
+            
+            #If we allow unregistered usage, we use the current nick as the registered nick for later on
+            if sender.auth == 0 and bot.allowunregistered and not 'AnonUser_' in sender.nick :
+                sender.regnick = sender.nick
+                bot.sendNotice(sender.nick, "You should really register your nick ! Try '/msg nickserv help' to see how to do it.")
+
+            #If we allow unregistered usage, we use the current nick as the registered nick for later on
+            if sender.auth == 0 and bot.dccAllowAnon and 'AnonUser_' in sender.nick :
+                sender.regnick = sender.nick
+            
+            #If the AUTH is not 0 (unregistered) or 3 (authenticated), it means we have a weird account, we return
+            if not sender.auth in [0,3]:
+                bot.sendNotice(sender.nick, "You are not properly identified")
                 return
 
             userValid = False
@@ -408,6 +457,7 @@ class CmdHandler(object):
             if userValid:
                 callback(bot, sender, dest, cmd, args)
             else:
+                self.logger.info("User %s with regnick %s and auth %s tried to use command %s : No enough privileges"%(sender.nick, sender.regnick, sender.auth, cmd))
                 bot.sendNotice(sender.regnick, "You don't have the right to run this command")
 
         except Exception as e:
@@ -420,7 +470,7 @@ class CmdHandler(object):
     #######################################################
     # CTCP Commands
     def onCTCP(self, sender, dest, msg):
-        self.logger.debug("[S : %s] [M : %s]"%(sender.nick, " ".join(params)))        
+        #self.logger.debug("[S : %s] [M : %s]"%(sender.nick, " ".join(params)))        
 
         if (msg[0] == 'VERSION'):
             self.bot.sendRaw(CmdGenerator.getNOTICE(sender.nick, "MCPBot v4.0 'You were not expecting me !' by ProfMobius"))
@@ -435,7 +485,8 @@ class CmdHandler(object):
             self.handleEvents('Finger', sender, msg)            
 
         elif (msg[0] == 'DCC'):
-            self.onDCC(sender, dest, msg)
+            if self.bot.dccActive:
+                self.onDCC(sender, dest, msg)
 
         else:
             self.handleEvents('CTCP', sender, msg)
@@ -444,7 +495,7 @@ class CmdHandler(object):
     # DCC Commands
     def onDCC(self, sender, dest, msg):
         self.logger.info("%s %s %s"%(sender, msg, CmdGenerator.conv_ip_long_std(msg[3])))
-        self.bot.Raw(CmdGenerator.getNOTICE(sender.nick, "Don't call me, I will call you."))
+        self.bot.sendRaw(CmdGenerator.getNOTICE(sender.nick, "Don't call me, I will call you."))
         host, port = self.bot.dccSocket.getAddr()
         self.bot.dccSocket.addPending(sender)
         self.bot.sendRaw(CmdGenerator.getDCCCHAT(sender.nick, host, port))

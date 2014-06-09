@@ -20,13 +20,19 @@ class BotBase(object):
         self.authRegex  = self.getConfig('SERVER', 'AUTHREGEX',"(?P<nick>.+) ACC (?P<level>[0-9])")
         self.floodLimit = float(self.getConfig('SERVER', 'FLOODLIMIT', "0.75"))
         self.servpass   = self.getConfig('SERVER', 'PASSWORD', "")        
-        self.nick       = self.getConfig('BOT', 'NICK', "PyBot")
-        self.cmdChar    = self.getConfig('BOT', 'CMDCHAR', "*")
-        self.autoInvite = bool(self.getConfig('BOT', 'AUTOACCEPT', "true"))
-        self.autoJoin   = bool(self.getConfig('BOT', 'AUTOJOIN', "true"))
-        self.lognormal  = self.getConfig('BOT', 'LOGNORMAL', "botlog.log")
-        self.logerrors  = self.getConfig('BOT', 'LOGERRORS', "errors.log")
-        #self.hostname   = self.getConfig('BOT', 'HOSTNAME', "localhost")
+
+        self.nick        = self.getConfig('BOT', 'NICK', "PyBot")
+        self.cmdChar     = self.getConfig('BOT', 'CMDCHAR', "*")
+        self.autoInvite  = bool(self.getConfig('BOT', 'AUTOACCEPT', "true"))
+        self.autoJoin    = bool(self.getConfig('BOT', 'AUTOJOIN', "true"))
+        self.lognormal   = self.getConfig('BOT', 'LOGNORMAL', "botlog.log")
+        self.logerrors   = self.getConfig('BOT', 'LOGERRORS', "errors.log")
+        
+        self.allowunregistered = bool(self.getConfig('AUTH', 'ALLOWUNREGISTERED', "true"))
+        self.authtimeout       = int(self.getConfig('AUTH', 'TIMEOUT', "60"))
+
+        self.dccActive         = bool(self.getConfig('DCC', 'ACTIVE',    "true"))
+        self.dccAllowAnon      = bool(self.getConfig('DCC', 'ALLOWANON', "false"))
 
         self.logger = Logger.getLogger(__name__, self.lognormal, self.logerrors)
         
@@ -188,9 +194,12 @@ class BotBase(object):
 
     # DCC Request command, in by default
     def requestDCC(self, bot, sender, dest, cmd, args):
+        if self.dccActive:
             host, port = self.dccSocket.getAddr()
             if self.dccSocket.addPending(sender):
                 self.sendRaw(CmdGenerator.getDCCCHAT(sender.nick, host, port))
+        else:
+            self.sendNotice(sender.nick, "DCC is not active on this bot.")
 
     # Config update
     def updateConfig(self):
