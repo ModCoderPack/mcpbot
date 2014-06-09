@@ -15,7 +15,7 @@ class AsyncSocket(asyncore.dispatcher):
         #self.cmdHandler = CmdHandler(self)
         asyncore.dispatcher.__init__(self)
         self.create_socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.logger  = Logger.getLogger(__name__, bot.lognormal, bot.logerrors)
+        self.logger  = Logger.getLogger("%s-%s-%s"%(__name__, self.bot.nick, self.bot.host)+".AsynSocket", bot.lognormal, bot.logerrors)
 
         self.floodLimit    = floodlimit
         self.timeLastWrite = time.time()

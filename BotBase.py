@@ -34,7 +34,7 @@ class BotBase(object):
         self.dccActive         = bool(self.getConfig('DCC', 'ACTIVE',    "true"))
         self.dccAllowAnon      = bool(self.getConfig('DCC', 'ALLOWANON', "false"))
 
-        self.logger = Logger.getLogger(__name__, self.lognormal, self.logerrors)
+        self.logger = Logger.getLogger("%s-%s-%s"%(__name__, self.nick, self.host) , self.lognormal, self.logerrors)
         
         if not self.config.has_section('GROUPS')        :
             self.config.add_section('GROUPS')
@@ -253,6 +253,15 @@ class BotBase(object):
             return
         
         self.connect()
+        try:
+            asyncore.loop()
+        except KeyboardInterrupt as e:
+            self.logger.info("Shutting down.")
+        except Exception as e:
+            raise e
+
+    @classmethod
+    def startBots(cls):
         try:
             asyncore.loop()
         except KeyboardInterrupt as e:

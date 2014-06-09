@@ -77,7 +77,7 @@ class DCCSocket(asyncore.dispatcher):
         self.bind(('', 0))
         self.listen(5)
 
-        self.logger  = Logger.getLogger(__name__+".DCCSocket", bot.lognormal, bot.logerrors)        
+        self.logger  = Logger.getLogger("%s-%s-%s"%(__name__, self.bot.nick, self.bot.host)+".DCCSocket", bot.lognormal, bot.logerrors)        
         self.logger.info("Listening on %s:%s"%self.getAddr())
 
         self.pending = {}

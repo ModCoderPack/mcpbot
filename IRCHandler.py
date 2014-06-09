@@ -141,7 +141,7 @@ class CmdHandler(object):
         self.sender  = ""
         self.cmd     = ""
         self.params  = []
-        self.logger  = Logger.getLogger(__name__, bot.lognormal, bot.logerrors)
+        self.logger  = Logger.getLogger("%s-%s-%s"%(__name__, self.bot.nick, self.bot.host)+".CmdHandler", bot.lognormal, bot.logerrors)
         self.commands  = {}
         self.callbacks = {}
         self.irccmds   = {
