@@ -45,17 +45,10 @@ class AsyncSocket(asyncore.dispatcher):
             self.recvBuffer = ""
             lines.pop()
 
-
         #We curate the line and pass it to the command interpreter.
         for line in lines:
             #self.logger.debug("Raw  >" + line)
             self.bot.cmdHandler.parseCmd(line)
-
-            if not self.bot.isIdentified:
-                self.sendBuffer.put_nowait(CmdGenerator.getNICK(self.bot.nick, self.bot.nick))
-                self.sendBuffer.put_nowait(CmdGenerator.getUSER(self.bot.nick))
-                self.bot.isIdentified = True
-
 
     def handle_write(self):
         if not self.sendBuffer.empty() and (time.time() - self.timeLastWrite > self.floodLimit):
@@ -66,3 +59,10 @@ class AsyncSocket(asyncore.dispatcher):
             self.timeLastWrite = time.time()
         else:
             time.sleep(0.001)
+
+        if not self.bot.isIdentified:
+            if self.bot.servpass != "":                
+                self.sendBuffer.put_nowait(CmdGenerator.getPASS(self.bot.servpass))
+            self.sendBuffer.put_nowait(CmdGenerator.getNICK(self.bot.nick, self.bot.nick))
+            self.sendBuffer.put_nowait(CmdGenerator.getUSER(self.bot.nick))
+            self.bot.isIdentified = True

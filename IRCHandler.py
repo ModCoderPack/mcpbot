@@ -46,6 +46,10 @@ class Sender(object):
 class CmdGenerator(object):
 
     @classmethod
+    def getPASS(cls, password):
+        return "PASS {password}".format(password=password) + EOL
+
+    @classmethod
     def getNICK(cls, oldnick, nick):
         return ":{nick} NICK {nick}".format(nick = nick) + EOL
 

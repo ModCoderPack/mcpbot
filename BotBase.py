@@ -19,6 +19,7 @@ class BotBase(object):
         self.nickAuth   = self.config.get('SERVER', 'NICKAUTH')
         self.authRegex  = self.config.get('SERVER', 'AUTHREGEX')
         self.floodLimit = float(self.config.get('SERVER', 'FLOODLIMIT'))
+        self.servpass   = self.config.get('SERVER', 'PASSWORD')        
         self.nick       = self.config.get('BOT', 'NICK')
         self.cmdChar    = self.config.get('BOT', 'CMDCHAR')
         self.autoInvite = self.config.getboolean('BOT', 'AUTOACCEPT')
