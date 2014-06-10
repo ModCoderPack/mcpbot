@@ -26,6 +26,13 @@ class Database(object):
             self.cursor = self.conn.cursor()
             return self.cursor
 
+    def disconnect(self):
+        self.logger.info("Committing all changes and shutting down db connection")
+        self.conn.commit()
+        self.cursor.close()
+        self.conn.close()
+        self.logger.info("Done")
+
     def execute(self, request):
         self.cursor.execute(request)
         retval = self.cursor.fetchall()

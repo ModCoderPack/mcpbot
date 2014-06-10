@@ -260,6 +260,7 @@ class BotBase(object):
             asyncore.loop()
         except KeyboardInterrupt as e:
             self.logger.info("Shutting down.")
+            self.onShuttingDown()
         except Exception as e:
             raise e
 
@@ -268,12 +269,15 @@ class BotBase(object):
         try:
             asyncore.loop()
         except KeyboardInterrupt as e:
-            self.logger.info("Shutting down.")
+            print ("Shutting down.")
         except Exception as e:
             raise e
 
     def connect(self):
         self.socket.doConnect()
+
+    def onShuttingDown(self):
+        pass
 
     #IRC COMMANDS QUICK ACCESS
     def sendRaw(self, msg):
