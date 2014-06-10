@@ -7,6 +7,37 @@ import threading
 import datetime
 from IRCHandler import CmdHandler,CmdGenerator,Sender
 
+class BotHandler(object):
+    botList = []
+
+    @classmethod
+    def addBot(cls, bot):
+        cls.botList.append(bot)
+
+    @classmethod
+    def runAll(cls):
+        cls.__startAll()
+        cls.__loop()
+
+    @classmethod
+    def __loop(cls):
+        try:
+            asyncore.loop()
+        except KeyboardInterrupt as e:
+            print "Shutting down."
+            for bot in cls.botList:
+                bot.onShuttingDown()
+        except Exception as e:
+            for bot in cls.botList:
+                bot.onShuttingDown()
+            raise e
+
+    @classmethod
+    def __startAll(cls):
+        for bot in cls.botList:
+            bot.onStartUp()
+            bot.connect()
+
 class BotBase(object):
     def __init__(self, configfile = None):
         self.configfile = configfile if configfile else 'bot.cfg'
@@ -253,7 +284,8 @@ class BotBase(object):
         if self.host == "":
             self.logger.info("Please set an IRC server in the config file.")
             return
-        
+
+        self.onStartUp()
         self.connect()
         try:
             asyncore.loop()
@@ -263,17 +295,11 @@ class BotBase(object):
         except Exception as e:
             raise e
 
-    @classmethod
-    def startBots(cls):
-        try:
-            asyncore.loop()
-        except KeyboardInterrupt as e:
-            print ("Shutting down.")
-        except Exception as e:
-            raise e
-
     def connect(self):
         self.socket.doConnect()
+
+    def onStartUp(self):
+        pass
 
     def onShuttingDown(self):
         pass

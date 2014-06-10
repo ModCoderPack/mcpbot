@@ -1,4 +1,4 @@
-from BotBase import BotBase
+from BotBase import BotBase, BotHandler
 from Database import Database
 
 class MCPBot(BotBase):
@@ -15,9 +15,11 @@ class MCPBot(BotBase):
 
         self.registerCommand('sqlrequest', self.sqlrequest, ['admin'], 1, 999, "Execute a raw SQL command")
 
-    def runBot(self):
+    def onStartUp(self):
         self.db.connect()
-        self.run()
+
+    def onShuttingDown(self):
+        self.db.disconnect()
 
     def sqlrequest(self, bot, sender, dest, cmd, args):
         sql = ' '.join(args)
@@ -26,13 +28,11 @@ class MCPBot(BotBase):
         for entry in val:
             self.sendNotice(sender.nick, str(entry))
 
-    def onShuttingDown(self):
-        self.db.disconnect()
-
 ########################################################################################################################
 def main():
     bot = MCPBot()
-    bot.runBot()
+    BotHandler.addBot(bot)
+    BotHandler.runAll()
 
 if __name__ == "__main__":
     main()
