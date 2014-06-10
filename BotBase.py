@@ -86,6 +86,7 @@ class BotBase(object):
             return self.config.get(section, option)
         else:
             self.config.set(section, option, default)
+            self.updateConfig()
             return self.config.get(section, option)
 
     # User handling commands
