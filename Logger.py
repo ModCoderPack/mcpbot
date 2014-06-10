@@ -6,7 +6,7 @@ def getLogger(name, lognormal='botlog.log', logerror='errors.log'):
     ch = logging.StreamHandler()
     ch.setLevel(logging.DEBUG)
     #formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(funcName)10s - %(message)s')
-    formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(funcName)10s - %(message)s')
+    formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(funcName)20s - %(message)s')
     ch.setFormatter(formatter)
     logger.addHandler(ch)
 

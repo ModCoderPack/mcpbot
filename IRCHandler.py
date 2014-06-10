@@ -22,6 +22,9 @@ class Sender(object):
         self.dccSocket = None
         self.lastAuth  = 0
 
+        self.ctcpData  = {}
+        self.ctcpEvent = {}
+
         if not '!' in sender:
             self.nick = sender[1:]
         else:
@@ -159,9 +162,14 @@ class CmdHandler(object):
         }
 
         self.rplcmds = {
-        001 : {'name':'RPL_WELCOME ', 'callback':self.onRPL_WELCOME},
-        376 : {'name':'RPL_ENDOFMOTD', 'callback':self.onRPL_ENDOFMOTD},
-        330 : {'name':'RPL_WHOISACCOUNT', 'callback':self.onRPL_WHOISACCOUNT}
+        001 : {'name':'RPL_WELCOME',       'callback':self.onRPL_WELCOME},
+        311 : {'name':'RPL_WHOISUSER',     'callback':self.onRPL_WHOISUSER},
+        312 : {'name':'RPL_WHOISSERVER',   'callback':self.onRPL_WHOISSERVER},
+        317 : {'name':'RPL_WHOISIDLE',     'callback':self.onRPL_WHOISIDLE},
+        319 : {'name':'RPL_WHOISCHANNELS', 'callback':self.onRPL_WHOISCHANNELS},
+        330 : {'name':'RPL_WHOISACCOUNT',  'callback':self.onRPL_WHOISACCOUNT},
+        376 : {'name':'RPL_ENDOFMOTD',     'callback':self.onRPL_ENDOFMOTD},
+
         }
 
     def registerCommand(self, command, callback, groups, minarg, maxarg, desc = None):
@@ -252,7 +260,16 @@ class CmdHandler(object):
                     self.bot.users[reMatch.group('nick')].authenticate(int(reMatch.group('level')))
                     self.logger.debug("Auth notice for %s with level %s"%(reMatch.group('nick'), reMatch.group('level')))
 
-        self.handleEvents('Notice', sender, params)
+        dest = params[0]             #Chan or private dest
+        msg  = ' '.join(params[1:])  #We stich the chat msg back together
+        msg  = msg[1:]               #We remove the leading :
+
+        if msg[0] == CTCPTAG and msg[-1] == CTCPTAG:
+            self.onCTCP(sender, dest, msg[1:-1].split())
+        else:
+            self.handleEvents('Notice', sender, params)
+
+        
 
     def onINVITE(self, sender, params):
         self.logger.debug("[S : %s] [M : %s]"%(sender.nick, " ".join(params)))        
@@ -332,6 +349,7 @@ class CmdHandler(object):
             self.logger.debug("%03d [S: %s] [M: %s]"%(cmd, sender.nick, " ".join(params)))
         self.handleEvents(int(cmd), sender, params)
 
+    #RPL_001
     def onRPL_WELCOME(self, sender, params):
         self.logger.debug("[S : %s] [M : %s]"%(sender.nick, " ".join(params)))        
         if self.bot.autoJoin and not self.bot.isReady:
@@ -341,23 +359,41 @@ class CmdHandler(object):
                     continue
                 self.bot.join(chan) 
 
-    def onRPL_ENDOFMOTD(self, sender, params):
-        pass
-        #self.logger.debug("[S : %s] [M : %s]"%(sender.nick, " ".join(params)))        
-        #if self.bot.autoJoin and not self.bot.isReady:
-        #    self.bot.isReady = True
-        #    for chan in self.bot.channels:
-        #        if not chan.strip() or not chan[0] == '#':
-        #            continue
-        #        self.bot.join(chan)          
+    #RPL_311
+    def onRPL_WHOISUSER(self, sender, params):
+        self.logger.debug("[S : %s] [M : %s]"%(sender.nick, " ".join(params)))
+        
+        nick = params[1]
+        if nick in self.bot.usersInfo:
+            self.bot.usersInfo[nick].ident = params[2]
+            self.bot.usersInfo[nick].host  = params[3]
+            self.bot.usersInfo[nick].whoisEvent.set()
+            self.logger.debug("%s user added to user list with %s %s"%(nick, self.bot.usersInfo[nick].ident, self.bot.usersInfo[nick].host))        
+        else:
+            self.logger.error("%s not found in the user list"%nick)        
+        
+    #RPL_312
+    def onRPL_WHOISSERVER(self, sender, params):
+        self.logger.debug("[S : %s] [M : %s]"%(sender.nick, " ".join(params)))  
 
+    #RPL_317
+    def onRPL_WHOISIDLE(self, sender, params):
+        self.logger.debug("[S : %s] [M : %s]"%(sender.nick, " ".join(params)))  
+
+    #RPL_319
+    def onRPL_WHOISCHANNELS(self, sender, params):
+        self.logger.debug("[S : %s] [M : %s]"%(sender.nick, " ".join(params)))  
+        
+    #RPL_330
     def onRPL_WHOISACCOUNT(self, sender, params):
         self.logger.debug("[S : %s] [M : %s]"%(sender.nick, " ".join(params)))  
         if params[1] in self.bot.users:
             self.bot.users[params[1]].regnick = params[2]
             self.bot.users[params[1]].whoisEvent.set()
 
-
+    #RPL_376
+    def onRPL_ENDOFMOTD(self, sender, params):
+        self.logger.debug("[S : %s] [M : %s]"%(sender.nick, " ".join(params)))
 
     #######################################################
     # User defined commands
@@ -487,6 +523,10 @@ class CmdHandler(object):
         elif (msg[0] == 'DCC'):
             if self.bot.dccActive:
                 self.onDCC(sender, dest, msg)
+
+        elif (msg[0] == 'TIME' and len(msg) > 1):
+            self.bot.usersInfo[sender.nick].ctcpData['TIME'] = ' '.join(msg[1:])
+            self.bot.usersInfo[sender.nick].ctcpEvent['TIME'].set()
 
         else:
             self.handleEvents('CTCP', sender, msg)

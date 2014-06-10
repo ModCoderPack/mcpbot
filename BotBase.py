@@ -4,7 +4,9 @@ import asyncore
 import ConfigParser
 import sets
 import DCCSocket
-from IRCHandler import CmdHandler,CmdGenerator
+import threading
+import datetime
+from IRCHandler import CmdHandler,CmdGenerator,Sender
 
 class BotBase(object):
     #def __init__(self, host, port, nick, autoinvite, cmdchar):
@@ -54,7 +56,8 @@ class BotBase(object):
         self.logger.debug("Users  : %s"%self.authUsers)
         self.logger.debug("Groups : %s"%self.groups)
 
-        self.users    = {}
+        self.users      = {}
+        self.usersInfo = {}
 
         self.isIdentified = False   #Turn to true when nick/ident commands are sent
         self.isReady      = False   #Turn to true after RPL_ENDOFMOTD. Every join/nick etc commands should be sent once this is True.
@@ -291,6 +294,43 @@ class BotBase(object):
         else:
             self.sendRaw(CmdGenerator.getPRIVMSG(target, msg))
 
+    #Some data getters
+    def getUser(self, target):
+        self.usersInfo[target] = Sender(":" + target)
+        self.sendRaw(CmdGenerator.getWHOIS(target))
+
+        if not self.usersInfo[target].whoisEvent.wait(10):
+            return
+            
+        return self.usersInfo[target]
+
+    def getTime(self, target):
+        self.usersInfo[target] = Sender(":" + target)
+        self.usersInfo[target].ctcpEvent['TIME'] = threading.Event()
+        self.sendMessage(target, CmdGenerator.getCTCP("TIME"))
+
+        if not self.usersInfo[target].ctcpEvent['TIME'].wait(10):
+            return
+        
+        timePatterns = []
+        timePatterns.append("%a %b %d %H:%M:%S")
+        timePatterns.append("%a %b %d %H:%M:%S %Y")
+        retval = None        
+        
+        for pattern in timePatterns:
+            try:
+                retval = datetime.datetime.strptime(self.usersInfo[target].ctcpData['TIME'], pattern)
+                break;
+            except Exception:
+                pass
+        
+        if not retval:
+            self.logger.error("Error while parsing time %s"%self.usersInfo[target].ctcpData['TIME'])
+        
+        retval = datetime.datetime(2014, retval.month, retval.day, retval.hour, retval.minute, retval.second)
+        self.usersInfo[target].ctcpData['TIME'] = retval
+        
+        return self.usersInfo[target].ctcpData['TIME']
 
     #EVENT REGISTRATION METHODS (ONE PER RECOGNISE IRC COMMAND)
     def registerCommand(self, command, callback, groups, minarg, maxarg, desc = None):
