@@ -2,7 +2,6 @@ import threading
 import Logger
 import re
 import traceback
-import sets
 import time
 
 EOL = "\r\n"
@@ -120,7 +119,7 @@ class CmdGenerator(object):
         return '.'.join(address)
 
     @classmethod
-    def conv_ip_std_long(self, stdip):
+    def conv_ip_std_long(cls, stdip):
         address = stdip.split('.')
         if len(address) != 4:
             return 0
@@ -179,7 +178,7 @@ class CmdHandler(object):
         self.commands[command] = {'command':command, 'callback':callback, 'groups':groups, 'minarg':minarg, 'maxarg':maxarg, 'desc':desc}
         for group in groups:
             if not group in self.bot.groups:
-                self.bot.groups[group]= sets.Set()
+                self.bot.groups[group]= set()
             self.bot.groups[group].add(command)
 
         self.bot.updateConfig()
@@ -250,7 +249,7 @@ class CmdHandler(object):
         self.logger.debug("[S : %s] [M : %s]"%(sender.nick, " ".join(params)))        
 
         #We received a notice from NickServ. We check if it is an ACC notice
-        if (sender.nick.lower() == 'nickserv'):
+        if sender.nick.lower() == 'nickserv':
             reMatch = re.match(self.bot.authRegex, " ".join(params[1:])[1:])
             if reMatch:
                 #We check that the user exists in our tables, we setup the lvl value & unlock the command thread.
@@ -332,7 +331,7 @@ class CmdHandler(object):
         msg  = ' '.join(params[1:])  #We stich the chat msg back together
         msg  = msg[1:]               #We remove the leading :
 
-        if (msg[0] == self.bot.cmdChar):
+        if msg[0] == self.bot.cmdChar:
             self.onCOMMAND(sender, dest, msg[1:])   #We remove the cmd symbol before passing the cmd to the bot
         elif msg[0] == CTCPTAG and msg[-1] == CTCPTAG:
             self.onCTCP(sender, dest, msg[1:-1].split())
@@ -421,7 +420,7 @@ class CmdHandler(object):
         if sender.nick in self.bot.users and sender == self.bot.users[sender.nick]:
             self.logger.debug("Found user %s in current users"%sender.nick)
             
-            if self.bot.authtimeout > -1 and time.time() - self.bot.users[sender.nick].lastAuth > self.bot.authtimeout:
+            if -1 < self.bot.authtimeout < time.time() - self.bot.users[sender.nick].lastAuth:
                 self.bot.users[sender.nick].unauthenticate()
             
             # If current auth is not 3, we retry to authenticate the account but resending the request and resetting the flags
@@ -508,23 +507,23 @@ class CmdHandler(object):
     def onCTCP(self, sender, dest, msg):
         #self.logger.debug("[S : %s] [M : %s]"%(sender.nick, " ".join(params)))        
 
-        if (msg[0] == 'VERSION'):
+        if msg[0] == 'VERSION':
             self.bot.sendRaw(CmdGenerator.getNOTICE(sender.nick, "MCPBot v4.0 'You were not expecting me !' by ProfMobius"))
             self.handleEvents('Version', sender, msg)
 
-        elif (msg[0] == 'USERINFO'):
+        elif msg[0] == 'USERINFO':
             self.bot.sendRaw(CmdGenerator.getNOTICE(sender.nick, "MCPBot v4.0 'You were not expecting me !' by ProfMobius"))
             self.handleEvents('Userinfo', sender, msg)            
 
-        elif (msg[0] == 'FINGER'):
+        elif msg[0] == 'FINGER':
             self.bot.sendRaw(CmdGenerator.getNOTICE(sender.nick, "Don't do that !"))
             self.handleEvents('Finger', sender, msg)            
 
-        elif (msg[0] == 'DCC'):
+        elif msg[0] == 'DCC':
             if self.bot.dccActive:
                 self.onDCC(sender, dest, msg)
 
-        elif (msg[0] == 'TIME' and len(msg) > 1):
+        elif msg[0] == 'TIME' and len(msg) > 1:
             self.bot.usersInfo[sender.nick].ctcpData['TIME'] = ' '.join(msg[1:])
             self.bot.usersInfo[sender.nick].ctcpEvent['TIME'].set()
 

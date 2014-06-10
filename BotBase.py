@@ -2,14 +2,12 @@ import Logger
 import AsyncSocket
 import asyncore
 import ConfigParser
-import sets
 import DCCSocket
 import threading
 import datetime
 from IRCHandler import CmdHandler,CmdGenerator,Sender
 
 class BotBase(object):
-    #def __init__(self, host, port, nick, autoinvite, cmdchar):
     def __init__(self, configfile = None):
         self.configfile = configfile if configfile else 'bot.cfg'
         self.config     = ConfigParser.RawConfigParser()
@@ -17,7 +15,7 @@ class BotBase(object):
 
         self.host       = self.getConfig('SERVER', 'HOST', '')
         self.port       = int(self.getConfig('SERVER', 'PORT', '6667'))
-        self.channels   = sets.Set(self.getConfig('SERVER','CHANNELS', "").split(';') if self.getConfig('SERVER','CHANNELS', "").strip() else [])
+        self.channels   = set(self.getConfig('SERVER','CHANNELS', "").split(';') if self.getConfig('SERVER','CHANNELS', "").strip() else [])
         self.nickAuth   = self.getConfig('SERVER', 'NICKAUTH',"PRIVMSG nickserv :acc {nick}")
         self.authRegex  = self.getConfig('SERVER', 'AUTHREGEX',"(?P<nick>.+) ACC (?P<level>[0-9])")
         self.floodLimit = float(self.getConfig('SERVER', 'FLOODLIMIT', "0.75"))
@@ -46,12 +44,12 @@ class BotBase(object):
         # We collect the list of groups (<group> = <authorised commands separated by ;>)
         self.groups = {}
         for option in self.config.options('GROUPS'):
-            self.groups[option] = sets.Set(self.config.get('GROUPS',option).lower().split(';') if self.config.get('GROUPS',option).strip() else [])
+            self.groups[option] = set(self.config.get('GROUPS',option).lower().split(';') if self.config.get('GROUPS',option).strip() else [])
 
         # We collect the list of users (<user> = <groups authorised separated by ;>)
         self.authUsers = {}
         for option in self.config.options('USERS'):
-            self.authUsers[option] = sets.Set(self.config.get('USERS',option).lower().split(';') if self.config.get('USERS',option).strip() else [])        
+            self.authUsers[option] = set(self.config.get('USERS',option).lower().split(';') if self.config.get('USERS',option).strip() else [])
 
         self.logger.debug("Users  : %s"%self.authUsers)
         self.logger.debug("Groups : %s"%self.groups)
@@ -99,7 +97,7 @@ class BotBase(object):
             return
         
         if not user in self.authUsers:
-            self.authUsers[user] = sets.Set()
+            self.authUsers[user] = set()
 
         self.authUsers[user].add(group)
         bot.sendNotice(sender.nick, "Done")
@@ -139,7 +137,7 @@ class BotBase(object):
         for user,groupset in self.authUsers.items():
             for group in groupset:
                 if not group in groups:
-                    groups[group] = sets.Set()
+                    groups[group] = set()
                 groups[group].add(user)
         
         maxlen    = len(max(groups.keys(), key=len))
@@ -154,7 +152,7 @@ class BotBase(object):
         cmd    = args[1].lower()
 
         if not group in self.groups:
-            self.groups[group] = sets.Set()
+            self.groups[group] = set()
 
         self.groups[group].add(cmd)
         bot.sendNotice(sender.nick, "Done")
@@ -193,7 +191,7 @@ class BotBase(object):
                 groups = self.authUsers[sender.nick.lower()]
                 if 'admin' in groups:
                     bot.sendNotice(sender.nick, formatstr%(cmd, cmdval['desc']))
-                elif len(groups.intersection(sets.Set(cmdval['groups']))) > 0:
+                elif len(groups.intersection(set(cmdval['groups']))) > 0:
                     bot.sendNotice(sender.nick, formatstr%(cmd, cmdval['desc']))
 
     # DCC Request command, in by default

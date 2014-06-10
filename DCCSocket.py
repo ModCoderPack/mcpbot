@@ -3,7 +3,7 @@ import Logger
 import time
 import Queue
 import urllib
-from IRCHandler import CmdGenerator, Sender
+from IRCHandler import Sender
 
 EOL = "\r\n"
 CTCPTAG = chr(1)
@@ -109,7 +109,7 @@ class DCCSocket(asyncore.dispatcher):
                 sender = Sender("AnonUser_%04d!~AnonUser_%04d@dev.null"%(self.indexAnon, self.indexAnon))
                 self.bot.users[sender.nick] = sender
                 self.pending[targip] = sender
-                self.indexAnon = self.indexAnon + 1
+                self.indexAnon += 1
                 welcomeMsg.append("DCC Session activated")
                 welcomeMsg.append("You have been dropped to read-only because your IP couldn't be tied to a nick")
                 welcomeMsg.append("This might be due to a problem with your bouncer if you are using one")                

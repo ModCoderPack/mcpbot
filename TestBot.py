@@ -1,5 +1,4 @@
 import BotBase
-import asyncore
 from IRCHandler import CmdGenerator
 
 def sendBastard(bot, sender, params):
@@ -16,9 +15,9 @@ def sayHello2(bot, sender, dest, cmd, args):
 def whois(bot, sender, dest, cmd, args):
     bot.sendRaw(CmdGenerator.getWHOIS(args[0]))
 
-bot = BotBase.BotBase()
-bot.registerEventKick(sendBastard)
+botBase = BotBase.BotBase()
+botBase.registerEventKick(sendBastard)
 #bot.registerEventJoin(sayHello)
-bot.registerCommand('test', sayHello2, None, 0, 0, None)
-bot.registerCommand('whois', whois, None, 1, 1, None)
-bot.run()
+botBase.registerCommand('test', sayHello2, None, 0, 0, None)
+botBase.registerCommand('whois', whois, None, 1, 1, None)
+botBase.run()

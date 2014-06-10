@@ -22,5 +22,5 @@ def getLogger(name, lognormal='botlog.log', logerror='errors.log'):
 
     return logger
 
-def setLoggerLevel(lvl):
-    logger.setLevel(lvl)
+#def setLoggerLevel(lvl):
+#    logger.setLevel(lvl)

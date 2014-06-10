@@ -1,10 +1,10 @@
 from BotBase import BotBase
 from Database import Database
-import Logger
 
 class MCPBot(BotBase):
     def __init__(self):
         super(MCPBot, self).__init__()
+
         self.dbhost = self.getConfig('DATABASE', 'HOST', "")
         self.dbport = int(self.getConfig('DATABASE', 'PORT', "0"))
         self.dbuser = self.getConfig('DATABASE', 'USER', "")
