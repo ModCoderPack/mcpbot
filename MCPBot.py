@@ -1,5 +1,6 @@
 from BotBase import BotBase, BotHandler
 from Database import Database
+import psycopg2
 
 class MCPBot(BotBase):
     def __init__(self):
@@ -23,7 +24,12 @@ class MCPBot(BotBase):
 
     def sqlrequest(self, bot, sender, dest, cmd, args):
         sql = ' '.join(args)
-        val = self.db.execute(sql)
+
+        val, status = self.db.execute(sql)
+
+        if status != None:
+            self.sendNotice(sender.nick, str(type(status)) + ' : ' + str(status))
+            return
 
         if len(val) > 0:
             for entry in val:

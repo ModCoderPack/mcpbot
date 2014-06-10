@@ -25,8 +25,9 @@ class Database(object):
             return None
         else:
             self.logger.info("Connection to database established")
-            self.cursor = self.conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
-            return self.cursor
+            #self.cursor = self.conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
+            #return self.cursor
+            return self.conn
 
     def disconnect(self):
         self.logger.info("Committing all changes and shutting down db connection")
@@ -36,9 +37,13 @@ class Database(object):
         self.logger.info("Done")
 
     def execute(self, request):
-        self.cursor.execute(request)
-        retval = self.cursor.fetchall()
-        self.conn.commit()
+        with self.conn.cursor(cursor_factory=psycopg2.extras.DictCursor) as cursor:
+            try:
+                cursor.execute(request)
+                retval = cursor.fetchall()
+                self.conn.commit()
 
-        return retval
-
+                return retval, None
+            except Exception as e:
+                self.conn.rollback()
+                return None, e
