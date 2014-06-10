@@ -25,8 +25,11 @@ class MCPBot(BotBase):
         sql = ' '.join(args)
         val = self.db.execute(sql)
 
-        for entry in val:
-            self.sendNotice(sender.nick, str(entry))
+        if len(val) > 0:
+            for entry in val:
+                self.sendNotice(sender.nick, dict(entry))
+        else:
+            self.sendNotice(sender.nick, "No result found.")
 
 ########################################################################################################################
 def main():

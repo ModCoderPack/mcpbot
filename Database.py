@@ -1,5 +1,7 @@
 import psycopg2
+import psycopg2.extras
 import Logger
+
 
 class Database(object):
     def __init__(self, host, port, user, db, pwd, bot):
@@ -23,7 +25,7 @@ class Database(object):
             return None
         else:
             self.logger.info("Connection to database established")
-            self.cursor = self.conn.cursor()
+            self.cursor = self.conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
             return self.cursor
 
     def disconnect(self):
@@ -39,3 +41,4 @@ class Database(object):
         self.conn.commit()
 
         return retval
+
