@@ -1,4 +1,5 @@
 import psycopg2
+import psycopg2.extras
 import sqlite3
 import sys
 import os
@@ -35,6 +36,30 @@ def main(dbfile):
         logger.info("\tTABLE %s"%table)
         cursor.execute("SELECT * FROM %s;"%table)
         sqlitedata[table] = cursor.fetchall()
+
+    cursor.close()
+    conn.close()
+
+    #Just a sample output to demonstrate row/column access
+    for row in sqlitedata['versions']:
+        logger.info(dict(row))
+        logger.info("%s %s %s"%(row['mcpversion'], row['clientversion'], row['timestamp']))
+
+    #Demonstration section for postgre
+    conn   = psycopg2.connect(database='', user='', password='', host='', port='')
+    cursor = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
+
+    #If you have the table and column names.
+    for row in sqlitedata['versions']:
+        cursor.execute("INSERT INTO FooBar(mcpversion, clientversion, timestamp) VALUES(?,?,?)",
+           row['mcpversion'], row['clientversion'], row['timestamp'] )
+
+    #If you want to do some string substitution for the table and columns (as most DB libs only replace values)
+    #Insert is still sanitized on the VALUES this way, but it offers more flexibility for the tables/columns
+    for row in sqlitedata['versions']:
+        cursor.execute("INSERT INTO %s(%s, %s, %s) VALUES(?,?,?)"%('tablename', 'column1', 'column2', 'column3'),
+           row['mcpversion'], row['clientversion'], row['timestamp'] )
+    conn.commit()
 
     cursor.close()
     conn.close()
