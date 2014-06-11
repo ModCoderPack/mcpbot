@@ -47,3 +47,26 @@ class Database(object):
             except Exception as e:
                 self.conn.rollback()
                 return None, e
+
+    def executeGet(self, request, arguments):
+        with self.conn.cursor(cursor_factory=psycopg2.extras.DictCursor) as cursor:
+            try:
+                cursor.execute(request, arguments)
+                retval = cursor.fetchall()
+                return retval, None
+            except Exception as e:
+                self.conn.rollback()
+                return None, e
+
+    def getmember(self, table, member):
+        membertype = {'field':'field', 'method':'func'}[table]
+
+        splitted = member.split('.')
+        if len(splitted) == 1:
+            sqlrequest = """SELECT * FROM mcp.%s WHERE srg_name LIKE %%s OR mcp_name=%%s OR srg_name=%%s"""%(table + "_vw")
+            print sqlrequest
+            return self.executeGet(sqlrequest, (membertype + "_" + member + '_%', member, member))
+        else:
+            sqlrequest = """SELECT * FROM mcp.%s WHERE (srg_name LIKE %%s) OR (srg_name=%%s) OR (class_srg_name=%%s AND mcp_name=%%s) OR (class_obf_name=%%s AND obf_name=%%s)"""%(table + "_vw")
+            print sqlrequest
+            return self.executeGet(sqlrequest, (membertype + "_" + member + '_%', splitted[0], splitted[0], splitted[1], splitted[0], splitted[1]))

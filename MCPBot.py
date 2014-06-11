@@ -14,7 +14,9 @@ class MCPBot(BotBase):
 
         self.db = Database(self.dbhost, self.dbport, self.dbuser, self.dbname, self.dbpass, self)
 
-        self.registerCommand('sqlrequest', self.sqlrequest, ['admin'], 1, 999, "Execute a raw SQL command")
+        self.registerCommand('sqlrequest', self.sqlrequest, ['admin'], 1, 999, "Execute a raw SQL command.")
+        self.registerCommand('gf',         self.getfield,   ['admin'], 1, 1,   "<field_notch|field_index|field_name> : Returns the given field information.")
+        self.registerCommand('gm',         self.getmethod,  ['admin'], 1, 1,   "<field_notch|field_index|field_name> : Returns the given field information.")
 
     def onStartUp(self):
         self.db.connect()
@@ -34,6 +36,28 @@ class MCPBot(BotBase):
         if len(val) > 0:
             for entry in val:
                 self.sendNotice(sender.nick, dict(entry))
+        else:
+            self.sendNotice(sender.nick, "No result found.")
+
+    def getfield(self, bot, sender, dest, cmd, args):
+        val, status = self.db.getmember('field', args[0])
+        self.sendResults(bot, sender, val, status)
+
+    def getmethod(self, bot, sender, dest, cmd, args):
+        val, status = self.db.getmember('method', args[0])
+        self.sendResults(bot, sender, val, status)
+
+    def sendResults(self, bot, sender, val, status):
+        if status != None:
+            self.sendNotice(sender.nick, str(type(status)) + ' : ' + str(status))
+            return
+
+        if len(val) > 0:
+            for entry in val:
+                if entry['mcp_name']:
+                    self.sendNotice(sender.nick, "%s.%s"%(entry['class_srg_name'], entry['mcp_name']))
+                else:
+                    self.sendNotice(sender.nick, "%s.%s"%(entry['class_srg_name'], entry['mcp_name']))
         else:
             self.sendNotice(sender.nick, "No result found.")
 
