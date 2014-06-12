@@ -56,10 +56,11 @@ class MCPBot(BotBase):
             #self.sendNotice(sender.nick, val[0].keys())
 
             for entry in val:
-                self.sendNotice(sender.nick, "=== {class_srg_name}.{mcp_name} ===".format(**entry))
-                self.sendNotice(sender.nick, "Descriptor : {obf_descriptor} | {srg_descriptor}".format(**entry))
-                self.sendNotice(sender.nick, "Names      : {obf_name} | {srg_name} | {mcp_name}".format(**entry))
-                self.sendNotice(sender.nick, "Comment    : {comment}".format(**entry))
+                self.sendNotice(sender.nick, " ".format(**entry))
+                self.sendNotice(sender.nick, "=== $B{class_srg_name}.{mcp_name}$N ===".format(**entry))
+                self.sendNotice(sender.nick, "$UDescriptor$N : {obf_descriptor} $B|$N {srg_descriptor}".format(**entry))
+                self.sendNotice(sender.nick, "$UNames$N      : {obf_name} $B|$N {srg_name} $B|$N {mcp_name}".format(**entry))
+                self.sendNotice(sender.nick, "$UComment$N    : {comment}".format(**entry))
         else:
             self.sendNotice(sender.nick, "No result found.")
 
