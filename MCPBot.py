@@ -52,6 +52,7 @@ class MCPBot(BotBase):
 
     def getClass(self, bot, sender, dest, cmd, args):
         val, status = self.db.getClass(args[0])
+
         if status != None:
             self.sendNotice(sender.nick, str(type(status)) + ' : ' + str(status))
             return
@@ -60,7 +61,7 @@ class MCPBot(BotBase):
             self.sendNotice(sender.nick, "Too many results ( %d ). Please use DCC."%len(val))
 
         elif len(val) > 0:
-            for i, entry in enumerate(val):
+            for ientry, entry in enumerate(val):
                 self.sendNotice(sender.nick, "=== §B{srg_name}§N ===".format(**entry))
                 self.sendNotice(sender.nick, "§UNotch§N      : {obf_name}".format(**entry))
                 self.sendNotice(sender.nick, "§UName§N       : {pkg_name}/{srg_name}".format(**entry))
@@ -68,7 +69,13 @@ class MCPBot(BotBase):
                 if entry['outer_srg_name'] : self.sendNotice(sender.nick, "§UOuter§N      : {outer_obf_name} | {outer_srg_name}".format(**entry))
                 if entry['srg_interfaces'] : self.sendNotice(sender.nick, "§UInterfaces§N : {srg_interfaces}".format(**entry))
 
-                if not i == len(val) - 1:
+                valInherit, statusInherit = self.db.getInheritingClasses(entry['srg_name'])
+                if not statusInherit and len(valInherit) > 0:
+                    inherit = [j['srg_name'] for j in valInherit]
+                    for iclass in range(0, len(inherit), 5):
+                        self.sendNotice(sender.nick, "§UExtended§N   : {extended}".format(extended=' '.join(inherit[iclass:iclass+5])))
+
+                if not ientry == len(val) - 1:
                     self.sendNotice(sender.nick, " ".format(**entry))
         else:
             self.sendNotice(sender.nick, "No result found.")
