@@ -7,7 +7,7 @@ import ConfigParser
 import DCCSocket
 import threading
 import datetime
-from IRCHandler import CmdHandler,CmdGenerator,Sender
+from IRCHandler import CmdHandler,CmdGenerator,Sender,Color
 
 class BotHandler(object):
     botList = []
@@ -39,22 +39,6 @@ class BotHandler(object):
         for bot in cls.botList:
             bot.onStartUp()
             bot.connect()
-
-class Color(object):
-    colors = {
-        '§B': '\x02',
-        '§U': '\x1f',
-        '§R': '\x16',
-        '§N': '\x0f',
-        '§C': '\x03',
-    }
-
-    @classmethod
-    def doColors(cls, text):
-        out_text = text
-        for code, char in cls.colors.items():
-            out_text = out_text.replace(code, char)
-        return out_text
 
 class BotBase(object):
     def __init__(self, configfile = None):
@@ -332,14 +316,14 @@ class BotBase(object):
         self.sendRaw(CmdGenerator.getJOIN(chan))
         
     def sendNotice(self, target, msg):
-        msgColor = Color.doColors(msg)
+        msgColor = Color.doColors(str(msg))
         if target in self.users and self.users[target].dccSocket != None:
             self.users[target].dccSocket.sendMsg(msgColor)
         else:
             self.sendRaw(CmdGenerator.getNOTICE(target, msgColor))
             
     def sendMessage(self, target, msg):
-        msgColor = Color.doColors(msg)
+        msgColor = Color.doColors(str(msg))
         if target in self.users and self.users[target].dccSocket != None:
             self.users[target].dccSocket.sendMsg(msgColor)
         else:

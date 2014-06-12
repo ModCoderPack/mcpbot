@@ -44,18 +44,18 @@ class MCPBot(BotBase):
 
     def getField(self, bot, sender, dest, cmd, args):
         val, status = self.db.getmember('field', args[0])
-        self.sendResults(bot, sender, val, status)
+        self.sendMemberResults(bot, sender, val, status)
 
     def getMethod(self, bot, sender, dest, cmd, args):
         val, status = self.db.getmember('method', args[0])
-        self.sendResults(bot, sender, val, status)
+        self.sendMemberResults(bot, sender, val, status)
 
     def getClass(self, bot, sender, dest, cmd, args):
         pass
         #val, status = self.db.getmember('method', args[0])
         #self.sendResults(bot, sender, val, status)
 
-    def sendResults(self, bot, sender, val, status):
+    def sendMemberResults(self, bot, sender, val, status):
         if status != None:
             self.sendNotice(sender.nick, str(type(status)) + ' : ' + str(status))
             return

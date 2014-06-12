@@ -1,3 +1,4 @@
+# coding=utf-8
 import threading
 import Logger
 import re
@@ -133,6 +134,24 @@ class CmdGenerator(object):
                 return 0
             longip += ip_part << shift
         return longip
+
+###########################################################################################################
+
+class Color(object):
+    colors = {
+        '§B': '\x02',
+        '§U': '\x1f',
+        '§R': '\x16',
+        '§N': '\x0f',
+        '§C': '\x03',
+    }
+
+    @classmethod
+    def doColors(cls, text):
+        out_text = text
+        for code, char in cls.colors.items():
+            out_text = out_text.replace(code, char)
+        return out_text
 
 ###########################################################################################################
 
