@@ -1,3 +1,5 @@
+# coding=utf-8
+
 import Logger
 import AsyncSocket
 import asyncore
@@ -40,11 +42,11 @@ class BotHandler(object):
 
 class Color(object):
     colors = {
-        '$B': '\x02',
-        '$U': '\x1f',
-        '$R': '\x16',
-        '$N': '\x0f',
-        '$C': '\x03',
+        '§B': '\x02',
+        '§U': '\x1f',
+        '§R': '\x16',
+        '§N': '\x0f',
+        '§C': '\x03',
     }
 
     @classmethod
