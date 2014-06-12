@@ -66,6 +66,10 @@ class MCPBot(BotBase):
         val, status = self.db.findInTable('method', args[0])
         self.sendMemberResults(sender, val, status)
 
+        self.sendNotice(sender.nick, " ")
+        self.sendNotice(sender.nick, "+++ CLASSES +++")
+        val, status = self.db.findInTable('class', args[0])
+        self.sendMemberResults(sender, val, status)
 
 
     def sendMemberResults(self, sender, val, status):
