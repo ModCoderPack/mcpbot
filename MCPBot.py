@@ -54,14 +54,14 @@ class MCPBot(BotBase):
             return
 
         if len(val) > 0:
-            #self.sendNotice(sender.nick, val[0].keys())
-
-            for entry in val:
-                self.sendNotice(sender.nick, " ".format(**entry))
+            for i, entry in enumerate(val):
                 self.sendNotice(sender.nick, "=== §B{class_srg_name}.{mcp_name}§N ===".format(**entry))
                 self.sendNotice(sender.nick, "§UDescriptor§N : {obf_descriptor} §B|§N {srg_descriptor}".format(**entry))
                 self.sendNotice(sender.nick, "§UNames§N      : {obf_name} §B|§N {srg_name} §B|§N {mcp_name}".format(**entry))
                 self.sendNotice(sender.nick, "§UComment§N    : {comment}".format(**entry))
+
+                if not i == len(val) - 1:
+                    self.sendNotice(sender.nick, " ".format(**entry))
         else:
             self.sendNotice(sender.nick, "No result found.")
 

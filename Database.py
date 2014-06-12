@@ -68,7 +68,7 @@ class Database(object):
                                                         OR mcp_name=%%(member)s
                                                         OR srg_name=%%(member)s)"""%(table + "_vw")
             self.logger.debug(sqlrequest)
-            return self.executeGet(sqlrequest, {'imember':membertype + "_" + member + '_%','member':member})
+            return self.executeGet(sqlrequest, {'imember':'%s\_%s\_%%'%(membertype,str(member)),'member':member})
         else:
             sqlrequest = """SELECT * FROM mcp.%s WHERE is_current=TRUE
                                                    AND ((class_srg_name=%%(class)s AND mcp_name=%%(member)s)
