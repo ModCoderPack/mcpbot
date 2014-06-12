@@ -85,12 +85,3 @@ class Database(object):
                                                       OR obf_name LIKE %(innermatch)s)"""
         self.logger.debug(sqlrequest)
         return self.executeGet(sqlrequest, {'clazz':clazz, 'innermatch':'%%$%s'%(clazz)})
-
-    def getInheritingClasses(self, clazz):
-        sqlrequest = """SELECT * FROM mcp.class_vw WHERE is_current=TRUE
-                                                    AND (super_obf_name=%(clazz)s
-                                                      OR super_srg_name=%(clazz)s
-                                                      OR super_srg_name LIKE %(innermatch)s
-                                                      OR super_obf_name LIKE %(innermatch)s)"""
-        self.logger.debug(sqlrequest)
-        return self.executeGet(sqlrequest, {'clazz':clazz, 'innermatch':'%%$%s'%(clazz)})
