@@ -19,6 +19,7 @@ class MCPBot(BotBase):
         self.registerCommand('gf',         self.getField,   ['admin'], 1, 1,   "[class].<name>","Returns the given field  information.")
         self.registerCommand('gm',         self.getMethod,  ['admin'], 1, 1,   "[class].<name>","Returns the given method information.")
         self.registerCommand('gc',         self.getClass,   ['admin'], 1, 1,   "<class>",       "Returns the given class  information.")
+        self.registerCommand('find',       self.findKey,    ['admin'], 1, 1,   "<pattern>",     "Returns all entries with the given pattern in MCP.")
 
     def onStartUp(self):
         self.db.connect()
@@ -41,6 +42,8 @@ class MCPBot(BotBase):
         else:
             self.sendNotice(sender.nick, "No result found.")
 
+
+
     def getField(self, bot, sender, dest, cmd, args):
         val, status = self.db.getMember('field', args[0])
         self.sendMemberResults(sender, val, status)
@@ -53,12 +56,24 @@ class MCPBot(BotBase):
         val, status = self.db.getClass(args[0])
         self.sendClassResults(sender, val, status)
 
+    def findKey(self, bot, sender, dest, cmd, args):
+        self.sendNotice(sender.nick, "+++ FIELDS +++")
+        val, status = self.db.findInTable('field', args[0])
+        self.sendMemberResults(sender, val, status)
+
+        self.sendNotice(sender.nick, " ")
+        self.sendNotice(sender.nick, "+++ METHODS +++")
+        val, status = self.db.findInTable('method', args[0])
+        self.sendMemberResults(sender, val, status)
+
+
+
     def sendMemberResults(self, sender, val, status):
         if status:
             self.sendNotice(sender.nick, str(type(status)) + ' : ' + str(status))
             return
 
-        if len(val) > 5:
+        if len(val) > 5 and not sender.dccSocket:
             self.sendNotice(sender.nick, "Too many results ( %d ). Please use DCC."%len(val))
 
         elif len(val) > 0:
@@ -82,7 +97,7 @@ class MCPBot(BotBase):
             self.sendNotice(sender.nick, str(type(status)) + ' : ' + str(status))
             return
 
-        if len(val) > 5:
+        if len(val) > 5 and not sender.dccSocket:
             self.sendNotice(sender.nick, "Too many results ( %d ). Please use DCC."%len(val))
 
         elif len(val) > 0:

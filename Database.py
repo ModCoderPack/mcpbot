@@ -85,3 +85,9 @@ class Database(object):
                                                       OR obf_name LIKE %(innermatch)s)"""
         self.logger.debug(sqlrequest)
         return self.executeGet(sqlrequest, {'clazz':clazz, 'innermatch':'%%$%s'%(clazz)})
+
+    def findInTable(self, table, key):
+        sqlrequest = """SELECT * FROM mcp.%s WHERE is_current=TRUE
+                                             AND   mcp_name LIKE %%(match)s"""%(table + '_vw')
+        self.logger.debug(sqlrequest)
+        return self.executeGet(sqlrequest, {'match':"%" + key + "%"})
