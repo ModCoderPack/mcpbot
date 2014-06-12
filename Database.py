@@ -58,7 +58,7 @@ class Database(object):
                 self.conn.rollback()
                 return None, e
 
-    def getmember(self, table, member):
+    def getMember(self, table, member):
         membertype = {'field':'field', 'method':'func'}[table]
 
         splitted = member.split('.')
@@ -76,3 +76,11 @@ class Database(object):
                                                      OR (class_obf_name=%%(class)s AND obf_name=%%(member)s))"""%(table + "_vw")
             self.logger.debug(sqlrequest)
             return self.executeGet(sqlrequest, {'class':splitted[0], 'member':splitted[1]})
+
+    def getClass(self, clazz):
+        sqlrequest = """SELECT * FROM mcp.class_vw WHERE is_current=TRUE
+                                                    AND (obf_name=%(clazz)s
+                                                      OR srg_name=%(clazz)s
+                                                      OR srg_name LIKE %(innermatch)s)"""
+        self.logger.debug(sqlrequest)
+        return self.executeGet(sqlrequest, {'clazz':clazz, 'innermatch':'%%$%s'%(clazz)})

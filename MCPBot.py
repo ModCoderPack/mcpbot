@@ -43,24 +43,45 @@ class MCPBot(BotBase):
             self.sendNotice(sender.nick, "No result found.")
 
     def getField(self, bot, sender, dest, cmd, args):
-        val, status = self.db.getmember('field', args[0])
+        val, status = self.db.getMember('field', args[0])
         self.sendMemberResults(bot, sender, val, status)
 
     def getMethod(self, bot, sender, dest, cmd, args):
-        val, status = self.db.getmember('method', args[0])
+        val, status = self.db.getMember('method', args[0])
         self.sendMemberResults(bot, sender, val, status)
 
     def getClass(self, bot, sender, dest, cmd, args):
-        pass
-        #val, status = self.db.getmember('method', args[0])
-        #self.sendResults(bot, sender, val, status)
+        val, status = self.db.getClass(args[0])
+        if status != None:
+            self.sendNotice(sender.nick, str(type(status)) + ' : ' + str(status))
+            return
+
+        if len(val) > 5:
+            self.sendNotice(sender.nick, "Too many results ( %d ). Please use DCC."%len(val))
+
+        elif len(val) > 0:
+            for i, entry in enumerate(val):
+                self.sendNotice(sender.nick, "=== §B{srg_name}§N ===".format(**entry))
+                self.sendNotice(sender.nick, "§UNotch§N      : {obf_name}".format(**entry))
+                self.sendNotice(sender.nick, "§UName§N       : {pkg_name}/{srg_name}".format(**entry))
+                if entry['super_srg_name'] : self.sendNotice(sender.nick, "§USuper§N      : {super_obf_name} | {super_srg_name}".format(**entry))
+                if entry['outer_srg_name'] : self.sendNotice(sender.nick, "§UOuter§N      : {outer_obf_name} | {outer_srg_name}".format(**entry))
+                if entry['srg_interfaces'] : self.sendNotice(sender.nick, "§UInterfaces§N : {srg_interfaces}".format(**entry))
+
+                if not i == len(val) - 1:
+                    self.sendNotice(sender.nick, " ".format(**entry))
+        else:
+            self.sendNotice(sender.nick, "No result found.")
 
     def sendMemberResults(self, bot, sender, val, status):
         if status != None:
             self.sendNotice(sender.nick, str(type(status)) + ' : ' + str(status))
             return
 
-        if len(val) > 0:
+        if len(val) > 5:
+            self.sendNotice(sender.nick, "Too many results ( %d ). Please use DCC."%len(val))
+
+        elif len(val) > 0:
             for i, entry in enumerate(val):
                 srgindex = re.search('_([0-9]+)_', entry['srg_name']).groups()[0]
                 self.sendNotice(sender.nick, "=== §B{class_srg_name}.{mcp_name}§N ===".format(**entry))
