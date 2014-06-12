@@ -2,6 +2,7 @@
 from BotBase import BotBase, BotHandler
 from Database import Database
 import psycopg2
+import re
 
 class MCPBot(BotBase):
     def __init__(self):
@@ -15,9 +16,10 @@ class MCPBot(BotBase):
 
         self.db = Database(self.dbhost, self.dbport, self.dbuser, self.dbname, self.dbpass, self)
 
-        self.registerCommand('sqlrequest', self.sqlrequest, ['admin'], 1, 999, "Execute a raw SQL command.")
-        self.registerCommand('gf',         self.getfield,   ['admin'], 1, 1,   "<field_notch|field_index|field_name> : Returns the given field information.")
-        self.registerCommand('gm',         self.getmethod,  ['admin'], 1, 1,   "<field_notch|field_index|field_name> : Returns the given field information.")
+        self.registerCommand('sqlrequest', self.sqlRequest, ['admin'], 1, 999, "<sql command>", "Execute a raw SQL command.")
+        self.registerCommand('gf',         self.getField,   ['admin'], 1, 1,   "[class].<name>","Returns the given field  information.")
+        self.registerCommand('gm',         self.getMethod,  ['admin'], 1, 1,   "[class].<name>","Returns the given method information.")
+        self.registerCommand('gc',         self.getClass,   ['admin'], 1, 1,   "<class>",       "Returns the given class  information.")
 
     def onStartUp(self):
         self.db.connect()
@@ -25,7 +27,7 @@ class MCPBot(BotBase):
     def onShuttingDown(self):
         self.db.disconnect()
 
-    def sqlrequest(self, bot, sender, dest, cmd, args):
+    def sqlRequest(self, bot, sender, dest, cmd, args):
         sql = ' '.join(args)
 
         val, status = self.db.execute(sql)
@@ -40,13 +42,18 @@ class MCPBot(BotBase):
         else:
             self.sendNotice(sender.nick, "No result found.")
 
-    def getfield(self, bot, sender, dest, cmd, args):
+    def getField(self, bot, sender, dest, cmd, args):
         val, status = self.db.getmember('field', args[0])
         self.sendResults(bot, sender, val, status)
 
-    def getmethod(self, bot, sender, dest, cmd, args):
+    def getMethod(self, bot, sender, dest, cmd, args):
         val, status = self.db.getmember('method', args[0])
         self.sendResults(bot, sender, val, status)
+
+    def getClass(self, bot, sender, dest, cmd, args):
+        pass
+        #val, status = self.db.getmember('method', args[0])
+        #self.sendResults(bot, sender, val, status)
 
     def sendResults(self, bot, sender, val, status):
         if status != None:
@@ -55,9 +62,13 @@ class MCPBot(BotBase):
 
         if len(val) > 0:
             for i, entry in enumerate(val):
+                srgindex = re.search('_([0-9]+)_', entry['srg_name']).groups()[0]
                 self.sendNotice(sender.nick, "=== §B{class_srg_name}.{mcp_name}§N ===".format(**entry))
+                self.sendNotice(sender.nick, "§UIndex§N      : {srg_index}".format(srg_index=srgindex))
+                self.sendNotice(sender.nick, "§UNotch§N      : {class_obf_name}.{obf_name}".format(**entry))
+                self.sendNotice(sender.nick, "§USrg§N        : {class_pkg_name}/{class_srg_name}.{srg_name}".format(**entry))
+                self.sendNotice(sender.nick, "§UMCP§N        : {class_pkg_name}/{class_srg_name}.{mcp_name}".format(**entry))
                 self.sendNotice(sender.nick, "§UDescriptor§N : {obf_descriptor} §B|§N {srg_descriptor}".format(**entry))
-                self.sendNotice(sender.nick, "§UNames§N      : {obf_name} §B|§N {srg_name} §B|§N {mcp_name}".format(**entry))
                 self.sendNotice(sender.nick, "§UComment§N    : {comment}".format(**entry))
 
                 if not i == len(val) - 1:

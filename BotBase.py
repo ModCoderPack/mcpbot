@@ -113,17 +113,17 @@ class BotBase(object):
         self.dccSocket = DCCSocket.DCCSocket(self)
         self.cmdHandler = CmdHandler(self, self.socket)         
 
-        self.registerCommand('dcc',       self.requestDCC, ['any'],   0, 0, None)
-        self.registerCommand('adduser',   self.adduser,    ['admin'], 2, 2, "adduser <user> <group>")
-        self.registerCommand('rmuser',    self.rmuser,     ['admin'], 2, 2, "rmuser <user> <group>")
-        self.registerCommand('getuser',   self.getuser,    ['admin'], 1, 1, "getuser <user>")        
-        self.registerCommand('getusers',  self.getusers,   ['admin'], 0, 0, "getusers")
+        self.registerCommand('dcc',       self.requestDCC, ['any'],   0, 0, "",              "Requests a DCC connection to the bot")
+        self.registerCommand('adduser',   self.adduser,    ['admin'], 2, 2, "<user> <group>","Adds user to group.")
+        self.registerCommand('rmuser',    self.rmuser,     ['admin'], 2, 2, "<user> <group>","Removes user from group.")
+        self.registerCommand('getuser',   self.getuser,    ['admin'], 1, 1, "<user>",        "Returns list of groups for this user.")
+        self.registerCommand('getusers',  self.getusers,   ['admin'], 0, 0, "",              "Returns a list of groups and users")
         
-        self.registerCommand('addgroup',  self.addgroup,   ['admin'], 2, 2, "addgroup <group> <cmd>")
-        self.registerCommand('rmgroup',   self.rmgroup,    ['admin'], 2, 2, "rmgroup <group> <cmd>")
-        self.registerCommand('getgroups', self.getgroups,  ['admin'], 0, 0, "getgroups")    
+        self.registerCommand('addgroup',  self.addgroup,   ['admin'], 2, 2, "<group> <cmd>", "Adds command to group")
+        self.registerCommand('rmgroup',   self.rmgroup,    ['admin'], 2, 2, "<group> <cmd>", "Remove command from group")
+        self.registerCommand('getgroups', self.getgroups,  ['admin'], 0, 0, "",              "Returns a list of groups and commands")
         
-        self.registerCommand('help',      self.helpcmd,    ['any'],   0, 0, "help")
+        self.registerCommand('help',      self.helpcmd,    ['any'],   0, 0, "",              "This")
 
     def getConfig(self, section, option, default):
         if not self.config.has_section(section):
@@ -230,18 +230,20 @@ class BotBase(object):
 
     # Default help command
     def helpcmd(self, bot, sender, dest, cmd, args):
-        maxlen    = len(max(self.cmdHandler.commands.keys(), key=len))
-        formatstr = "%%%ds : %%s"%(maxlen * -1)
+        maxcmdlen    = len(max(self.cmdHandler.commands.keys(), key=len))
+        maxargslen   = len(max([i['descargs'] for i in self.cmdHandler.commands.values()], key=len))
+
+        formatstr = "§B%%%ds %%%ds§N : %%s"%(maxcmdlen * -1, maxargslen * -1)
         
         for cmd, cmdval in self.cmdHandler.commands.items():
             if 'any' in cmdval['groups']:
-                bot.sendNotice(sender.nick, formatstr%(cmd, cmdval['desc']))
+                bot.sendNotice(sender.nick, formatstr%(cmd, cmdval['descargs'], cmdval['desccmd']))
             elif sender.nick.lower() in self.authUsers:
                 groups = self.authUsers[sender.nick.lower()]
                 if 'admin' in groups:
-                    bot.sendNotice(sender.nick, formatstr%(cmd, cmdval['desc']))
+                    bot.sendNotice(sender.nick, formatstr%(cmd, cmdval['descargs'], cmdval['desccmd']))
                 elif len(groups.intersection(set(cmdval['groups']))) > 0:
-                    bot.sendNotice(sender.nick, formatstr%(cmd, cmdval['desc']))
+                    bot.sendNotice(sender.nick, formatstr%(cmd, cmdval['descargs'], cmdval['desccmd']))
 
     # DCC Request command, in by default
     def requestDCC(self, bot, sender, dest, cmd, args):
@@ -382,8 +384,8 @@ class BotBase(object):
         return self.usersInfo[target].ctcpData['TIME']
 
     #EVENT REGISTRATION METHODS (ONE PER RECOGNISE IRC COMMAND)
-    def registerCommand(self, command, callback, groups, minarg, maxarg, desc = None):
-        self.cmdHandler.registerCommand(command, callback, groups, minarg, maxarg, desc)
+    def registerCommand(self, command, callback, groups, minarg, maxarg, descargs = "", desccmd = ""):
+        self.cmdHandler.registerCommand(command, callback, groups, minarg, maxarg, descargs, desccmd)
     def registerEventPing(self, callback):
         self.cmdHandler.registerEvent('Ping', callback)
     def registerEventKick(self, callback):
