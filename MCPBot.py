@@ -107,15 +107,19 @@ class MCPBot(BotBase):
         elif len(val) > 0:
             for ientry, entry in enumerate(val):
                 self.sendNotice(sender.nick, "=== §B{srg_name}§N ===".format(**entry))
-                self.sendNotice(sender.nick, "§UNotch§N      : {obf_name}".format(**entry))
-                self.sendNotice(sender.nick, "§UName§N       : {pkg_name}/{srg_name}".format(**entry))
-                if entry['super_srg_name'] : self.sendNotice(sender.nick, "§USuper§N      : {super_obf_name} | {super_srg_name}".format(**entry))
-                if entry['outer_srg_name'] : self.sendNotice(sender.nick, "§UOuter§N      : {outer_obf_name} | {outer_srg_name}".format(**entry))
-                if entry['srg_interfaces'] : self.sendNotice(sender.nick, "§UInterfaces§N : {srg_interfaces}".format(**entry))
+                self.sendNotice(sender.nick, "§UNotch§N        : {obf_name}".format(**entry))
+                self.sendNotice(sender.nick, "§UName§N         : {pkg_name}/{srg_name}".format(**entry))
+                if entry['super_srg_name'] : self.sendNotice(sender.nick, "§USuper§N        : {super_obf_name} | {super_srg_name}".format(**entry))
+                if entry['outer_srg_name'] : self.sendNotice(sender.nick, "§UOuter§N        : {outer_obf_name} | {outer_srg_name}".format(**entry))
+                if entry['srg_interfaces'] : self.sendNotice(sender.nick, "§UInterfaces§N   : {srg_interfaces}".format(**entry))
                 if entry['srg_extending']:
                     extending = entry['srg_extending'].split(", ")
                     for iclass in range(0, len(extending), 5):
-                        self.sendNotice(sender.nick, "§UExtended§N   : {extended}".format(extended=' '.join(extending[iclass:iclass+5])))
+                        self.sendNotice(sender.nick, "§UExtending§N    : {extended}".format(extended=' '.join(extending[iclass:iclass+5])))
+                if entry['srg_implementing']:
+                    implementing = entry['srg_implementing'].split(", ")
+                    for iclass in range(0, len(implementing), 5):
+                        self.sendNotice(sender.nick, "§UImplementing§N : {implementing}".format(implementing=' '.join(implementing[iclass:iclass+5])))
 
                 if not ientry == len(val) - 1:
                     self.sendNotice(sender.nick, " ".format(**entry))
