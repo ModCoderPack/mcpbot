@@ -14,7 +14,7 @@ class Database(object):
         self.pwd  = pwd
 
         self.conn   = None
-        self.cursor = None
+        #self.cursor = None
 
         self.logger = Logger.getLogger("MCPBot.Database", self.bot.lognormal, self.bot.logerrors)
 
@@ -32,7 +32,7 @@ class Database(object):
     def disconnect(self):
         self.logger.info("Committing all changes and shutting down db connection")
         self.conn.commit()
-        self.cursor.close()
+        #self.cursor.close()
         self.conn.close()
         self.logger.info("Done")
 
@@ -63,10 +63,16 @@ class Database(object):
 
         splitted = member.split('.')
         if len(splitted) == 1:
-            sqlrequest = """SELECT * FROM mcp.%s WHERE srg_name LIKE %%s OR mcp_name=%%s OR srg_name=%%s"""%(table + "_vw")
-            print sqlrequest
-            return self.executeGet(sqlrequest, (membertype + "_" + member + '_%', member, member))
+            sqlrequest = """SELECT * FROM mcp.%s WHERE is_current=TRUE
+                                                   AND (   srg_name LIKE %%(imember)s
+                                                        OR mcp_name=%%(member)s
+                                                        OR srg_name=%%(member)s)"""%(table + "_vw")
+            self.logger.debug(sqlrequest)
+            return self.executeGet(sqlrequest, {'imember':membertype + "_" + member + '_%','member':member})
         else:
-            sqlrequest = """SELECT * FROM mcp.%s WHERE (srg_name LIKE %%s) OR (srg_name=%%s) OR (class_srg_name=%%s AND mcp_name=%%s) OR (class_obf_name=%%s AND obf_name=%%s)"""%(table + "_vw")
-            print sqlrequest
-            return self.executeGet(sqlrequest, (membertype + "_" + member + '_%', splitted[0], splitted[0], splitted[1], splitted[0], splitted[1]))
+            sqlrequest = """SELECT * FROM mcp.%s WHERE is_current=TRUE
+                                                   AND ((class_srg_name=%%(class)s AND mcp_name=%%(member)s)
+                                                     OR (class_srg_name=%%(class)s AND srg_name=%%(member)s)
+                                                     OR (class_obf_name=%%(class)s AND obf_name=%%(member)s))"""%(table + "_vw")
+            self.logger.debug(sqlrequest)
+            return self.executeGet(sqlrequest, {'class':splitted[0], 'member':splitted[1]})
