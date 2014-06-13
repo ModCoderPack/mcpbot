@@ -111,7 +111,7 @@ class MCPBot(BotBase):
             self.sendNotice(sender.nick, "No result found.")
             return
 
-        if (not summary and len(val) > 5 and not sender.dccSocket) or (not summary and len(val) > 20 and not sender.dccSocket):
+        if (not summary and len(val) > 5 and not sender.dccSocket) or (summary and len(val) > 20 and not sender.dccSocket):
             self.sendNotice(sender.nick, "Too many results ( %d ). Please use DCC."%len(val))
             return
 

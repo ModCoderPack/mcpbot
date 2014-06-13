@@ -6,6 +6,7 @@
   <component name="ChangeListManager">
     <list default="true" id="36e53f53-aaf1-419f-b73c-bdce0965dbb1" name="Default" comment="">
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/MCPBot.py" afterPath="$PROJECT_DIR$/MCPBot.py" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/bot.cfg" afterPath="$PROJECT_DIR$/bot.cfg" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/workspace.xml" afterPath="$PROJECT_DIR$/.idea/workspace.xml" />
     </list>
     <ignored path="mobibot.iws" />
@@ -32,8 +33,8 @@
       <file leaf-file-name="MCPBot.py" pinned="false" current="true" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/MCPBot.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state vertical-scroll-proportion="0.5545723" vertical-offset="869" max-vertical-offset="2310">
-              <caret line="83" column="96" selection-start-line="83" selection-start-column="94" selection-end-line="83" selection-end-column="96" />
+            <state vertical-scroll-proportion="0.24483776" vertical-offset="1274" max-vertical-offset="2310">
+              <caret line="96" column="89" selection-start-line="96" selection-start-column="89" selection-end-line="96" selection-end-column="89" />
               <folding>
                 <element signature="e#15#54#0" expanded="true" />
               </folding>
@@ -826,8 +827,8 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/MCPBot.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.5545723" vertical-offset="869" max-vertical-offset="2310">
-          <caret line="83" column="96" selection-start-line="83" selection-start-column="94" selection-end-line="83" selection-end-column="96" />
+        <state vertical-scroll-proportion="0.24483776" vertical-offset="1274" max-vertical-offset="2310">
+          <caret line="96" column="89" selection-start-line="96" selection-start-column="89" selection-end-line="96" selection-end-column="89" />
           <folding>
             <element signature="e#15#54#0" expanded="true" />
           </folding>
