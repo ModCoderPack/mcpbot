@@ -16,10 +16,10 @@ class MCPBot(BotBase):
         self.db = Database(self.dbhost, self.dbport, self.dbuser, self.dbname, self.dbpass, self)
 
         self.registerCommand('sqlrequest', self.sqlRequest, ['admin'], 1, 999, "<sql command>", "Execute a raw SQL command.")
-        self.registerCommand('gf',         self.getField,   ['admin'], 1, 2,   "[class.]<name>","Returns the given field  information.")
-        self.registerCommand('gm',         self.getMethod,  ['admin'], 1, 2,   "[class.]<name>","Returns the given method information.")
-        self.registerCommand('gc',         self.getClass,   ['admin'], 1, 2,   "<class>",       "Returns the given class  information.")
-        self.registerCommand('find',       self.findKey,    ['admin'], 1, 2,   "<pattern>",     "Returns all entries with the given pattern in MCP.")
+        self.registerCommand('gf',         self.getField,   ['admin'], 1, 1,   "[class.]<name>","Returns the given field  information.")
+        self.registerCommand('gm',         self.getMethod,  ['admin'], 1, 1,   "[class.]<name>","Returns the given method information.")
+        self.registerCommand('gc',         self.getClass,   ['admin'], 1, 1,   "<class>",       "Returns the given class  information.")
+        self.registerCommand('find',       self.findKey,    ['admin'], 1, 1,   "<pattern>",     "Returns all entries with the given pattern in MCP.")
 
     def onStartUp(self):
         self.db.connect()
@@ -59,29 +59,34 @@ class MCPBot(BotBase):
     def findKey(self, bot, sender, dest, cmd, args):
         self.sendNotice(sender.nick, "+++ FIELDS +++")
         val, status = self.db.findInTable('field', args[0])
-        self.sendMemberResults(sender, val, status)
+        self.sendMemberResults(sender, val, status, summary=True)
 
         self.sendNotice(sender.nick, " ")
         self.sendNotice(sender.nick, "+++ METHODS +++")
         val, status = self.db.findInTable('method', args[0])
-        self.sendMemberResults(sender, val, status)
+        self.sendMemberResults(sender, val, status, summary=True)
 
         self.sendNotice(sender.nick, " ")
         self.sendNotice(sender.nick, "+++ CLASSES +++")
         val, status = self.db.findInTable('class', args[0])
-        self.sendClassResults(sender, val, status)
+        self.sendClassResults(sender, val, status, summary=True)
 
 
-    def sendMemberResults(self, sender, val, status):
+    def sendMemberResults(self, sender, val, status, summary=False):
         if status:
             self.sendNotice(sender.nick, str(type(status)) + ' : ' + str(status))
             return
 
-        if len(val) > 5 and not sender.dccSocket:
-            self.sendNotice(sender.nick, "Too many results ( %d ). Please use DCC."%len(val))
+        if len(val) == 0:
+            self.sendNotice(sender.nick, "No result found.")
+            return
 
-        elif len(val) > 0:
-            for i, entry in enumerate(val):
+        if (not summary and len(val) > 5 and not sender.dccSocket) or (summary and len(val) > 20 and not sender.dccSocket):
+            self.sendNotice(sender.nick, "Too many results ( %d ). Please use DCC."%len(val))
+            return
+
+        for i, entry in enumerate(val):
+            if not summary:
                 srgindex = re.search('_([0-9]+)_', entry['srg_name']).groups()[0]
                 self.sendNotice(sender.nick, "=== §B{class_srg_name}.{mcp_name}§N ===".format(**entry))
                 self.sendNotice(sender.nick, "§UIndex§N      : {srg_index}".format(srg_index=srgindex))
@@ -93,19 +98,26 @@ class MCPBot(BotBase):
 
                 if not i == len(val) - 1:
                     self.sendNotice(sender.nick, " ".format(**entry))
-        else:
-            self.sendNotice(sender.nick, "No result found.")
+            else:
+                self.sendNotice(sender.nick, "{class_obf_name}.{obf_name} => {class_srg_name}.{mcp_name} [ {srg_name} ]".format(**entry))
 
-    def sendClassResults(self, sender, val, status):
+
+    def sendClassResults(self, sender, val, status, summary=False):
         if status:
             self.sendNotice(sender.nick, str(type(status)) + ' : ' + str(status))
             return
 
-        if len(val) > 5 and not sender.dccSocket:
-            self.sendNotice(sender.nick, "Too many results ( %d ). Please use DCC."%len(val))
+        if len(val) == 0:
+            self.sendNotice(sender.nick, "No result found.")
+            return
 
-        elif len(val) > 0:
-            for ientry, entry in enumerate(val):
+        if (not summary and len(val) > 5 and not sender.dccSocket) or (not summary and len(val) > 20 and not sender.dccSocket):
+            self.sendNotice(sender.nick, "Too many results ( %d ). Please use DCC."%len(val))
+            return
+
+
+        for ientry, entry in enumerate(val):
+            if not summary:
                 self.sendNotice(sender.nick, "=== §B{srg_name}§N ===".format(**entry))
                 self.sendNotice(sender.nick, "§UNotch§N        : {obf_name}".format(**entry))
                 self.sendNotice(sender.nick, "§UName§N         : {pkg_name}/{srg_name}".format(**entry))
@@ -123,8 +135,9 @@ class MCPBot(BotBase):
 
                 if not ientry == len(val) - 1:
                     self.sendNotice(sender.nick, " ".format(**entry))
-        else:
-            self.sendNotice(sender.nick, "No result found.")
+
+            else:
+                self.sendNotice(sender.nick, "{obf_name} => {pkg_name}/{srg_name}".format(**entry))
 
 ########################################################################################################################
 def main():
