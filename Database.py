@@ -62,7 +62,8 @@ class Database(object):
         membertype = {'field':'field', 'method':'func'}[table]
 
         splitted = member.split('.')
-        if len(splitted) == 1:
+
+        if len(splitted) == 1 or splitted[0].strip() == "":
             sqlrequest = """SELECT * FROM mcp.%s WHERE is_current=TRUE
                                                    AND (   srg_name LIKE %%(imember)s
                                                         OR mcp_name=%%(member)s

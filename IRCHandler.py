@@ -428,8 +428,8 @@ class CmdHandler(object):
         callback = cmd['callback']
 
         if len(args) < cmd['minarg'] or len(args) > cmd['maxarg']:
-            if cmd['desc']:
-                self.bot.sendNotice(sender.nick, "Wrong syntax : %s"%cmd['desc'])
+            if cmd['descargs']:
+                self.bot.sendNotice(sender.nick, "Wrong syntax : %s"%cmd['descargs'])
                 return
             else:
                 self.bot.sendNotice(sender.nick, "Wrong number of arguments : min = %s, max = %s"%(cmd['minarg'], cmd['maxarg']))
