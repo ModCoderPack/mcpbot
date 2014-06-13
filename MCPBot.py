@@ -16,10 +16,10 @@ class MCPBot(BotBase):
         self.db = Database(self.dbhost, self.dbport, self.dbuser, self.dbname, self.dbpass, self)
 
         self.registerCommand('sqlrequest', self.sqlRequest, ['admin'], 1, 999, "<sql command>", "Execute a raw SQL command.")
-        self.registerCommand('gf',         self.getField,   ['admin'], 1, 1,   "[class.]<name>","Returns the given field  information.")
-        self.registerCommand('gm',         self.getMethod,  ['admin'], 1, 1,   "[class.]<name>","Returns the given method information.")
-        self.registerCommand('gc',         self.getClass,   ['admin'], 1, 1,   "<class>",       "Returns the given class  information.")
-        self.registerCommand('find',       self.findKey,    ['admin'], 1, 1,   "<pattern>",     "Returns all entries with the given pattern in MCP.")
+        self.registerCommand('gf',         self.getField,   ['admin'], 1, 2,   "[class.]<name>","Returns the given field  information.")
+        self.registerCommand('gm',         self.getMethod,  ['admin'], 1, 2,   "[class.]<name>","Returns the given method information.")
+        self.registerCommand('gc',         self.getClass,   ['admin'], 1, 2,   "<class>",       "Returns the given class  information.")
+        self.registerCommand('find',       self.findKey,    ['admin'], 1, 2,   "<pattern>",     "Returns all entries with the given pattern in MCP.")
 
     def onStartUp(self):
         self.db.connect()

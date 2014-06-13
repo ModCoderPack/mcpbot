@@ -59,11 +59,12 @@ class Database(object):
                 return None, e
 
     def getMember(self, table, member):
-        membertype = {'field':'field', 'method':'func'}[table]
+        membertype  = {'field':'field', 'method':'func'}[table]
+        if member[0] == ".": member = member[1:]
 
         splitted = member.split('.')
 
-        if len(splitted) == 1 or splitted[0].strip() == "":
+        if len(splitted) == 1:
             sqlrequest = """SELECT * FROM mcp.%s WHERE is_current=TRUE
                                                    AND (   srg_name LIKE %%(imember)s
                                                         OR mcp_name=%%(member)s
