@@ -16,7 +16,7 @@ class DCCHandler(asyncore.dispatcher):
         self.sender = sender
         self.recvBuffer = ""
         self.sendBuffer = Queue.Queue()
-        self.logger  = Logger.getLogger(__name__+".DCCHandler", bot.lognormal, bot.logerrors)
+        self.logger  = Logger.getLogger(__name__+".DCCHandler_"+sender.nick, bot.lognormal, bot.logerrors)
 
     def __del__(self):
         self.logger.info("Connection with %s timedout"%self.sender)
