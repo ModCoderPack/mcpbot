@@ -87,9 +87,10 @@ class MCPBot(BotBase):
 
         for i, entry in enumerate(val):
             if not summary:
-                srgindex = re.search('_([0-9]+)_', entry['srg_name']).groups()[0]
                 self.sendNotice(sender.nick, "=== §B{class_srg_name}.{mcp_name}§N ===".format(**entry))
-                self.sendNotice(sender.nick, "§UIndex§N      : {srg_index}".format(srg_index=srgindex))
+                self.sendNotice(sender.nick, "§UIndex§N      : {srg_index}".format(**entry))
+                if 'srg_method_base_class' in entry and entry['srg_method_base_class'] != entry['class_srg_name']:
+                    self.sendNotice(sender.nick, "§UBase Class§N : {obf_method_base_class} §B|§N {srg_method_base_class}".format(**entry))
                 self.sendNotice(sender.nick, "§UNotch§N      : {class_obf_name}.{obf_name}".format(**entry))
                 self.sendNotice(sender.nick, "§USrg§N        : {class_pkg_name}/{class_srg_name}.{srg_name}".format(**entry))
                 self.sendNotice(sender.nick, "§UMCP§N        : {class_pkg_name}/{class_srg_name}.{mcp_name}".format(**entry))
