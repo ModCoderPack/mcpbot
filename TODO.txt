@@ -1,0 +1,6 @@
+- add param getter (including mc version param)
+- add method setter
+- add field setter
+- add param setter
+- create a way to export the CSV files based on the current state
+- add support for timestamp-based snapshots?

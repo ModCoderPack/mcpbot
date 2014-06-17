@@ -63,35 +63,47 @@ class Database(object):
         self.logger.debug(sqlrequest)
         return self.execute(sqlrequest)
 
-    def getMember(self, table, member):
+    def getMember(self, table, args):
         membertype  = {'field':'field', 'method':'func'}[table]
+        member = args[0]
         if member[0] == ".": member = member[1:]
 
+        params = {}
+
+        sqlrequest = "SELECT * FROM mcp.%s "%(table + "_vw")
+        if len(args) > 1:
+            sqlrequest += "where mc_version_code like %(mc_version)s "
+            params['mc_version'] = args[1]
+        else: sqlrequest += "WHERE is_current "
+
         splitted = member.split('.')
-
         if len(splitted) == 1:
-            sqlrequest = """SELECT * FROM mcp.%s WHERE is_current=TRUE
-                                                   AND (   srg_name LIKE %%(imember)s
-                                                        OR mcp_name=%%(member)s
-                                                        OR srg_name=%%(member)s)"""%(table + "_vw")
-            self.logger.debug(sqlrequest)
-            return self.executeGet(sqlrequest, {'imember':'%s\_%s\_%%'%(membertype,str(member)),'member':member})
+            sqlrequest += """AND (srg_index = %(member)s
+                             OR   mcp_name = %(member)s
+                             OR   srg_name = %(member)s)"""
+            params.update({'member':member})
         else:
-            sqlrequest = """SELECT * FROM mcp.%s WHERE is_current=TRUE
-                                                   AND ((class_srg_name=%%(class)s AND mcp_name=%%(member)s)
-                                                     OR (class_srg_name=%%(class)s AND srg_name=%%(member)s)
-                                                     OR (class_obf_name=%%(class)s AND obf_name=%%(member)s))"""%(table + "_vw")
-            self.logger.debug(sqlrequest)
-            return self.executeGet(sqlrequest, {'class':splitted[0], 'member':splitted[1]})
+            sqlrequest += """AND ((class_srg_name = %(class)s AND mcp_name = %(member)s)
+                            OR   (class_srg_name = %(class)s AND srg_name = %(member)s)
+                            OR   (class_obf_name = %(class)s AND obf_name = %(member)s))"""
+            params.update({'class':splitted[0], 'member':splitted[1]})
 
-    def getClass(self, clazz):
-        sqlrequest = """SELECT * FROM mcp.class_vw WHERE is_current=TRUE
-                                                    AND (obf_name=%(clazz)s
-                                                      OR srg_name=%(clazz)s
-                                                      OR srg_name LIKE %(innermatch)s
-                                                      OR obf_name LIKE %(innermatch)s)"""
         self.logger.debug(sqlrequest)
-        return self.executeGet(sqlrequest, {'clazz':clazz, 'innermatch':'%%$%s'%(clazz)})
+        return self.executeGet(sqlrequest, params)
+
+    def getClass(self, args):
+        sqlrequest = """SELECT * FROM mcp.class_vw """
+        if len(args) > 1: sqlrequest += "WHERE mc_version_code like %(mc_version)s "
+        else: sqlrequest += "WHERE is_current "
+
+        sqlrequest += """AND (obf_name=%(clazz)s
+                         OR srg_name=%(clazz)s)"""
+        self.logger.debug(sqlrequest)
+
+        if len(args) > 1:
+            return self.executeGet(sqlrequest, {'clazz':args[0], 'mc_version':args[1]})
+        else:
+            return self.executeGet(sqlrequest, {'clazz':args[0]})
 
     def findInTable(self, table, key):
         sqlrequest = """SELECT * FROM mcp.%s WHERE is_current=TRUE
