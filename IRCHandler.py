@@ -190,11 +190,11 @@ class CmdHandler(object):
 
         }
 
-    def registerCommand(self, command, callback, groups, minarg, maxarg, descargs = None, desccmd = None):
+    def registerCommand(self, command, callback, groups, minarg, maxarg, descargs = None, desccmd = None, showhelp = True):
         if not groups:
             groups = ['any']
 
-        self.commands[command] = {'command':command, 'callback':callback, 'groups':groups, 'minarg':minarg, 'maxarg':maxarg, 'descargs':descargs, 'desccmd':desccmd}
+        self.commands[command] = {'command':command, 'callback':callback, 'groups':groups, 'minarg':minarg, 'maxarg':maxarg, 'descargs':descargs, 'desccmd':desccmd, 'showhelp':showhelp}
         for group in groups:
             if not group in self.bot.groups:
                 self.bot.groups[group]= set()

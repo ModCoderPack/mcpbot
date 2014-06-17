@@ -220,6 +220,8 @@ class BotBase(object):
         formatstr = "§B%%%ds %%%ds§N : %%s"%(maxcmdlen * -1, maxargslen * -1)
         
         for cmd, cmdval in self.cmdHandler.commands.items():
+            if not cmdval['showhelp']:
+                continue
             if 'any' in cmdval['groups']:
                 bot.sendNotice(sender.nick, formatstr%(cmd, cmdval['descargs'], cmdval['desccmd']))
             elif sender.nick.lower() in self.authUsers:
@@ -368,8 +370,8 @@ class BotBase(object):
         return self.usersInfo[target].ctcpData['TIME']
 
     #EVENT REGISTRATION METHODS (ONE PER RECOGNISE IRC COMMAND)
-    def registerCommand(self, command, callback, groups, minarg, maxarg, descargs = "", desccmd = ""):
-        self.cmdHandler.registerCommand(command, callback, groups, minarg, maxarg, descargs, desccmd)
+    def registerCommand(self, command, callback, groups, minarg, maxarg, descargs = "", desccmd = "", showhelp = True):
+        self.cmdHandler.registerCommand(command, callback, groups, minarg, maxarg, descargs, desccmd, showhelp)
     def registerEventPing(self, callback):
         self.cmdHandler.registerEvent('Ping', callback)
     def registerEventKick(self, callback):

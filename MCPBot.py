@@ -16,10 +16,11 @@ class MCPBot(BotBase):
         self.db = Database(self.dbhost, self.dbport, self.dbuser, self.dbname, self.dbpass, self)
 
         self.registerCommand('sqlrequest', self.sqlRequest, ['admin'], 1, 999, "<sql command>", "Execute a raw SQL command.")
-        self.registerCommand('gf',         self.getField,   ['admin'], 1, 1,   "[class.]<name>","Returns the given field  information.")
-        self.registerCommand('gm',         self.getMethod,  ['admin'], 1, 1,   "[class.]<name>","Returns the given method information.")
-        self.registerCommand('gc',         self.getClass,   ['admin'], 1, 1,   "<class>",       "Returns the given class  information.")
-        self.registerCommand('find',       self.findKey,    ['admin'], 1, 1,   "<pattern>",     "Returns all entries with the given pattern in MCP.")
+        self.registerCommand('version',    self.getVersion, ['any'],   0, 0,   "N/A",           "Get current version info.")
+        self.registerCommand('gf',         self.getField,   ['any'],   1, 1,   "[class.]<name>","Returns the given field  information.")
+        self.registerCommand('gm',         self.getMethod,  ['any'],   1, 1,   "[class.]<name>","Returns the given method information.")
+        self.registerCommand('gc',         self.getClass,   ['any'],   1, 1,   "<class>",       "Returns the given class  information.")
+        self.registerCommand('find',       self.findKey,    ['any'],   1, 1,   "<pattern>",     "Returns all entries with the given pattern in MCP.")
 
     def onStartUp(self):
         self.db.connect()
@@ -42,7 +43,9 @@ class MCPBot(BotBase):
         else:
             self.sendNotice(sender.nick, "No result found.")
 
-
+    def getVersion(self, bot, sender, dest, cmd, args):
+        val, status = self.db.getVersion()
+        self.sendVersionResults(sender, val, status)
 
     def getField(self, bot, sender, dest, cmd, args):
         val, status = self.db.getMember('field', args[0])
@@ -70,6 +73,18 @@ class MCPBot(BotBase):
         self.sendNotice(sender.nick, "+++ CLASSES +++")
         val, status = self.db.findInTable('class', args[0])
         self.sendClassResults(sender, val, status, summary=True)
+
+
+    def sendVersionResults(self, sender, val, status):
+        if status:
+            self.sendNotice(sender.nick, str(type(status)) + ' : ' + str(status))
+            return
+
+        for i, entry in enumerate(val):
+            self.sendNotice(sender.nick, "=== §BCurrent Version§N ===")
+            self.sendNotice(sender.nick, "§UMCP§N         : {mcp_version_code}".format(**entry))
+            self.sendNotice(sender.nick, "§UMC§N          : {mc_version_code}".format(**entry))
+            self.sendNotice(sender.nick, "§URelease Type§N: {mc_version_type_code}".format(**entry))
 
 
     def sendMemberResults(self, sender, val, status, summary=False):

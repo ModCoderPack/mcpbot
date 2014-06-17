@@ -58,6 +58,11 @@ class Database(object):
                 self.conn.rollback()
                 return None, e
 
+    def getVersion(self):
+        sqlrequest = """select * from mcp.current_version_vw;"""
+        self.logger.debug(sqlrequest)
+        return self.execute(sqlrequest)
+
     def getMember(self, table, member):
         membertype  = {'field':'field', 'method':'func'}[table]
         if member[0] == ".": member = member[1:]
