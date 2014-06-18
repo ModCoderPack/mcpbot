@@ -15,12 +15,18 @@ class MCPBot(BotBase):
 
         self.db = Database(self.dbhost, self.dbport, self.dbuser, self.dbname, self.dbpass, self)
 
-        self.registerCommand('sqlrequest', self.sqlRequest, ['admin'], 1, 999, "<sql command>",                 "Execute a raw SQL command.")
-        self.registerCommand('version',    self.getVersion, ['any'],   0, 0,   "",                              "Get info about the current version.")
-        self.registerCommand('gf',         self.getField,   ['any'],   1, 2,   "[class.]<name> [mc version]",   "Returns the given field information. Defaults to current version.")
-        self.registerCommand('gm',         self.getMethod,  ['any'],   1, 2,   "[class.]<name> [mc version]",   "Returns the given method information. Defaults to current version.")
-        self.registerCommand('gc',         self.getClass,   ['any'],   1, 2,   "<class> [mc version]",          "Returns the given class information. Defaults to current version.")
-        self.registerCommand('find',       self.findKey,    ['any'],   1, 1,   "<pattern>",                     "Returns all entries with the given pattern in MCP.")
+        # TODO: remove this!
+        self.registerCommand('sqlrequest', self.sqlRequest, ['admin'], 1, 999, "<sql command>",                     "Executes a raw SQL command.")
+
+        self.registerCommand('version',    self.getVersion, ['any'],   0, 0,   "",                                  "Gets info about the current version.")
+        self.registerCommand('versions',   self.getVersion, ['any'],   0, 0,   "",                                  "Gets info about versions that are available in the database.")
+        # TODO: finish implementing this
+        #self.registerCommand('gp',         self.getParam,   ['any'],   1, 2,   "[[class.]method.]<name> [version]", "Returns method parameter information. Defaults to current version. Version can be for MCP or MC.")
+        self.registerCommand('gf',         self.getMember,  ['any'],   1, 2,   "[class.]<name> [version]",          "Returns field information. Defaults to current version. Version can be for MCP or MC.")
+        self.registerCommand('gm',         self.getMember,  ['any'],   1, 2,   "[class.]<name> [version]",          "Returns method information. Defaults to current version. Version can be for MCP or MC.")
+        self.registerCommand('gc',         self.getClass,   ['any'],   1, 2,   "<class> [version]",                 "Returns class information. Defaults to current version. Version can be for MCP or MC.")
+        self.registerCommand('find',       self.findKey,    ['any'],   1, 2,   "<regex pattern>",                   "Returns entries matching a regex pattern. Only returns complete matches.")
+        self.registerCommand('findall',    self.findAllKey, ['any'],   1, 2,   "<regex pattern>",                   "Returns entries matching a regex pattern. Allows partial matches to be returned.")
 
     def onStartUp(self):
         self.db.connect()
@@ -44,15 +50,21 @@ class MCPBot(BotBase):
             self.sendNotice(sender.nick, "No result found.")
 
     def getVersion(self, bot, sender, dest, cmd, args):
-        val, status = self.db.getVersion()
+        limit = 1
+        if cmd['command'][-1:] == 's': limit = 0
+        val, status = self.db.getVersions(limit)
         self.sendVersionResults(sender, val, status)
 
-    def getField(self, bot, sender, dest, cmd, args):
-        val, status = self.db.getMember('field', args)
+    def getParam(self, bot, sender, dest, cmd, args):
+        member_type = 'field'
+        if cmd['command'] == 'gm': member_type = 'method'
+        val, status = self.db.getMember(member_type, args)
         self.sendMemberResults(sender, val, status)
 
-    def getMethod(self, bot, sender, dest, cmd, args):
-        val, status = self.db.getMember('method', args)
+    def getMember(self, bot, sender, dest, cmd, args):
+        member_type = 'field'
+        if cmd['command'] == 'gm': member_type = 'method'
+        val, status = self.db.getMember(member_type, args)
         self.sendMemberResults(sender, val, status)
 
     def getClass(self, bot, sender, dest, cmd, args):
@@ -60,18 +72,22 @@ class MCPBot(BotBase):
         self.sendClassResults(sender, val, status)
 
     def findKey(self, bot, sender, dest, cmd, args):
+        args[0] = "^" + args[0] + "$"
+        self.findAllKey(bot, sender, dest, cmd, args)
+
+    def findAllKey(self, bot, sender, dest, cmd, args):
         self.sendNotice(sender.nick, "+++§B FIELDS §N+++")
-        val, status = self.db.findInTable('field', args[0])
+        val, status = self.db.findInTable('field', args)
         self.sendMemberResults(sender, val, status, summary=True)
 
         self.sendNotice(sender.nick, " ")
         self.sendNotice(sender.nick, "+++§B METHODS §N+++")
-        val, status = self.db.findInTable('method', args[0])
+        val, status = self.db.findInTable('method', args)
         self.sendMemberResults(sender, val, status, summary=True)
 
         self.sendNotice(sender.nick, " ")
         self.sendNotice(sender.nick, "+++§B CLASSES §N+++")
-        val, status = self.db.findInTable('class', args[0])
+        val, status = self.db.findInTable('class', args)
         self.sendClassResults(sender, val, status, summary=True)
 
 
@@ -80,11 +96,16 @@ class MCPBot(BotBase):
             self.sendNotice(sender.nick, str(type(status)) + ' : ' + str(status))
             return
 
-        for i, entry in enumerate(val):
+        if len(val) > 1:
+            self.sendNotice(sender.nick, "===§B Avalable Versions §N===")
+        else:
             self.sendNotice(sender.nick, "===§B Current Version §N===")
-            self.sendNotice(sender.nick, "§UMCP§N          : {mcp_version_code}".format(**entry))
-            self.sendNotice(sender.nick, "§UMC§N           : {mc_version_code}".format(**entry))
-            self.sendNotice(sender.nick, "§URelease Type§N : {mc_version_type_code}".format(**entry))
+
+        # these padding values are 6 higher than the actual data padding values since we have to account for the IRC formatting codes
+        self.sendNotice(sender.nick, '{:^19}'.format('§UMCP Version§N') + '{:^19}'.format('§UMC Version§N') + '{:^19}'.format('§URelease Type§N'))
+
+        for i, entry in enumerate(val):
+            self.sendNotice(sender.nick, "{mcp_version_code:^13}".format(**entry) + "{mc_version_code:^13}".format(**entry) + "{mc_version_type_code:^13}".format(**entry))
 
 
     def sendMemberResults(self, sender, val, status, summary=False):
@@ -93,25 +114,25 @@ class MCPBot(BotBase):
             return
 
         if len(val) == 0:
-            self.sendNotice(sender.nick, "§BNo result found.")
+            self.sendNotice(sender.nick, "§BNo results found.")
             return
 
         if (not summary and len(val) > 5 and not sender.dccSocket) or (summary and len(val) > 20 and not sender.dccSocket):
-            self.sendNotice(sender.nick, "§BToo many results (§N %d §B). Please use DCC."%len(val))
+            self.sendNotice(sender.nick, "§BToo many results (§N %(count)d §B). Please use the %(cmd_char)sdcc command and try again." % {'count': len(val), 'cmd_char': self.cmdChar})
             return
 
         for i, entry in enumerate(val):
             if not summary:
-                self.sendNotice(sender.nick,        "=== §BMC {mc_version_code}: {class_srg_name}.{mcp_name}§N ===".format(**entry))
+                self.sendNotice(sender.nick,        "===§B MC {mc_version_code}: {class_srg_name}.{mcp_name} §N===".format(**entry))
                 self.sendNotice(sender.nick,        "§UIndex§N      : {srg_index}".format(**entry))
                 if 'srg_method_base_class' in entry and entry['srg_method_base_class'] != entry['class_srg_name']:
-                    self.sendNotice(sender.nick,    "§UBase Class§N : {obf_method_base_class} §B|§N {srg_method_base_class}".format(**entry))
+                    self.sendNotice(sender.nick,    "§UBase Class§N : {obf_method_base_class} §B=>§N {srg_method_base_class}".format(**entry))
                 self.sendNotice(sender.nick,        "§UNotch§N      : {class_obf_name}.{obf_name}".format(**entry))
                 self.sendNotice(sender.nick,        "§USrg§N        : {class_pkg_name}/{class_srg_name}.{srg_name}".format(**entry))
                 self.sendNotice(sender.nick,        "§UMCP§N        : {class_pkg_name}/{class_srg_name}.{mcp_name}".format(**entry))
-                self.sendNotice(sender.nick,        "§UDescriptor§N : {obf_descriptor} §B|§N {srg_descriptor}".format(**entry))
+                self.sendNotice(sender.nick,        "§UDescriptor§N : {obf_descriptor} §B=>§N {srg_descriptor}".format(**entry))
                 if 'srg_params' in entry:
-                    self.sendNotice(sender.nick,    "§UParameters§N : {srg_params} §B|§N {mcp_params}".format(**entry))
+                    self.sendNotice(sender.nick,    "§UParameters§N : {srg_params} §B=>§N {mcp_params}".format(**entry))
                 self.sendNotice(sender.nick,        "§UComment§N    : {comment}".format(**entry))
 
                 if not i == len(val) - 1:
@@ -126,23 +147,23 @@ class MCPBot(BotBase):
             return
 
         if len(val) == 0:
-            self.sendNotice(sender.nick, "§BNo result found.")
+            self.sendNotice(sender.nick, "§BNo results found.")
             return
 
         if (not summary and len(val) > 5 and not sender.dccSocket) or (summary and len(val) > 20 and not sender.dccSocket):
-            self.sendNotice(sender.nick, "§BToo many results (§N %d §B). Please use DCC."%len(val))
+            self.sendNotice(sender.nick, "§BToo many results (§N %(count)d §B). Please use the %(cmd_char)sdcc command and try again." % {'count': len(val), 'cmd_char': self.cmdChar})
             return
 
 
         for ientry, entry in enumerate(val):
             if not summary:
-                self.sendNotice(sender.nick,            "=== §BMC {mc_version_code}: {srg_name} §N===".format(**entry))
+                self.sendNotice(sender.nick,            "===§B MC {mc_version_code}: {srg_name} §N===".format(**entry))
                 self.sendNotice(sender.nick,            "§UNotch§N        : {obf_name}".format(**entry))
                 self.sendNotice(sender.nick,            "§UName§N         : {pkg_name}/{srg_name}".format(**entry))
                 if entry['super_srg_name'] :
-                    self.sendNotice(sender.nick,        "§USuper§N        : {super_obf_name} §B|§N {super_srg_name}".format(**entry))
+                    self.sendNotice(sender.nick,        "§USuper§N        : {super_obf_name} §B=>§N {super_srg_name}".format(**entry))
                 if entry['outer_srg_name'] :
-                    self.sendNotice(sender.nick,        "§UOuter§N        : {outer_obf_name} §B|§N {outer_srg_name}".format(**entry))
+                    self.sendNotice(sender.nick,        "§UOuter§N        : {outer_obf_name} §B=>§N {outer_srg_name}".format(**entry))
                 if entry['srg_interfaces'] :
                     self.sendNotice(sender.nick,        "§UInterfaces§N   : {srg_interfaces}".format(**entry))
                 if entry['srg_extending']:
@@ -158,7 +179,7 @@ class MCPBot(BotBase):
                     self.sendNotice(sender.nick, " ".format(**entry))
 
             else:
-                self.sendNotice(sender.nick, "{obf_name} §B=>§N {pkg_name}/{srg_name}".format(**entry))
+                self.sendNotice(sender.nick, "{obf_name} §B~>§N {pkg_name}/{srg_name}".format(**entry))
 
 ########################################################################################################################
 def main():

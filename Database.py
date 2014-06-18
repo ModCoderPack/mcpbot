@@ -5,7 +5,6 @@ import Logger
 
 class Database(object):
     def __init__(self, host, port, user, db, pwd, bot):
-
         self.bot  = bot
         self.host = host
         self.port = port
@@ -58,13 +57,29 @@ class Database(object):
                 self.conn.rollback()
                 return None, e
 
-    def getVersion(self):
-        sqlrequest = """select * from mcp.current_version_vw;"""
+    def getVersions(self, limit=0):
+        sqlrequest = "select * from mcp.version_vw order by mc_version_code desc "
+        if limit > 0: sqlrequest += "limit " + str(limit)
         self.logger.debug(sqlrequest)
         return self.execute(sqlrequest)
 
+    def getParam(self, args):
+        params = {'member': args[0]}
+
+        sqlrequest = "SELECT * FROM mcp.param_vw "
+        if len(args) > 1:
+            sqlrequest += "where (mc_version_code like %(version)s or mcp_version_code like %(version)s) "
+            params['version'] = args[1]
+        else: sqlrequest += "WHERE is_current "
+
+        sqlrequest += """AND (srg_index = %(member)s
+                         OR   mcp_name = %(member)s
+                         OR   srg_name = %(member)s)"""
+
+        self.logger.debug(sqlrequest)
+        return self.executeGet(sqlrequest, params)
+
     def getMember(self, table, args):
-        membertype  = {'field':'field', 'method':'func'}[table]
         member = args[0]
         if member[0] == ".": member = member[1:]
 
@@ -72,8 +87,8 @@ class Database(object):
 
         sqlrequest = "SELECT * FROM mcp.%s "%(table + "_vw")
         if len(args) > 1:
-            sqlrequest += "where mc_version_code like %(mc_version)s "
-            params['mc_version'] = args[1]
+            sqlrequest += "where (mc_version_code like %(version)s or mcp_version_code like %(version)s) "
+            params['version'] = args[1]
         else: sqlrequest += "WHERE is_current "
 
         splitted = member.split('.')
@@ -93,20 +108,21 @@ class Database(object):
 
     def getClass(self, args):
         sqlrequest = """SELECT * FROM mcp.class_vw """
-        if len(args) > 1: sqlrequest += "WHERE mc_version_code like %(mc_version)s "
+        if len(args) > 1: sqlrequest += "where (mc_version_code like %(version)s or mcp_version_code like %(version)s) "
         else: sqlrequest += "WHERE is_current "
 
         sqlrequest += """AND (obf_name=%(clazz)s
                          OR srg_name=%(clazz)s)"""
         self.logger.debug(sqlrequest)
 
-        if len(args) > 1:
-            return self.executeGet(sqlrequest, {'clazz':args[0], 'mc_version':args[1]})
-        else:
-            return self.executeGet(sqlrequest, {'clazz':args[0]})
+        if len(args) > 1: return self.executeGet(sqlrequest, {'clazz':args[0], 'version':args[1]})
+        else: return self.executeGet(sqlrequest, {'clazz':args[0]})
 
-    def findInTable(self, table, key):
-        sqlrequest = """SELECT * FROM mcp.%s WHERE is_current=TRUE
-                                             AND   mcp_name LIKE %%(match)s"""%(table + '_vw')
+    def findInTable(self, table, args):
+        sqlrequest = "SELECT * FROM mcp.%s "%(table + '_vw')
+        if len(args) > 1: sqlrequest += "where (mc_version_code like %(version)s or mcp_version_code like %(version)s) "
+        else: sqlrequest += "WHERE is_current "
+        sqlrequest += "AND mcp_name ~* %(match)s"
         self.logger.debug(sqlrequest)
-        return self.executeGet(sqlrequest, {'match':"%" + key + "%"})
+        if len(args) > 1: return self.executeGet(sqlrequest, {'match': args[0], 'version': args[1]})
+        else: return self.executeGet(sqlrequest, {'match': args[0]})
