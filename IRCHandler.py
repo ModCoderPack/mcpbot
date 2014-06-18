@@ -163,6 +163,8 @@ class CmdHandler(object):
         self.cmd     = ""
         self.params  = []
         self.logger  = Logger.getLogger("%s-%s-%s"%(__name__, self.bot.nick, self.bot.host)+".CmdHandler", bot.lognormal, bot.logerrors)
+        # the ordered list of keys used for displaying help in an ordered fashion
+        self.cmd_keys  = []
         self.commands  = {}
         self.callbacks = {}
         self.irccmds   = {
@@ -194,6 +196,9 @@ class CmdHandler(object):
         if not groups:
             groups = ['any']
 
+        if not command in self.cmd_keys:
+            self.cmd_keys.append(command)
+            self.cmd_keys.sort()
         self.commands[command] = {'command':command, 'callback':callback, 'groups':groups, 'minarg':minarg, 'maxarg':maxarg, 'descargs':descargs, 'desccmd':desccmd, 'showhelp':showhelp}
         for group in groups:
             if not group in self.bot.groups:
@@ -322,7 +327,7 @@ class CmdHandler(object):
     def onKICK(self, sender, params):
         self.logger.debug("[S : %s] [M : %s]"%(sender.nick, " ".join(params)))        
         if params[1] == self.bot.nick:        
-            self.logger.debug("Removing chan %s to chan list"%(params[0]))
+            self.logger.debug("Removing chan %s from chan list"%(params[0]))
             self.bot.channels.remove(params[0])   
             self.bot.updateConfig()           
         if sender.nick in self.bot.users:
