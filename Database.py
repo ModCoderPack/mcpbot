@@ -64,7 +64,10 @@ class Database(object):
         return self.execute(sqlrequest)
 
     def getParam(self, args):
-        params = {'member': args[0]}
+        arg1 = args[0]
+        if arg1[0] == ".": arg1 = arg1[1:]
+
+        params = {}
 
         sqlrequest = "SELECT * FROM mcp.param_vw "
         if len(args) > 1:
@@ -72,9 +75,27 @@ class Database(object):
             params['version'] = args[1]
         else: sqlrequest += "WHERE is_current "
 
-        sqlrequest += """AND (srg_index = %(member)s
-                         OR   mcp_name = %(member)s
-                         OR   srg_name = %(member)s)"""
+
+        splitted = arg1.split('.')
+        length = len(splitted)
+        if length == 1:
+            sqlrequest += "AND (srg_index = %(param)s OR mcp_name = %(param)s OR srg_name = %(param)s) "
+            params['param'] = arg1
+        else: # exclude srg_index if there is more than one param
+            sqlrequest += "AND (mcp_name = %(param)s OR srg_name = %(param)s) "
+
+        if length == 2:
+            sqlrequest += "AND (method_srg_name = %(method)s OR method_mcp_name = %(method)s) "
+            params['method'] = splitted[0]
+            params['param'] = splitted[1]
+
+        if length == 3:
+            sqlrequest += "AND class_srg_name = %(class)s "
+            params['class'] = splitted[0]
+            params['method'] = splitted[1]
+            params['param'] = splitted[2]
+        else: # if the class is not specified, only return the record for the base class entry
+            sqlrequest += "AND class_srg_name = srg_method_base_class "
 
         self.logger.debug(sqlrequest)
         return self.executeGet(sqlrequest, params)

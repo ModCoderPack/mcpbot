@@ -20,8 +20,7 @@ class MCPBot(BotBase):
 
         self.registerCommand('version',    self.getVersion, ['any'],   0, 0,   "",                                  "Gets info about the current version.")
         self.registerCommand('versions',   self.getVersion, ['any'],   0, 0,   "",                                  "Gets info about versions that are available in the database.")
-        # TODO: finish implementing this
-        #self.registerCommand('gp',         self.getParam,   ['any'],   1, 2,   "[[class.]method.]<name> [version]", "Returns method parameter information. Defaults to current version. Version can be for MCP or MC.")
+        self.registerCommand('gp',         self.getParam,   ['any'],   1, 2,   "[[class.]method.]<name> [version]", "Returns method parameter information. Defaults to current version. Version can be for MCP or MC. Obf class and method names not supported.")
         self.registerCommand('gf',         self.getMember,  ['any'],   1, 2,   "[class.]<name> [version]",          "Returns field information. Defaults to current version. Version can be for MCP or MC.")
         self.registerCommand('gm',         self.getMember,  ['any'],   1, 2,   "[class.]<name> [version]",          "Returns method information. Defaults to current version. Version can be for MCP or MC.")
         self.registerCommand('gc',         self.getClass,   ['any'],   1, 2,   "<class> [version]",                 "Returns class information. Defaults to current version. Version can be for MCP or MC.")
@@ -56,10 +55,8 @@ class MCPBot(BotBase):
         self.sendVersionResults(sender, val, status)
 
     def getParam(self, bot, sender, dest, cmd, args):
-        member_type = 'field'
-        if cmd['command'] == 'gm': member_type = 'method'
-        val, status = self.db.getMember(member_type, args)
-        self.sendMemberResults(sender, val, status)
+        val, status = self.db.getParam(args)
+        self.sendParamResults(sender, val, status)
 
     def getMember(self, bot, sender, dest, cmd, args):
         member_type = 'field'
@@ -106,6 +103,39 @@ class MCPBot(BotBase):
 
         for i, entry in enumerate(val):
             self.sendNotice(sender.nick, "{mcp_version_code:^13}".format(**entry) + "{mc_version_code:^13}".format(**entry) + "{mc_version_type_code:^13}".format(**entry))
+
+
+    def sendParamResults(self, sender, val, status, summary=False):
+        if status:
+            self.sendNotice(sender.nick, "§B" + str(type(status)) + ' : ' + str(status))
+            return
+
+        if len(val) == 0:
+            self.sendNotice(sender.nick, "§BNo results found.")
+            return
+
+        if (not summary and len(val) > 5 and not sender.dccSocket) or (summary and len(val) > 20 and not sender.dccSocket):
+            self.sendNotice(sender.nick, "§BToo many results (§N %(count)d §B). Please use the %(cmd_char)sdcc command and try again." % {'count': len(val), 'cmd_char': self.cmdChar})
+            return
+
+        for i, entry in enumerate(val):
+            if not summary:
+                self.sendNotice(sender.nick,        "===§B MC {mc_version_code}: {class_srg_name}.{method_mcp_name}.{mcp_name} §N===".format(**entry))
+                self.sendNotice(sender.nick,        "§UIndex§N      : {srg_index}".format(**entry))
+                if entry['srg_method_base_class'] != entry['class_srg_name']:
+                    self.sendNotice(sender.nick,    "§UBase Class§N : {obf_method_base_class} §B=>§N {srg_method_base_class}".format(**entry))
+                self.sendNotice(sender.nick,        "§UMethod§N     : {class_obf_name}.{method_obf_name} §B=>§N {class_pkg_name}/{class_srg_name}.{method_srg_name}".format(**entry))
+                self.sendNotice(sender.nick,        "§UDescriptor§N : {method_obf_descriptor} §B=>§N {method_srg_descriptor}".format(**entry))
+                self.sendNotice(sender.nick,        "§USrg§N        : {obf_descriptor} {srg_name}".format(**entry))
+                self.sendNotice(sender.nick,        "§UMCP§N        : {srg_descriptor} {mcp_name}".format(**entry))
+                if entry['java_type_code']:
+                    self.sendNotice(sender.nick,        "§UJava Type§N  : {java_type_code}".format(**entry))
+
+
+                if not i == len(val) - 1:
+                    self.sendNotice(sender.nick, " ".format(**entry))
+            else:
+                self.sendNotice(sender.nick, "{class_obf_name}.{obf_name} §B=>§N {class_srg_name}.{mcp_name} §B[§N {srg_name} §B]".format(**entry))
 
 
     def sendMemberResults(self, sender, val, status, summary=False):
