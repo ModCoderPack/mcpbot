@@ -83,6 +83,11 @@ class MCPBot(BotBase):
         self.sendMemberResults(sender, val, status, summary=True)
 
         self.sendNotice(sender.nick, " ")
+        self.sendNotice(sender.nick, "+++§B METHOD PARAMS §N+++")
+        val, status = self.db.findInTable('param', args)
+        self.sendParamResults(sender, val, status, summary=True)
+
+        self.sendNotice(sender.nick, " ")
         self.sendNotice(sender.nick, "+++§B CLASSES §N+++")
         val, status = self.db.findInTable('class', args)
         self.sendClassResults(sender, val, status, summary=True)
@@ -129,13 +134,13 @@ class MCPBot(BotBase):
                 self.sendNotice(sender.nick,        "§USrg§N        : {obf_descriptor} {srg_name}".format(**entry))
                 self.sendNotice(sender.nick,        "§UMCP§N        : {srg_descriptor} {mcp_name}".format(**entry))
                 if entry['java_type_code']:
-                    self.sendNotice(sender.nick,        "§UJava Type§N  : {java_type_code}".format(**entry))
+                    self.sendNotice(sender.nick,    "§UJava Type§N  : {java_type_code}".format(**entry))
 
 
                 if not i == len(val) - 1:
                     self.sendNotice(sender.nick, " ".format(**entry))
             else:
-                self.sendNotice(sender.nick, "{class_obf_name}.{obf_name} §B=>§N {class_srg_name}.{mcp_name} §B[§N {srg_name} §B]".format(**entry))
+                self.sendNotice(sender.nick, "{class_srg_name}.{method_srg_name}.{srg_name} §B[§N {srg_descriptor} §B] =>§N {class_srg_name}.{method_mcp_name}.{mcp_name} §B[§N {srg_descriptor} §B]".format(**entry))
 
 
     def sendMemberResults(self, sender, val, status, summary=False):

@@ -143,7 +143,9 @@ class Database(object):
         sqlrequest = "SELECT * FROM mcp.%s "%(table + '_vw')
         if len(args) > 1: sqlrequest += "where (mc_version_code like %(version)s or mcp_version_code like %(version)s) "
         else: sqlrequest += "WHERE is_current "
-        sqlrequest += "AND mcp_name ~* %(match)s"
+        sqlrequest += "AND (mcp_name ~* %(match)s OR srg_name ~* %(match)s"
+        if table != 'class': sqlrequest += " OR srg_index ~* %(match)s"
+        sqlrequest += ")"
         self.logger.debug(sqlrequest)
         if len(args) > 1: return self.executeGet(sqlrequest, {'match': args[0], 'version': args[1]})
         else: return self.executeGet(sqlrequest, {'match': args[0]})
