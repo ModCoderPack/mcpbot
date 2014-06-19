@@ -219,9 +219,8 @@ class BotBase(object):
 
         formatstr = "§B%%%ds %%%ds§N : %%s"%(maxcmdlen * -1, maxargslen * -1)
 
-        for cmd in self.cmdHandler.cmd_keys:
-            cmdval = self.cmdHandler.commands.get(cmd)
-            if not cmdval or not cmdval['showhelp']:
+        for cmd, cmdval in self.cmdHandler.commands.items():
+            if not cmdval['showhelp']:
                 continue
             if 'any' in cmdval['groups']:
                 bot.sendNotice(sender.nick, formatstr%(cmd, cmdval['descargs'], cmdval['desccmd']))

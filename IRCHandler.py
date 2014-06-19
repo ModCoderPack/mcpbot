@@ -4,6 +4,7 @@ import Logger
 import re
 import traceback
 import time
+from   collections import OrderedDict
 
 EOL = "\r\n"
 CTCPTAG = chr(1)
@@ -163,9 +164,7 @@ class CmdHandler(object):
         self.cmd     = ""
         self.params  = []
         self.logger  = Logger.getLogger("%s-%s-%s"%(__name__, self.bot.nick, self.bot.host)+".CmdHandler", bot.lognormal, bot.logerrors)
-        # the ordered list of keys used for displaying help in an ordered fashion
-        self.cmd_keys  = []
-        self.commands  = {}
+        self.commands  = OrderedDict()
         self.callbacks = {}
         self.irccmds   = {
         'PING':   {'callback':self.onPING},
@@ -196,9 +195,6 @@ class CmdHandler(object):
         if not groups:
             groups = ['any']
 
-        if not command in self.cmd_keys:
-            self.cmd_keys.append(command)
-            self.cmd_keys.sort()
         self.commands[command] = {'command':command, 'callback':callback, 'groups':groups, 'minarg':minarg, 'maxarg':maxarg, 'descargs':descargs, 'desccmd':desccmd, 'showhelp':showhelp}
         for group in groups:
             if not group in self.bot.groups:
