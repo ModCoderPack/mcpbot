@@ -4,3 +4,6 @@
 - add param setter
 - create a way to export the CSV files based on the current state
 - add support for timestamp-based snapshots?
+
+- The top group (currently admin) should be defined in the config file. As of now, it is not possible to have an admin group that can't run dangerous commands like sqlrequest.
+- Handling of automatic identify (Config for the triggering string to which we should reply with an IDENTIFY)
