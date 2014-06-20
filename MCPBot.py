@@ -7,6 +7,10 @@ class MCPBot(BotBase):
     def __init__(self):
         super(MCPBot, self).__init__()
 
+        if 'lock_control' not in self.groups:
+            self.groups['lock_control'] = []
+            self.updateConfig()
+
         self.dbhost = self.getConfig('DATABASE', 'HOST', "")
         self.dbport = int(self.getConfig('DATABASE', 'PORT', "0"))
         self.dbuser = self.getConfig('DATABASE', 'USER', "")
@@ -16,16 +20,26 @@ class MCPBot(BotBase):
         self.db = Database(self.dbhost, self.dbport, self.dbuser, self.dbname, self.dbpass, self)
 
         # TODO: remove this!
-        self.registerCommand('sqlrequest', self.sqlRequest, ['admin'], 1, 999, "<sql command>",                     "Executes a raw SQL command.")
+        self.registerCommand('sql',      self.sqlRequest, ['admin'], 1, 999, "<sql command>",                     "Executes a raw SQL command.")
 
-        self.registerCommand('version',    self.getVersion, ['any'],   0, 0,   "",                                  "Gets info about the current version.")
-        self.registerCommand('versions',   self.getVersion, ['any'],   0, 0,   "",                                  "Gets info about versions that are available in the database.")
-        self.registerCommand('gp',         self.getParam,   ['any'],   1, 2,   "[[class.]method.]<name> [version]", "Returns method parameter information. Defaults to current version. Version can be for MCP or MC. Obf class and method names not supported.")
-        self.registerCommand('gf',         self.getMember,  ['any'],   1, 2,   "[class.]<name> [version]",          "Returns field information. Defaults to current version. Version can be for MCP or MC.")
-        self.registerCommand('gm',         self.getMember,  ['any'],   1, 2,   "[class.]<name> [version]",          "Returns method information. Defaults to current version. Version can be for MCP or MC.")
-        self.registerCommand('gc',         self.getClass,   ['any'],   1, 2,   "<class> [version]",                 "Returns class information. Defaults to current version. Version can be for MCP or MC.")
-        self.registerCommand('find',       self.findKey,    ['any'],   1, 2,   "<regex pattern>",                   "Returns entries matching a regex pattern. Only returns complete matches.")
-        self.registerCommand('findall',    self.findAllKey, ['any'],   1, 2,   "<regex pattern>",                   "Returns entries matching a regex pattern. Allows partial matches to be returned.")
+        self.registerCommand('version',  self.getVersion, ['any'],          0, 0,   "",                                  "Gets info about the current version.")
+        self.registerCommand('versions', self.getVersion, ['any'],          0, 0,   "",                                  "Gets info about versions that are available in the database.")
+        self.registerCommand('gp',       self.getParam,   ['any'],          1, 2,   "[[class.]method.]<name> [version]", "Returns method parameter information. Defaults to current version. Version can be for MCP or MC. Obf class and method names not supported.")
+        self.registerCommand('gf',       self.getMember,  ['any'],          1, 2,   "[class.]<name> [version]",          "Returns field information. Defaults to current version. Version can be for MCP or MC.")
+        self.registerCommand('gm',       self.getMember,  ['any'],          1, 2,   "[class.]<name> [version]",          "Returns method information. Defaults to current version. Version can be for MCP or MC.")
+        self.registerCommand('gc',       self.getClass,   ['any'],          1, 2,   "<class> [version]",                 "Returns class information. Defaults to current version. Version can be for MCP or MC.")
+        self.registerCommand('find',     self.findKey,    ['any'],          1, 2,   "<regex pattern>",                   "Returns entries matching a regex pattern. Only returns complete matches.")
+        self.registerCommand('findall',  self.findAllKey, ['any'],          1, 2,   "<regex pattern>",                   "Returns entries matching a regex pattern. Allows partial matches to be returned.")
+        self.registerCommand('sf',       self.setMember,  ['any'],          2, 999, "<srg name> <new name> [<comment>]", "Sets the MCP name and comment for the SRG field specified. SRG index can also be used.")
+        self.registerCommand('fsf',      self.setMember,  ['admin'],        2, 999, "<srg name> <new name> [<comment>]", "Force sets the MCP name and comment for the SRG field specified. SRG index can also be used.")
+        self.registerCommand('sm',       self.setMember,  ['any'],          2, 999, "<srg name> <new name> [<comment>]", "Sets the MCP name and comment for the SRG method specified. SRG index can also be used.")
+        self.registerCommand('fsm',      self.setMember,  ['admin'],        2, 999, "<srg name> <new name> [<comment>]", "Force sets the MCP name and comment for the SRG method specified. SRG index can also be used.")
+        self.registerCommand('lf',       self.setLocked,  ['lock_control'], 1, 1,   "<srg name>",                        "Locks the given field from being edited. SRG index can also be used.")
+        self.registerCommand('lm',       self.setLocked,  ['lock_control'], 1, 1,   "<srg name>",                        "Locks the given method from being edited. SRG index can also be used.")
+        self.registerCommand('lp',       self.setLocked,  ['lock_control'], 1, 1,   "<srg name>",                        "Locks the given method parameter from being edited. SRG index can also be used.")
+        self.registerCommand('ulf',      self.setLocked,  ['lock_control'], 1, 1,   "<srg name>",                        "Unlocks the given field to allow editing. SRG index can also be used.")
+        self.registerCommand('ulm',      self.setLocked,  ['lock_control'], 1, 1,   "<srg name>",                        "Unlocks the given method to allow editing. SRG index can also be used.")
+        self.registerCommand('ulp',      self.setLocked,  ['lock_control'], 1, 1,   "<srg name>",                        "Unlocks the given method parameter to allow editing. SRG index can also be used.")
 
     def onStartUp(self):
         self.db.connect()
@@ -47,6 +61,8 @@ class MCPBot(BotBase):
                 self.sendNotice(sender.nick, dict(entry))
         else:
             self.sendNotice(sender.nick, "No result found.")
+
+    # Getters
 
     def getVersion(self, bot, sender, dest, cmd, args):
         limit = 1
@@ -92,6 +108,29 @@ class MCPBot(BotBase):
         val, status = self.db.findInTable('class', args)
         self.sendClassResults(sender, val, status, summary=True)
 
+    # Setters
+
+    def setLocked(self, bot, sender, dest, cmd, args):
+        member_type = 'method'
+        is_lock = cmd['command'][0] == 'l'
+        if cmd['command'].find('f') > -1: member_type = 'field'
+        elif cmd['command'].find('p') > -1: member_type = 'method_param'
+        val, status = self.db.setMemberLock(member_type, is_lock, cmd['command'], sender, args)
+        self.sendSetLockResults(member_type, sender, val, status, args[0], is_lock)
+
+
+    def setMember(self, bot, sender, dest, cmd, args):
+        member_type = 'method'
+        if cmd['command'].find('sf') > -1: member_type = 'field'
+        # should be safe to assume the user is in authUsers since we made it to the callback
+        bypass_lock = 'lock_control' in self.authUsers[sender.regnick.lower()]
+        is_forced = cmd['command'][0] == 'f'
+        if is_forced:
+            self.sendNotice(sender.nick, "§R!!! CAREFUL, YOU ARE FORCING AN UPDATE TO A NAMED %s !!!" % member_type.upper())
+        val, status = self.db.setMember(member_type, is_forced, bypass_lock, cmd['command'], sender, args)
+        self.sendSetMemberResults(member_type, sender, val, status, args[0])
+
+    # Send Results
 
     def sendVersionResults(self, sender, val, status):
         if status:
@@ -133,6 +172,7 @@ class MCPBot(BotBase):
                 self.sendNotice(sender.nick,        "§UDescriptor§N : {method_obf_descriptor} §B=>§N {method_srg_descriptor}".format(**entry))
                 self.sendNotice(sender.nick,        "§USrg§N        : {obf_descriptor} {srg_name}".format(**entry))
                 self.sendNotice(sender.nick,        "§UMCP§N        : {srg_descriptor} {mcp_name}".format(**entry))
+                self.sendNotice(sender.nick,        "§ULocked§N     : {is_locked}".format(**entry))
                 if entry['java_type_code']:
                     self.sendNotice(sender.nick,    "§UJava Type§N  : {java_type_code}".format(**entry))
 
@@ -165,6 +205,7 @@ class MCPBot(BotBase):
                 self.sendNotice(sender.nick,        "§UNotch§N      : {class_obf_name}.{obf_name}".format(**entry))
                 self.sendNotice(sender.nick,        "§USrg§N        : {class_pkg_name}/{class_srg_name}.{srg_name}".format(**entry))
                 self.sendNotice(sender.nick,        "§UMCP§N        : {class_pkg_name}/{class_srg_name}.{mcp_name}".format(**entry))
+                self.sendNotice(sender.nick,        "§ULocked§N     : {is_locked}".format(**entry))
                 self.sendNotice(sender.nick,        "§UDescriptor§N : {obf_descriptor} §B=>§N {srg_descriptor}".format(**entry))
                 if 'srg_params' in entry:
                     self.sendNotice(sender.nick,    "§UParameters§N : {srg_params} §B=>§N {mcp_params}".format(**entry))
@@ -215,6 +256,69 @@ class MCPBot(BotBase):
 
             else:
                 self.sendNotice(sender.nick, "{obf_name} §B~>§N {pkg_name}/{srg_name}".format(**entry))
+
+    # Setter results
+
+    def sendSetLockResults(self, member_type, sender, val, status, srg_name, is_lock):
+        if status:
+            self.sendNotice(sender.nick, str(type(status)) + ' : ' + str(status))
+            return
+
+        if member_type == 'method_param':
+            member_type = 'Method Param'
+        else:
+            member_type = member_type[0].upper() + member_type[1:]
+
+        if is_lock:
+            self.sendNotice(sender.nick, "===§B Lock %s: %s §N===" % (member_type, srg_name))
+        else:
+            self.sendNotice(sender.nick, "===§B Unlock %s: %s §N===" % (member_type, srg_name))
+
+        for result in val:
+            if result['result'] > 0:
+                self.sendNotice(sender.nick, "§BLocked status§N : %s" % str(is_lock))
+            elif result['result'] == 0:
+                self.sendNotice(sender.nick, "§BSRG Name/Index specified is not a valid %s in the current version." % member_type)
+            elif result['result'] == -1:
+                self.sendNotice(sender.nick, "§BInvalid Member Type %s specified. Please report this to a member of the MCP team." % member_type)
+            elif result['result'] == -2:
+                self.sendNotice(sender.nick, "§BAmbiguous request: multiple %ss would be modified." % member_type)
+            elif result['result'] == -3:
+                if is_lock:
+                    self.sendNotice(sender.nick, "§BThis %s is already locked." % member_type)
+                else:
+                    self.sendNotice(sender.nick, "§BThis %s is already unlocked." % member_type)
+
+    def sendSetMemberResults(self, member_type, sender, val, status, srg_name):
+        if status:
+            self.sendNotice(sender.nick, str(type(status)) + ' : ' + str(status))
+            return
+
+        self.sendNotice(sender.nick, "===§B Set %s: %s §N===" % (member_type[0].upper() + member_type[1:], srg_name))
+
+        for result in val:
+            if result['result'] > 0:
+                change, status = self.db.getMemberChange(member_type, result['result'])
+                if status:
+                    self.sendNotice(sender.nick, str(type(status)) + ' : ' + str(status))
+                    return
+
+                for row in change:
+                    self.sendNotice(sender.nick, "§BName§N     : {old_mcp_name} §B=>§N {new_mcp_name}".format(**row))
+                    self.sendNotice(sender.nick, "§BOld desc§N : {old_mcp_desc}".format(**row))
+                    self.sendNotice(sender.nick, "§BNew desc§N : {new_mcp_desc}".format(**row))
+            elif result['result'] == 0:
+                self.sendNotice(sender.nick, "§BSRG Name/Index specified is not a valid %s in the current version." % (member_type[0].upper() + member_type[1:]))
+            elif result['result'] == -1:
+                self.sendNotice(sender.nick, "§BInvalid Member Type %s specified. Please report this to a member of the MCP team." % (member_type[0].upper() + member_type[1:]))
+            elif result['result'] == -2:
+                self.sendNotice(sender.nick, "§BAmbiguous request: multiple %ss would be modified." % (member_type[0].upper() + member_type[1:]))
+            elif result['result'] == -3:
+                self.sendNotice(sender.nick, "§BThe %s record for SRG Name/Index %s is locked. You do not have permission to edit locked mappings." % (member_type[0].upper() + member_type[1:], srg_name))
+            elif result['result'] == -4:
+                self.sendNotice(sender.nick, "§BThe MCP name has already been specified for this %s." % (member_type[0].upper() + member_type[1:]))
+            elif result['result'] == -5:
+                self.sendNotice(sender.nick, "§BNo changes to the mapping were detected based on the arguments specified.")
 
 ########################################################################################################################
 def main():

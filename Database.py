@@ -35,10 +35,13 @@ class Database(object):
         self.conn.close()
         self.logger.info("Done")
 
-    def execute(self, request):
+    def execute(self, request, arguments=None):
         with self.conn.cursor(cursor_factory=psycopg2.extras.DictCursor) as cursor:
             try:
-                cursor.execute(request)
+                if arguments:
+                    cursor.execute(request, arguments)
+                else:
+                    cursor.execute(request)
                 retval = cursor.fetchall()
                 self.conn.commit()
 
@@ -56,6 +59,8 @@ class Database(object):
             except Exception as e:
                 self.conn.rollback()
                 return None, e
+
+    # Getters
 
     def getVersions(self, limit=0):
         sqlrequest = "select * from mcp.version_vw order by mc_version_code desc "
@@ -149,3 +154,26 @@ class Database(object):
         self.logger.debug(sqlrequest)
         if len(args) > 1: return self.executeGet(sqlrequest, {'match': args[0], 'version': args[1]})
         else: return self.executeGet(sqlrequest, {'match': args[0]})
+
+    # Setters
+
+    def setMemberLock(self, member_type, is_lock, command, sender, args):
+        params = {'member_type': member_type, 'is_lock': is_lock, 'nick': sender.regnick.lower(),
+                  'command': command, 'params': ' '.join(args), 'srg_name': args[0]}
+        sqlrequest = "select mcp.set_member_lock(%(member_type)s, %(command)s, %(nick)s, %(params)s, %(srg_name)s, %(is_lock)s) as result;"
+        self.logger.debug(sqlrequest)
+        return self.execute(sqlrequest, params)
+
+    def setMember(self, member_type, is_forced, bypass_lock, command, sender, args):
+        params = {'member_type': member_type, 'is_forced': is_forced, 'bypass_lock': bypass_lock, 'nick': sender.regnick.lower(),
+                  'command': command, 'params': ' '.join(args), 'srg_name': args[0], 'new_name': args[1]}
+        if len(args) > 2: params['new_desc'] = ' '.join(args[2:])
+        else: params['new_desc'] = None
+        sqlrequest = """select mcp.process_member_change(%(member_type)s, %(command)s, %(nick)s, %(params)s, %(srg_name)s,
+                            %(new_name)s, %(new_desc)s, %(is_forced)s, %(bypass_lock)s) as result;"""
+        self.logger.debug(sqlrequest)
+        return self.execute(sqlrequest, params)
+
+    def getMemberChange(self, member_type, staged_pid):
+        sqlrequest = "select * from mcp.staged_%(member_type)s where staged_%(member_type)s_pid = %%(staged_pid)s" % {'member_type': member_type}
+        return self.executeGet(sqlrequest, {'staged_pid': staged_pid})
