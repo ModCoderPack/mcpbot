@@ -307,18 +307,27 @@ class MCPBot(BotBase):
                     self.sendNotice(sender.nick, "§BName§N     : {old_mcp_name} §B=>§N {new_mcp_name}".format(**row))
                     self.sendNotice(sender.nick, "§BOld desc§N : {old_mcp_desc}".format(**row))
                     self.sendNotice(sender.nick, "§BNew desc§N : {new_mcp_desc}".format(**row))
-            elif result['result'] == 0:
-                self.sendNotice(sender.nick, "§BSRG Name/Index specified is not a valid %s in the current version." % (member_type[0].upper() + member_type[1:]))
+                return
+
+            if member_type == 'method_param':
+                member_type = 'Method Param'
+            else:
+                member_type = member_type[0].upper() + member_type[1:]
+
+            if result['result'] == 0:
+                self.sendNotice(sender.nick, "§BSRG Name/Index specified is not a valid %s in the current version." % member_type)
             elif result['result'] == -1:
-                self.sendNotice(sender.nick, "§BInvalid Member Type %s specified. Please report this to a member of the MCP team." % (member_type[0].upper() + member_type[1:]))
+                self.sendNotice(sender.nick, "§BInvalid Member Type %s specified. Please report this to a member of the MCP team." % member_type)
             elif result['result'] == -2:
-                self.sendNotice(sender.nick, "§BAmbiguous request: multiple %ss would be modified." % (member_type[0].upper() + member_type[1:]))
+                self.sendNotice(sender.nick, "§BAmbiguous request: multiple %ss would be modified." % member_type)
             elif result['result'] == -3:
-                self.sendNotice(sender.nick, "§BThe %s record for SRG Name/Index %s is locked. You do not have permission to edit locked mappings." % (member_type[0].upper() + member_type[1:], srg_name))
+                self.sendNotice(sender.nick, "§BThe %s record for SRG Name/Index %s is locked. You do not have permission to edit locked mappings." % (member_type, srg_name))
             elif result['result'] == -4:
-                self.sendNotice(sender.nick, "§BThe MCP name has already been specified for this %s." % (member_type[0].upper() + member_type[1:]))
+                self.sendNotice(sender.nick, "§BThe MCP name has already been specified for this %s." % member_type)
             elif result['result'] == -5:
                 self.sendNotice(sender.nick, "§BNo changes to the mapping were detected based on the arguments specified.")
+            elif result['result'] == -6:
+                self.sendNotice(sender.nick, "§BThe new name specified conflicts with another %s name within its scope." % member_type)
 
 ########################################################################################################################
 def main():

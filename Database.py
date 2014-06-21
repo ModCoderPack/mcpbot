@@ -74,7 +74,7 @@ class Database(object):
 
         params = {}
 
-        sqlrequest = "SELECT * FROM mcp.param_vw "
+        sqlrequest = "SELECT * FROM mcp.method_param_vw "
         if len(args) > 1:
             sqlrequest += "where (mc_version_code like %(version)s or mcp_version_code like %(version)s) "
             params['version'] = args[1]
