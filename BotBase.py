@@ -41,18 +41,24 @@ class BotHandler(object):
             bot.connect()
 
 class BotBase(object):
-    def __init__(self, configfile = None):
+    def __init__(self, configfile = None, nspass = None):
         self.configfile = configfile if configfile else 'bot.cfg'
         self.config     = ConfigParser.RawConfigParser()
         self.config.read(self.configfile)
 
+        self.nspass     = nspass
+
         self.host       = self.getConfig('SERVER', 'HOST', '')
         self.port       = int(self.getConfig('SERVER', 'PORT', '6667'))
         self.channels   = set(self.getConfig('SERVER','CHANNELS', "").split(';') if self.getConfig('SERVER','CHANNELS', "").strip() else [])
-        self.nickAuth   = self.getConfig('SERVER', 'NICKAUTH',"PRIVMSG nickserv :acc {nick}")
-        self.authRegex  = self.getConfig('SERVER', 'AUTHREGEX',"(?P<nick>.+) ACC (?P<level>[0-9])")
         self.floodLimit = float(self.getConfig('SERVER', 'FLOODLIMIT', "0.75"))
-        self.servpass   = self.getConfig('SERVER', 'PASSWORD', "")        
+        self.servpass   = self.getConfig('SERVER', 'PASSWORD', "")
+
+        self.nickserv   = self.getConfig('NICKSERV', 'NICKSERV', "NickServ")
+        self.nickAuth   = self.getConfig('NICKSERV', 'NICKAUTH', "PRIVMSG {nickserv} :acc {nick}")
+        self.authRegex  = self.getConfig('NICKSERV', 'AUTHREGEX',"(?P<nick>.+) ACC (?P<level>[0-9])")
+        self.nsmarker   = self.getConfig('NICKSERV', 'NSMARKER', "You have 30 seconds to identify to your nickname")
+        self.nsreply    = self.getConfig('NICKSERV', 'NSREPLY',  "PRIVMSG {nickserv} :identify {nspass}")
 
         self.nick        = self.getConfig('BOT', 'NICK', "PyBot")
         self.cmdChar     = self.getConfig('BOT', 'CMDCHAR', "*")
@@ -68,12 +74,12 @@ class BotBase(object):
         self.dccAllowAnon      = bool(self.getConfig('DCC', 'ALLOWANON', "false"))
 
         self.logger = Logger.getLogger("%s-%s-%s"%(__name__, self.nick, self.host) , self.lognormal, self.logerrors)
-        
-        if not self.config.has_section('GROUPS')        :
+
+        if not self.config.has_section('GROUPS'):
             self.config.add_section('GROUPS')
-        if not self.config.has_section('USERS')        :
+        if not self.config.has_section('USERS'):
             self.config.add_section('USERS')
-        
+
         # We collect the list of groups (<group> = <authorised commands separated by ;>)
         self.groups = {}
         for option in self.config.options('GROUPS'):
@@ -243,8 +249,11 @@ class BotBase(object):
     # Config update
     def updateConfig(self):
         fp = open(self.configfile, 'w')
-        self.config.set('SERVER', 'CHANNELS', ';'.join(self.channels))
-        
+        if hasattr(self, "channels"):
+            self.config.set('SERVER', 'CHANNELS', ';'.join(self.channels))
+
+        if not hasattr(self, "groups") or not hasattr(self, "users"): return
+
         # We remove the missing commands from the config file
         for group,commands in self.groups.items():
             nullCommands = []            

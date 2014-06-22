@@ -269,7 +269,7 @@ class CmdHandler(object):
         self.logger.debug("[S : %s] [M : %s]"%(sender.nick, " ".join(params)))        
 
         #We received a notice from NickServ. We check if it is an ACC notice
-        if sender.nick.lower() == 'nickserv':
+        if sender.nick.lower() == self.bot.nickserv.lower():
             reMatch = re.match(self.bot.authRegex, " ".join(params[1:])[1:])
             if reMatch:
                 #We check that the user exists in our tables, we setup the lvl value & unlock the command thread.
@@ -278,6 +278,10 @@ class CmdHandler(object):
                 else:
                     self.bot.users[reMatch.group('nick')].authenticate(int(reMatch.group('level')))
                     self.logger.debug("Auth notice for %s with level %s"%(reMatch.group('nick'), reMatch.group('level')))
+
+            reMatch = re.match(self.bot.nsmarker, " ".join(params[1:])[1:])
+            if reMatch:
+                self.bot.sendRaw(self.bot.nsreply.format(nickserv=self.bot.nickserv, nspass=self.bot.nspass) + EOL)
 
         dest = params[0]             #Chan or private dest
         msg  = ' '.join(params[1:])  #We stich the chat msg back together
@@ -447,7 +451,7 @@ class CmdHandler(object):
             if self.bot.users[sender.nick].auth != 3:
                 self.logger.debug("Reauthenticating user %s"%sender.nick)
                 self.bot.users[sender.nick].unauthenticate()
-                self.bot.sendRaw(self.bot.nickAuth.format(nick=sender.nick) + EOL)
+                self.bot.sendRaw(self.bot.nickAuth.format(nickserv=self.bot.nickserv, nick=sender.nick) + EOL)
                 self.bot.sendRaw(CmdGenerator.getWHOIS(sender.nick))
             
             cmdThread = threading.Thread(target=self.threadedCommand, name=sender.toString(), args=(callback, cmd, self.bot, self.bot.users[sender.nick], dest, args))
@@ -456,7 +460,7 @@ class CmdHandler(object):
         else:
             self.logger.debug("Adding and authenticating user %s"%sender.nick)
             self.bot.users[sender.nick] = sender
-            self.bot.sendRaw(self.bot.nickAuth.format(nick=sender.nick) + EOL)
+            self.bot.sendRaw(self.bot.nickAuth.format(nickserv=self.bot.nickserv, nick=sender.nick) + EOL)
             self.bot.sendRaw(CmdGenerator.getWHOIS(sender.nick))
             
             cmdThread = threading.Thread(target=self.threadedCommand, name=sender.toString(), args=(callback, cmd, self.bot, self.bot.users[sender.nick], dest, args))
