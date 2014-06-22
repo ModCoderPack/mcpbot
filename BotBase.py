@@ -57,7 +57,7 @@ class BotBase(object):
         self.nickserv   = self.getConfig('NICKSERV', 'NICKSERV', "NickServ")
         self.nickAuth   = self.getConfig('NICKSERV', 'NICKAUTH', "PRIVMSG {nickserv} :acc {nick}")
         self.authRegex  = self.getConfig('NICKSERV', 'AUTHREGEX',"(?P<nick>.+) ACC (?P<level>[0-9])")
-        self.nsmarker   = self.getConfig('NICKSERV', 'NSMARKER', "You have 30 seconds to identify to your nickname")
+        self.nsmarker   = self.getConfig('NICKSERV', 'NSMARKER', "This nickname is registered")
         self.nsreply    = self.getConfig('NICKSERV', 'NSREPLY',  "PRIVMSG {nickserv} :identify {nspass}")
 
         self.nick        = self.getConfig('BOT', 'NICK', "PyBot")

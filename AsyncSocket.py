@@ -53,7 +53,8 @@ class AsyncSocket(asyncore.dispatcher):
     def handle_write(self):
         if not self.sendBuffer.empty() and (time.time() - self.timeLastWrite > self.floodLimit):
             msg = self.sendBuffer.get_nowait()
-            self.logger.debug("Send >" + msg.strip())
+            if not ':identify' in msg:
+                self.logger.debug("Send >" + msg.strip())
             self.send(msg)
             self.sendBuffer.task_done()
             self.timeLastWrite = time.time()

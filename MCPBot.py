@@ -1,11 +1,12 @@
 # coding=utf-8
 from BotBase import BotBase, BotHandler
 from Database import Database
+import sys
 import re
 
 class MCPBot(BotBase):
-    def __init__(self):
-        super(MCPBot, self).__init__()
+    def __init__(self, nspass):
+        super(MCPBot, self).__init__(nspass=nspass)
 
         if 'lock_control' not in self.groups:
             self.groups['lock_control'] = []
@@ -331,7 +332,11 @@ class MCPBot(BotBase):
 
 ########################################################################################################################
 def main():
-    bot = MCPBot()
+    if not len(sys.argv) == 2:
+        print "Usage : MCPBot.py <nickserv password>"
+        return
+
+    bot = MCPBot(nspass = sys.argv[1])
     BotHandler.addBot(bot)
     BotHandler.runAll()
 
