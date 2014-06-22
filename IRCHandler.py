@@ -287,6 +287,8 @@ class CmdHandler(object):
         msg  = ' '.join(params[1:])  #We stich the chat msg back together
         msg  = msg[1:]               #We remove the leading :
 
+        if len(msg) == 0: return
+
         if msg[0] == CTCPTAG and msg[-1] == CTCPTAG:
             self.onCTCP(sender, dest, msg[1:-1].split())
         else:

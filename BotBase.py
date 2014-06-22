@@ -7,7 +7,7 @@ import ConfigParser
 import DCCSocket
 import threading
 import datetime
-from IRCHandler import CmdHandler,CmdGenerator,Sender,Color
+from IRCHandler import CmdHandler,CmdGenerator,Sender,Color, EOL
 
 class BotHandler(object):
     botList = []
@@ -112,7 +112,9 @@ class BotBase(object):
         self.registerCommand('addgroup',  self.addgroup,   ['admin'], 2, 2, "<group> <cmd>", "Adds command to group")
         self.registerCommand('rmgroup',   self.rmgroup,    ['admin'], 2, 2, "<group> <cmd>", "Remove command from group")
         self.registerCommand('getgroups', self.getgroups,  ['admin'], 0, 0, "",              "Returns a list of groups and commands")
-        
+
+        self.registerCommand('sendraw',   self.sendRawCmd, ['admin'], 0, 999, "<irccmd>",    "Send a raw IRC cmd")
+
         self.registerCommand('help',      self.helpcmd,    ['any'],   0, 0, "",              "This")
 
     def getConfig(self, section, option, default):
@@ -245,6 +247,10 @@ class BotBase(object):
                 self.sendRaw(CmdGenerator.getDCCCHAT(sender.nick, host, port))
         else:
             self.sendNotice(sender.nick, "DCC is not active on this bot.")
+
+    # Raw command sender
+    def sendRawCmd(self, bot, sender, dest, cmd, args):
+        self.sendRaw(" ".join(args) + EOL)
 
     # Config update
     def updateConfig(self):
