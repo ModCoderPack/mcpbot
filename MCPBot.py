@@ -12,11 +12,11 @@ class MCPBot(BotBase):
             self.groups['lock_control'] = []
             self.updateConfig()
 
-        self.dbhost = self.getConfig('DATABASE', 'HOST', "")
-        self.dbport = int(self.getConfig('DATABASE', 'PORT', "0"))
-        self.dbuser = self.getConfig('DATABASE', 'USER', "")
-        self.dbname = self.getConfig('DATABASE', 'NAME', "")
-        self.dbpass = self.getConfig('DATABASE', 'PASS', "")
+        self.dbhost = self.config.get('DATABASE', 'HOST', "")
+        self.dbport = self.config.geti('DATABASE', 'PORT', "0")
+        self.dbuser = self.config.get('DATABASE', 'USER', "")
+        self.dbname = self.config.get('DATABASE', 'NAME', "")
+        self.dbpass = self.config.get('DATABASE', 'PASS', "")
 
         self.db = Database(self.dbhost, self.dbport, self.dbuser, self.dbname, self.dbpass, self)
 

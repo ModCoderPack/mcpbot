@@ -8,6 +8,7 @@ import DCCSocket
 import threading
 import datetime
 from IRCHandler import CmdHandler,CmdGenerator,Sender,Color, EOL
+from ConfigHandler import AdvConfigParser
 
 class BotHandler(object):
     botList = []
@@ -43,35 +44,35 @@ class BotHandler(object):
 class BotBase(object):
     def __init__(self, configfile = None, nspass = None):
         self.configfile = configfile if configfile else 'bot.cfg'
-        self.config     = ConfigParser.RawConfigParser()
+        self.config     = AdvConfigParser()
         self.config.read(self.configfile)
 
         self.nspass     = nspass
 
-        self.host       = self.getConfig('SERVER', 'HOST', '')
-        self.port       = int(self.getConfig('SERVER', 'PORT', '6667'))
-        self.channels   = set(self.getConfig('SERVER','CHANNELS', "").split(';') if self.getConfig('SERVER','CHANNELS', "").strip() else [])
-        self.floodLimit = float(self.getConfig('SERVER', 'FLOODLIMIT', "0.75"))
-        self.servpass   = self.getConfig('SERVER', 'PASSWORD', "")
+        self.host       = self.config.get('SERVER', 'HOST', '')
+        self.port       = self.config.geti('SERVER', 'PORT', '6667')
+        self.channels   = set(self.config.get('SERVER','CHANNELS', "").split(';') if self.config.get('SERVER','CHANNELS', "").strip() else [])
+        self.floodLimit = self.config.getf('SERVER', 'FLOODLIMIT', "0.75", 'Min delay between two line sending.')
+        self.servpass   = self.config.get('SERVER', 'PASSWORD', "", 'Server password')
 
-        self.nickserv   = self.getConfig('NICKSERV', 'NICKSERV', "NickServ")
-        self.nickAuth   = self.getConfig('NICKSERV', 'NICKAUTH', "PRIVMSG {nickserv} :acc {nick}")
-        self.authRegex  = self.getConfig('NICKSERV', 'AUTHREGEX',"(?P<nick>.+) ACC (?P<level>[0-9])")
-        self.nsmarker   = self.getConfig('NICKSERV', 'NSMARKER', "This nickname is registered")
-        self.nsreply    = self.getConfig('NICKSERV', 'NSREPLY',  "PRIVMSG {nickserv} :identify {nspass}")
+        self.nickserv   = self.config.get('NICKSERV', 'NICKSERV', "NickServ", 'Nick of the nick server used for auth purposes')
+        self.nickAuth   = self.config.get('NICKSERV', 'NICKAUTH', "PRIVMSG {nickserv} :acc {nick}", 'Command to use to determine the ACC level of a user')
+        self.authRegex  = self.config.get('NICKSERV', 'AUTHREGEX',"(?P<nick>.+) ACC (?P<level>[0-9])", 'Regexp to parse the ACC answer')
+        self.nsmarker   = self.config.get('NICKSERV', 'NSMARKER', "This nickname is registered", 'Regexp to parse in the nickserv msg when the nick need to be identified')
+        self.nsreply    = self.config.get('NICKSERV', 'NSREPLY',  "PRIVMSG {nickserv} :identify {nspass}", 'Reply to an identify request')
 
-        self.nick        = self.getConfig('BOT', 'NICK', "PyBot")
-        self.cmdChar     = self.getConfig('BOT', 'CMDCHAR', "*")
-        self.autoInvite  = bool(self.getConfig('BOT', 'AUTOACCEPT', "true"))
-        self.autoJoin    = bool(self.getConfig('BOT', 'AUTOJOIN', "true"))
-        self.lognormal   = self.getConfig('BOT', 'LOGNORMAL', "botlog.log")
-        self.logerrors   = self.getConfig('BOT', 'LOGERRORS', "errors.log")
-        
-        self.allowunregistered = bool(self.getConfig('AUTH', 'ALLOWUNREGISTERED', "true"))
-        self.authtimeout       = int(self.getConfig('AUTH', 'TIMEOUT', "60"))
+        self.nick        = self.config.get('BOT', 'NICK', "PyBot")
+        self.cmdChar     = self.config.get('BOT', 'CMDCHAR', "*")
+        self.autoInvite  = self.config.getb('BOT', 'AUTOACCEPT', "true", 'Automatically accept invites ?')
+        self.autoJoin    = self.config.getb('BOT', 'AUTOJOIN', "true", 'Automatically join channels in the chan list ?')
+        self.lognormal   = self.config.get('BOT', 'LOGNORMAL', "botlog.log")
+        self.logerrors   = self.config.get('BOT', 'LOGERRORS', "errors.log")
 
-        self.dccActive         = bool(self.getConfig('DCC', 'ACTIVE',    "true"))
-        self.dccAllowAnon      = bool(self.getConfig('DCC', 'ALLOWANON', "false"))
+        self.allowunregistered = self.config.getb('AUTH', 'ALLOWUNREGISTERED', "true", 'Can users without a registered nick emit commands ?')
+        self.authtimeout       = self.config.geti('AUTH', 'TIMEOUT', "60", 'Authentication refresh delay in seconds. Auth will be considered valid for this period.')
+
+        self.dccActive         = self.config.getb('DCC', 'ACTIVE',    "true")
+        self.dccAllowAnon      = self.config.getb('DCC', 'ALLOWANON', "false", 'Can users connect via DCC if the user is not properly IP identified ?')
 
         self.logger = Logger.getLogger("%s-%s-%s"%(__name__, self.nick, self.host) , self.lognormal, self.logerrors)
 
@@ -92,6 +93,8 @@ class BotBase(object):
 
         self.logger.debug("Users  : %s"%self.authUsers)
         self.logger.debug("Groups : %s"%self.groups)
+
+        self.updateConfig()
 
         self.users      = {}
         self.usersInfo = {}
@@ -116,17 +119,6 @@ class BotBase(object):
         self.registerCommand('sendraw',   self.sendRawCmd, ['admin'], 0, 999, "<irccmd>",    "Send a raw IRC cmd")
 
         self.registerCommand('help',      self.helpcmd,    ['any'],   0, 0, "",              "This")
-
-    def getConfig(self, section, option, default):
-        if not self.config.has_section(section):
-            self.config.add_section(section)
-        
-        if self.config.has_option(section, option):
-            return self.config.get(section, option)
-        else:
-            self.config.set(section, option, default)
-            self.updateConfig()
-            return self.config.get(section, option)
 
     # User handling commands
     def adduser(self, bot, sender, dest, cmd, args):
