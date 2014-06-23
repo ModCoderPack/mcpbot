@@ -503,6 +503,13 @@ class CmdHandler(object):
 
             userValid = False
 
+            if (sender.nick.lower()    in bot.banList and cmd['command'] in bot.banList[sender.nick.lower()]) or \
+               (sender.host.lower()    in bot.banList and cmd['command'] in bot.banList[sender.host.lower()]) or \
+               (sender.regnick.lower() in bot.banList and cmd['command'] in bot.banList[sender.regnick.lower()]):
+                bot.sendNotice(sender.nick, "You are prevented from using this command.")
+                return
+
+
             if cmd['command']  in bot.groups['any']:
                 userValid = True
 

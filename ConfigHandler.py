@@ -41,6 +41,10 @@ class AdvConfigParser(RawConfigParser):
 
         return RawConfigParser.get(self, section, option)
 
+    def options(self, section):
+        self.add_section(section)
+        return RawConfigParser.options(self, section)
+
     def _get(self, section, conv, option, default=None, comment=None):
         return conv(self.get(section, option, default, comment))
 

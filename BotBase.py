@@ -76,11 +76,6 @@ class BotBase(object):
 
         self.logger = Logger.getLogger("%s-%s-%s"%(__name__, self.nick, self.host) , self.lognormal, self.logerrors)
 
-        if not self.config.has_section('GROUPS'):
-            self.config.add_section('GROUPS')
-        if not self.config.has_section('USERS'):
-            self.config.add_section('USERS')
-
         # We collect the list of groups (<group> = <authorised commands separated by ;>)
         self.groups = {}
         for option in self.config.options('GROUPS'):
@@ -91,12 +86,16 @@ class BotBase(object):
         for option in self.config.options('USERS'):
             self.authUsers[option] = set(self.config.get('USERS',option).lower().split(';') if self.config.get('USERS',option).strip() else [])
 
+        self.banList = {}
+        for option in self.config.options('BANLIST'):
+            self.banList[option] = set(self.config.get('BANLIST',option).lower().split(';') if self.config.get('BANLIST',option).strip() else [])
+
         self.logger.debug("Users  : %s"%self.authUsers)
         self.logger.debug("Groups : %s"%self.groups)
 
         self.updateConfig()
 
-        self.users      = {}
+        self.users     = {}
         self.usersInfo = {}
 
         self.isIdentified = False   #Turn to true when nick/ident commands are sent
@@ -115,6 +114,11 @@ class BotBase(object):
         self.registerCommand('addgroup',  self.addgroup,   ['admin'], 2, 2, "<group> <cmd>", "Adds command to group.")
         self.registerCommand('rmgroup',   self.rmgroup,    ['admin'], 2, 2, "<group> <cmd>", "Remove command from group.")
         self.registerCommand('getgroups', self.getgroups,  ['admin'], 0, 0, "",              "Returns a list of groups and commands.")
+
+        self.registerCommand('banuser',   self.banuser,    ['admin'], 2, 2, "<user|host> <cmd>", "Bans the user from using the specified command.")
+        self.registerCommand('unbanuser', self.unbanuser,  ['admin'], 2, 2, "<user|host> <cmd>", "Remove a ban on an user.")
+        self.registerCommand('getbans',   self.getban,     ['admin'], 1, 1, "<user|host>",       "Returns the ban list for the given user.")
+        self.registerCommand('getbans',   self.getbans,    ['admin'], 0, 0, "",                  "Returns a complete dump of the ban table.")
 
         self.registerCommand('sendraw',   self.sendRawCmd, ['admin'], 0, 999, "<irccmd>",    "Send a raw IRC cmd.")
 
@@ -178,6 +182,49 @@ class BotBase(object):
         
         for k,v in groups.items():
             bot.sendNotice(sender.nick, formatstr%(k,list(v)))
+
+    # Ban handling
+    def banuser(self, bot, sender, dest, cmd, args):
+        user    = args[0].lower()
+        command = args[1].lower()
+
+        if not user in self.banList:
+            self.banList[user] = set()
+
+        self.banList[user].add(command)
+        bot.sendNotice(sender.nick, "Done")
+        self.updateConfig()
+
+    def getban(self, bot, sender, dest, cmd, args):
+        user  = args[0].lower()
+
+        if not user in self.banList:
+            bot.sendNotice(sender.nick, "User %s is not banned"%args[0])
+            return
+
+        msg = "%s : %s"%(args[0], ", ".join(self.banList[user]))
+        bot.sendNotice(sender.nick, msg)
+
+    def getbans(self, bot, sender, dest, cmd, args):
+        for user in self.banList:
+            msg = "%s : %s"%(user, ", ".join(self.banList[user]))
+            bot.sendNotice(sender.nick, msg)
+
+    def unbanuser(self, bot, sender, dest, cmd, args):
+        user    = args[0].lower()
+        command = args[1].lower()
+
+        if not user in self.banList:
+            bot.sendNotice(sender.nick, "User %s is not registered"%args[0])
+            return
+
+        if not command in self.banList[user]:
+            bot.sendNotice(sender.nick, "User %s in not banned from using %s"%(args[0],command))
+
+        self.banList[user].remove(command)
+        bot.sendNotice(sender.nick, "Done")
+        self.updateConfig()
+
 
     # Group handling commands
     def addgroup(self, bot, sender, dest, cmd, args):
@@ -289,6 +336,20 @@ class BotBase(object):
         # We write down all the users
         for user,group in self.authUsers.items():
             self.config.set('USERS',user, ';'.join(group))
+
+        # We clean up the banlist
+        nullBans = []
+        for user, bans in self.banList.items():
+            if not len(bans) > 0:
+                nullBans.append(user)
+
+        for ban in nullBans:
+            self.banList.pop(ban, None)
+            self.config.remove_option('BANLIST', user)
+
+        # We write down the ban list
+        for user, bans in self.banList.items():
+            self.config.set('BANLIST',user, ';'.join(bans))
 
         self.config.write(fp)
         fp.close()
