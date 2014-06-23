@@ -106,19 +106,19 @@ class BotBase(object):
         self.dccSocket = DCCSocket.DCCSocket(self)
         self.cmdHandler = CmdHandler(self, self.socket)         
 
-        self.registerCommand('dcc',       self.requestDCC, ['any'],   0, 0, "",              "Requests a DCC connection to the bot")
+        self.registerCommand('dcc',       self.requestDCC, ['any'],   0, 0, "",              "Requests a DCC connection to the bot.")
         self.registerCommand('adduser',   self.adduser,    ['admin'], 2, 2, "<user> <group>","Adds user to group.")
         self.registerCommand('rmuser',    self.rmuser,     ['admin'], 2, 2, "<user> <group>","Removes user from group.")
         self.registerCommand('getuser',   self.getuser,    ['admin'], 1, 1, "<user>",        "Returns list of groups for this user.")
-        self.registerCommand('getusers',  self.getusers,   ['admin'], 0, 0, "",              "Returns a list of groups and users")
+        self.registerCommand('getusers',  self.getusers,   ['admin'], 0, 0, "",              "Returns a list of groups and users.")
         
-        self.registerCommand('addgroup',  self.addgroup,   ['admin'], 2, 2, "<group> <cmd>", "Adds command to group")
-        self.registerCommand('rmgroup',   self.rmgroup,    ['admin'], 2, 2, "<group> <cmd>", "Remove command from group")
-        self.registerCommand('getgroups', self.getgroups,  ['admin'], 0, 0, "",              "Returns a list of groups and commands")
+        self.registerCommand('addgroup',  self.addgroup,   ['admin'], 2, 2, "<group> <cmd>", "Adds command to group.")
+        self.registerCommand('rmgroup',   self.rmgroup,    ['admin'], 2, 2, "<group> <cmd>", "Remove command from group.")
+        self.registerCommand('getgroups', self.getgroups,  ['admin'], 0, 0, "",              "Returns a list of groups and commands.")
 
-        self.registerCommand('sendraw',   self.sendRawCmd, ['admin'], 0, 999, "<irccmd>",    "Send a raw IRC cmd")
+        self.registerCommand('sendraw',   self.sendRawCmd, ['admin'], 0, 999, "<irccmd>",    "Send a raw IRC cmd.")
 
-        self.registerCommand('help',      self.helpcmd,    ['any'],   0, 0, "",              "This")
+        self.registerCommand('help',      self.helpcmd,    ['any'],   0, 0, "",              "This help message.")
 
     # User handling commands
     def adduser(self, bot, sender, dest, cmd, args):
