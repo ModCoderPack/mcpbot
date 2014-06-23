@@ -316,6 +316,11 @@ class MCPBot(BotBase):
                     self.sendNotice(sender.nick, "§BName§N     : {old_mcp_name} §B=>§N {new_mcp_name}".format(**row))
                     self.sendNotice(sender.nick, "§BOld desc§N : {old_mcp_desc}".format(**row))
                     self.sendNotice(sender.nick, "§BNew desc§N : {new_mcp_desc}".format(**row))
+
+                if member_type == 'method_param':
+                    sqlrequest = "REFRESH MATERIALIZED VIEW mcp.method_param_vw;"
+                    self.logger.debug(sqlrequest)
+                    self.db.execute(sqlrequest)
                 return
 
             if result['result'] == 0:
