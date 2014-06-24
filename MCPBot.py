@@ -170,8 +170,8 @@ class MCPBot(BotBase):
             if not summary:
                 self.sendNotice(sender.nick,        "===§B MC {mc_version_code}: {class_srg_name}.{method_mcp_name}.{mcp_name} §N===".format(**entry))
                 self.sendNotice(sender.nick,        "§UIndex§N      : {srg_index}".format(**entry))
-                if entry['srg_method_base_class'] != entry['class_srg_name']:
-                    self.sendNotice(sender.nick,    "§UBase Class§N : {obf_method_base_class} §B=>§N {srg_method_base_class}".format(**entry))
+                if 'srg_member_base_class' in entry and entry['srg_member_base_class'] != entry['class_srg_name']:
+                    self.sendNotice(sender.nick,    "§UBase Class§N : {obf_member_base_class} §B=>§N {srg_member_base_class}".format(**entry))
                 self.sendNotice(sender.nick,        "§UMethod§N     : {class_obf_name}.{method_obf_name} §B=>§N {class_pkg_name}/{class_srg_name}.{method_srg_name}".format(**entry))
                 self.sendNotice(sender.nick,        "§UDescriptor§N : {method_obf_descriptor} §B=>§N {method_srg_descriptor}".format(**entry))
                 self.sendNotice(sender.nick,        "§USrg§N        : {obf_descriptor} {srg_name}".format(**entry))
@@ -204,8 +204,8 @@ class MCPBot(BotBase):
             if not summary:
                 self.sendNotice(sender.nick,        "===§B MC {mc_version_code}: {class_srg_name}.{mcp_name} §N===".format(**entry))
                 self.sendNotice(sender.nick,        "§UIndex§N      : {srg_index}".format(**entry))
-                if 'srg_method_base_class' in entry and entry['srg_method_base_class'] != entry['class_srg_name']:
-                    self.sendNotice(sender.nick,    "§UBase Class§N : {obf_method_base_class} §B=>§N {srg_method_base_class}".format(**entry))
+                if 'srg_member_base_class' in entry and entry['srg_member_base_class'] != entry['class_srg_name']:
+                    self.sendNotice(sender.nick,    "§UBase Class§N : {obf_member_base_class} §B=>§N {srg_member_base_class}".format(**entry))
                 self.sendNotice(sender.nick,        "§UNotch§N      : {class_obf_name}.{obf_name}".format(**entry))
                 self.sendNotice(sender.nick,        "§USrg§N        : {class_pkg_name}/{class_srg_name}.{srg_name}".format(**entry))
                 self.sendNotice(sender.nick,        "§UMCP§N        : {class_pkg_name}/{class_srg_name}.{mcp_name}".format(**entry))
@@ -317,10 +317,6 @@ class MCPBot(BotBase):
                     self.sendNotice(sender.nick, "§BOld desc§N : {old_mcp_desc}".format(**row))
                     self.sendNotice(sender.nick, "§BNew desc§N : {new_mcp_desc}".format(**row))
 
-                if member_type == 'method_param':
-                    sqlrequest = "REFRESH MATERIALIZED VIEW mcp.method_param_vw;"
-                    self.logger.debug(sqlrequest)
-                    self.db.execute(sqlrequest)
                 return
 
             if result['result'] == 0:

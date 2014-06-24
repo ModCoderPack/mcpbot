@@ -100,7 +100,7 @@ class Database(object):
             params['method'] = splitted[1]
             params['param'] = splitted[2]
         else: # if the class is not specified, only return the record for the base class entry
-            sqlrequest += "AND class_srg_name = srg_method_base_class "
+            sqlrequest += "AND class_srg_name = srg_member_base_class "
 
         self.logger.debug(sqlrequest)
         return self.executeGet(sqlrequest, params)
