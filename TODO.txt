@@ -11,3 +11,5 @@
 - The top group (currently admin) should be defined in the config file. As of now, it is not possible to have an admin group that can't run dangerous commands like sqlrequest.
 
 - better concurrency for throttling... seems like if multiple people are getting throttled messages it blocks the bot from sending messages to others
+
+- ThVortex> bspkrs: *PROBLEM* (or whatever the tag was supposed to be) Better filter anything non-ASCII from commands that set field names and such. I set field 82425 to an IRC colored name. You can also do nasty stuff with Unicode BIDI overrides.
