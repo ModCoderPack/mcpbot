@@ -82,8 +82,6 @@ class BotBase(object):
         for option in self.config.options('GROUPS'):
             self.groups[option]             = json.loads(self.config.get('GROUPS',option))
             self.groups[option]['commands'] = set(self.groups[option]['commands'])
-            #self.groups[option] = eval(self.config.get('GROUPS',option))
-            #self.groups[option] = set(self.config.get('GROUPS',option).lower().split(';') if self.config.get('GROUPS',option).strip() else [])
 
         # We collect the list of users (<user> = <groups authorised separated by ;>)
         self.authUsers = {}
@@ -110,32 +108,29 @@ class BotBase(object):
         self.cmdHandler = CmdHandler(self, self.socket)         
 
         self.registerCommand('dcc',       self.requestDCC, ['any'],   0, 0, "",              "Requests a DCC connection to the bot.")
-        self.registerCommand('adduser',   self.adduser,    ['admin'], 2, 2, "<user> <group>","Adds user to group.")
-        self.registerCommand('rmuser',    self.rmuser,     ['admin'], 2, 2, "<user> <group>","Removes user from group.")
-        self.registerCommand('getuser',   self.getuser,    ['admin'], 1, 1, "<user>",        "Returns list of groups for this user.")
-        self.registerCommand('getusers',  self.getusers,   ['admin'], 0, 0, "",              "Returns a list of groups and users.")
-        
-        self.registerCommand('addgroup',  self.addgroup,   ['admin'], 2, 2, "<group> <cmd>", "Adds command to group.")
-        self.registerCommand('rmgroup',   self.rmgroup,    ['admin'], 2, 2, "<group> <cmd>", "Remove command from group.")
-        self.registerCommand('getgroups', self.getgroups,  ['admin'], 0, 0, "",              "Returns a list of groups and commands.")
 
-        self.registerCommand('banuser',   self.banuser,    ['admin'], 2, 2, "<user|host> <cmd>", "Bans the user from using the specified command.")
-        self.registerCommand('unbanuser', self.unbanuser,  ['admin'], 2, 2, "<user|host> <cmd>", "Remove a ban on an user.")
-        self.registerCommand('getbans',   self.getban,     ['admin'], 1, 1, "<user|host>",       "Returns the ban list for the given user.")
-        self.registerCommand('getbans',   self.getbans,    ['admin'], 0, 0, "",                  "Returns a complete dump of the ban table.")
+        self.registerCommand('useradd',  self.useradd,   ['admin'], 2, 2, "<user> <group>","Adds user to group.")
+        self.registerCommand('userrm',   self.userrm,    ['admin'], 2, 2, "<user> <group>","Removes user from group.")
+        self.registerCommand('userget',  self.userget,   ['admin'], 1, 1, "<user>",        "Returns list of groups for this user.")
+        self.registerCommand('userall',  self.userall,   ['admin'], 0, 0, "",              "Returns a list of groups and users.")
+        
+        self.registerCommand('groupadd',  self.groupadd,   ['admin'], 2, 2, "<group> <cmd>", "Adds command to group.")
+        self.registerCommand('grouprm',   self.grouprm,    ['admin'], 2, 2, "<group> <cmd>", "Remove command from group.")
+        self.registerCommand('groupget',  self.groupget,   ['admin'], 0, 0, "",              "Returns a list of groups and commands.")
+        self.registerCommand('groupmeta', self.groupmeta,  ['admin'], 3, 999, "<group> <key> <value>", "Add a value to a group key")
+
+
+        self.registerCommand('banadd', self.banadd, ['admin'], 2, 2, "<user|host> <cmd>", "Bans the user from using the specified command.")
+        self.registerCommand('banrm',  self.banrm,  ['admin'], 2, 2, "<user|host> <cmd>", "Remove a ban on an user.")
+        self.registerCommand('banget', self.banget, ['admin'], 1, 1, "<user|host>",       "Returns the ban list for the given user.")
+        self.registerCommand('banall', self.banall, ['admin'], 0, 0, "",                  "Returns a complete dump of the ban table.")
 
         self.registerCommand('sendraw',   self.sendRawCmd, ['admin'], 0, 999, "<irccmd>",    "Send a raw IRC cmd.")
 
         self.registerCommand('help',      self.helpcmd,    ['any'],   0, 0, "",              "This help message.")
 
-        #self.registerCommand('flood', self.flood, ['debug'], 1, 1, "", "")
-
-    #def flood(self, bot, sender, dest, cmd, args):
-    #    for i in range(int(args[0])):
-    #        bot.sendNotice(sender.nick, "%04d"%i)
-
     # User handling commands
-    def adduser(self, bot, sender, dest, cmd, args):
+    def useradd(self, bot, sender, dest, cmd, args):
         user  = args[0].lower()
         group = args[1].lower()
 
@@ -150,7 +145,7 @@ class BotBase(object):
         bot.sendNotice(sender.nick, "Done")
         self.updateConfig()
 
-    def rmuser(self, bot, sender, dest, cmd, args):
+    def userrm(self, bot, sender, dest, cmd, args):
         user  = args[0].lower()
         group = args[1].lower()
 
@@ -164,12 +159,13 @@ class BotBase(object):
 
         if not group in self.authUsers[user]:
             bot.sendNotice(sender.nick, "User %s in not part of group %s"%(args[0],group))
+            return
 
         self.authUsers[user].remove(group)
         bot.sendNotice(sender.nick, "Done")
         self.updateConfig()
 
-    def getuser(self, bot, sender, dest, cmd, args):
+    def userget(self, bot, sender, dest, cmd, args):
         user  = args[0].lower()
 
         if not user in self.authUsers:
@@ -179,7 +175,7 @@ class BotBase(object):
         msg = "%s : %s"%(args[0], ", ".join(self.authUsers[user]))
         bot.sendNotice(sender.nick, msg)        
 
-    def getusers(self, bot, sender, dest, cmd, args):
+    def userall(self, bot, sender, dest, cmd, args):
         groups = {}
         for user,groupset in self.authUsers.items():
             for group in groupset:
@@ -194,7 +190,7 @@ class BotBase(object):
             bot.sendNotice(sender.nick, formatstr%(k,list(v)))
 
     # Ban handling
-    def banuser(self, bot, sender, dest, cmd, args):
+    def banadd(self, bot, sender, dest, cmd, args):
         user    = args[0].lower()
         command = args[1].lower()
 
@@ -205,7 +201,7 @@ class BotBase(object):
         bot.sendNotice(sender.nick, "Done")
         self.updateConfig()
 
-    def getban(self, bot, sender, dest, cmd, args):
+    def banget(self, bot, sender, dest, cmd, args):
         user  = args[0].lower()
 
         if not user in self.banList:
@@ -215,12 +211,12 @@ class BotBase(object):
         msg = "%s : %s"%(args[0], ", ".join(self.banList[user]))
         bot.sendNotice(sender.nick, msg)
 
-    def getbans(self, bot, sender, dest, cmd, args):
+    def banall(self, bot, sender, dest, cmd, args):
         for user in self.banList:
             msg = "%s : %s"%(user, ", ".join(self.banList[user]))
             bot.sendNotice(sender.nick, msg)
 
-    def unbanuser(self, bot, sender, dest, cmd, args):
+    def banrm(self, bot, sender, dest, cmd, args):
         user    = args[0].lower()
         command = args[1].lower()
 
@@ -230,6 +226,7 @@ class BotBase(object):
 
         if not command in self.banList[user]:
             bot.sendNotice(sender.nick, "User %s in not banned from using %s"%(args[0],command))
+            return
 
         self.banList[user].remove(command)
         bot.sendNotice(sender.nick, "Done")
@@ -237,7 +234,7 @@ class BotBase(object):
 
 
     # Group handling commands
-    def addgroup(self, bot, sender, dest, cmd, args):
+    def groupadd(self, bot, sender, dest, cmd, args):
         group  = args[0].lower()
         cmd    = args[1].lower()
 
@@ -248,15 +245,17 @@ class BotBase(object):
         bot.sendNotice(sender.nick, "Done")
         self.updateConfig()
 
-    def rmgroup(self, bot, sender, dest, cmd, args):
+    def grouprm(self, bot, sender, dest, cmd, args):
         group  = args[0].lower()
         cmd    = args[1].lower()        
 
         if not group in self.groups:
             bot.sendNotice(sender.nick, "Group %s does not exist"%group)
+            return
 
         if not cmd in self.groups[group]['commands']:
             bot.sendNotice(sender.nick, "Command %s not in group %s"%(cmd, group))
+            return
 
         self.groups[group]['commands'].remove(cmd)
         if len(self.groups[group]['commands']) == 0:
@@ -265,9 +264,28 @@ class BotBase(object):
         bot.sendNotice(sender.nick, "Done")
         self.updateConfig()
 
-    def getgroups(self, bot, sender, dest, cmd, args):            
+    def groupget(self, bot, sender, dest, cmd, args):
         for group,cmds in self.groups.items():
             bot.sendNotice(sender.nick, "%s : %s"%(group, cmds))
+
+    def groupmeta(self, bot, sender, dest, cmd, args):
+        group  = args[0].lower()
+        key    = args[1].lower()
+
+        try:
+            value  = eval(" ".join(args[2:]))
+        except Exception as e:
+            bot.sendNotice(sender.nick, "Exception : %s"%e)
+            return
+
+        if not group in self.groups:
+            bot.sendNotice(sender.nick, "Group %s does not exist"%group)
+            return
+
+        self.groups[group][key] = value
+
+        bot.sendNotice(sender.nick, "Done")
+        self.updateConfig()
 
     # Default help command
     def helpcmd(self, bot, sender, dest, cmd, args):
