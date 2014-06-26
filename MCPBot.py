@@ -320,19 +320,23 @@ class MCPBot(BotBase):
                 return
 
             if result['result'] == 0:
-                self.sendNotice(sender.nick, "§BSRG Name/Index specified is not a valid %s in the current version." % member_type_disp)
+                self.sendNotice(sender.nick, "§BERROR: SRG Name/Index specified is not a valid %s in the current version." % member_type_disp)
             elif result['result'] == -1:
-                self.sendNotice(sender.nick, "§BInvalid Member Type %s specified. Please report this to a member of the MCP team." % member_type_disp)
+                self.sendNotice(sender.nick, "§BERROR: Invalid Member Type %s specified. Please report this to a member of the MCP team." % member_type_disp)
             elif result['result'] == -2:
-                self.sendNotice(sender.nick, "§BAmbiguous request: multiple %ss would be modified." % member_type_disp)
+                self.sendNotice(sender.nick, "§BERROR: Ambiguous request: multiple %ss would be modified." % member_type_disp)
             elif result['result'] == -3:
-                self.sendNotice(sender.nick, "§BThe %s record for SRG Name/Index %s is locked. You do not have permission to edit locked mappings." % (member_type_disp, srg_name))
+                self.sendNotice(sender.nick, "§BNOTICE: The %s record for SRG Name/Index %s is locked. You do not have permission to edit locked mappings." % (member_type_disp, srg_name))
             elif result['result'] == -4:
-                self.sendNotice(sender.nick, "§BThe MCP name has already been specified for this %s." % member_type_disp)
+                self.sendNotice(sender.nick, "§BWARNING: The MCP name has already been specified for this %s." % member_type_disp)
             elif result['result'] == -5:
-                self.sendNotice(sender.nick, "§BNo changes to the mapping were detected based on the arguments specified.")
+                self.sendNotice(sender.nick, "§BNOTICE: No changes to the mapping were detected based on the arguments specified.")
             elif result['result'] == -6:
-                self.sendNotice(sender.nick, "§BThe new name specified conflicts with another %s name within its scope." % member_type_disp)
+                self.sendNotice(sender.nick, "§BERROR: The new name specified conflicts with another %s name within its scope." % member_type_disp)
+            elif result['result'] == -7:
+                self.sendNotice(sender.nick, "§BERROR: The new name specified is not a valid Java identifier (yes, we are blocking Unicode; names must not start with a number and can contain A-Z, a-z, 0-9, _ and $).")
+            elif result['result'] == -8:
+                self.sendNotice(sender.nick, "§BERROR: The new name specified is a Java keyword or literal.")
 
 ########################################################################################################################
 def main():
