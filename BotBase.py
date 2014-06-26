@@ -310,24 +310,24 @@ class BotBase(object):
         if not hasattr(self, "groups") or not hasattr(self, "users"): return
 
         # We remove the missing commands from the config file
-        #for group,commands in self.groups.items():
-        #    nullCommands = []
-        #
-        #    for cmd in commands:
-        #        if not cmd in self.cmdHandler.commands:
-        #            nullCommands.append(cmd)
-        #    for cmd in nullCommands:
-        #        commands.remove(cmd)
+        for group,data in self.groups.items():
+            nullCommands = []
+
+            for cmd in data['commands']:
+                if not cmd in self.cmdHandler.commands:
+                    nullCommands.append(cmd)
+            for cmd in nullCommands:
+                data['commands'].remove(cmd)
         
         # We clean up the groups by removing those without commands
-        #nullGroups = []
-        #for group,commands in self.groups.items():
-        #    if not len(commands) > 0:
-        #        nullGroups.append(group)
+        nullGroups = []
+        for group,data in self.groups.items():
+            if not len(data['commands']) > 0:
+                nullGroups.append(group)
         
-        #for group in nullGroups:
-        #    self.groups.pop(group, None)
-        #    self.config.remove_option('GROUPS', group)
+        for group in nullGroups:
+            self.groups.pop(group, None)
+            self.config.remove_option('GROUPS', group)
         
         # We write down groups
         for group, data in self.groups.items():
@@ -336,28 +336,28 @@ class BotBase(object):
             data['commands'] = set(data['commands'])
 
         # We clean up the users by removing those without a group
-        #nullUsers = []
-        #for user, group in self.authUsers.items():
-        #    if not len(group) > 0:
-        #        nullUsers.append(user)
+        nullUsers = []
+        for user, group in self.authUsers.items():
+            if not len(group) > 0:
+                nullUsers.append(user)
 
-        #for user in nullUsers:
-        #    self.authUsers.pop(user, None)
-        #    self.config.remove_option('USERS', user)
+        for user in nullUsers:
+            self.authUsers.pop(user, None)
+            self.config.remove_option('USERS', user)
 
         # We write down all the users
         for user,group in self.authUsers.items():
             self.config.set('USERS',user, ';'.join(group))
 
         # We clean up the banlist
-        #nullBans = []
-        #for user, bans in self.banList.items():
-        #    if not len(bans) > 0:
-        #        nullBans.append(user)
+        nullBans = []
+        for user, bans in self.banList.items():
+            if not len(bans) > 0:
+                nullBans.append(user)
 
-        #for ban in nullBans:
-        #    self.banList.pop(ban, None)
-        #    self.config.remove_option('BANLIST', user)
+        for ban in nullBans:
+            self.banList.pop(ban, None)
+            self.config.remove_option('BANLIST', user)
 
         # We write down the ban list
         for user, bans in self.banList.items():
