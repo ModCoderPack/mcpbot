@@ -40,6 +40,34 @@ class MCPBot(BotBase):
         self.registerCommand('ulm',      self.setLocked,  ['lock_control'],        1, 1,   "<srg name>",                        "Unlocks the given method to allow editing. SRG index can also be used.")
         self.registerCommand('ulp',      self.setLocked,  ['lock_control'],        1, 1,   "<srg name>",                        "Unlocks the given method parameter to allow editing. SRG index can also be used.")
 
+        # Legacy commands that only show a notice
+        self.registerCommand('gcf',  self.legacyNotice, ['any'], 1, 1,   "", "", False)
+        self.registerCommand('gsf',  self.legacyNotice, ['any'], 1, 1,   "", "", False)
+        self.registerCommand('gcm',  self.legacyNotice, ['any'], 1, 1,   "", "", False)
+        self.registerCommand('gsm',  self.legacyNotice, ['any'], 1, 1,   "", "", False)
+        self.registerCommand('scf',  self.legacyNotice, ['any'], 2, 999, "", "", False)
+        self.registerCommand('ssf',  self.legacyNotice, ['any'], 2, 999, "", "", False)
+        self.registerCommand('scm',  self.legacyNotice, ['any'], 2, 999, "", "", False)
+        self.registerCommand('ssm',  self.legacyNotice, ['any'], 2, 999, "", "", False)
+        self.registerCommand('fscf', self.legacyNotice, ['any'], 2, 999, "", "", False)
+        self.registerCommand('fssf', self.legacyNotice, ['any'], 2, 999, "", "", False)
+        self.registerCommand('fscm', self.legacyNotice, ['any'], 2, 999, "", "", False)
+        self.registerCommand('fssm', self.legacyNotice, ['any'], 2, 999, "", "", False)
+
+        self.legacyCommandMap = {'gcf':  'gf',
+                                 'gsf':  'gf',
+                                 'gcm':  'gm',
+                                 'gsm':  'gm',
+                                 'scf':  'sf',
+                                 'ssf':  'sf',
+                                 'scm':  'sm',
+                                 'ssm':  'sm',
+                                 'fscf': 'fsf',
+                                 'fssf': 'fsf',
+                                 'fscm': 'fsm',
+                                 'fssm': 'fsm'}
+
+
     def onStartUp(self):
         self.db.connect()
 
@@ -60,6 +88,11 @@ class MCPBot(BotBase):
                 self.sendNotice(sender.nick, dict(entry))
         else:
             self.sendNotice(sender.nick, "No result found.")
+
+    # Legacy command notice handler
+
+    def legacyNotice(self, bot, sender, dest, cmd, args):
+        self.sendNotice(sender.nick, "§BNOTICE: The legacy command §U%s§N§B is no longer supported, please use §U%s§N§B instead." % (cmd['command'], self.legacyCommandMap[cmd['command']]))
 
     # Getters
 
@@ -99,7 +132,7 @@ class MCPBot(BotBase):
 
         self.sendNotice(sender.nick, " ")
         self.sendNotice(sender.nick, "+++§B METHOD PARAMS §N+++")
-        val, status = self.db.findInTable('param', args)
+        val, status = self.db.findInTable('method_param', args)
         self.sendParamResults(sender, val, status, summary=True)
 
         self.sendNotice(sender.nick, " ")
@@ -278,16 +311,16 @@ class MCPBot(BotBase):
             if result['result'] > 0:
                 self.sendNotice(sender.nick, "§BLocked status§N : %s" % str(is_lock))
             elif result['result'] == 0:
-                self.sendNotice(sender.nick, "§BSRG Name/Index specified is not a valid %s in the current version." % member_type)
+                self.sendNotice(sender.nick, "§BERROR: SRG Name/Index specified is not a valid %s in the current version." % member_type)
             elif result['result'] == -1:
-                self.sendNotice(sender.nick, "§BInvalid Member Type %s specified. Please report this to a member of the MCP team." % member_type)
+                self.sendNotice(sender.nick, "§BERROR: Invalid Member Type %s specified. Please report this to a member of the MCP team." % member_type)
             elif result['result'] == -2:
-                self.sendNotice(sender.nick, "§BAmbiguous request: multiple %ss would be modified." % member_type)
+                self.sendNotice(sender.nick, "§BERROR: Ambiguous request: multiple %ss would be affected." % member_type)
             elif result['result'] == -3:
                 if is_lock:
-                    self.sendNotice(sender.nick, "§BThis %s is already locked." % member_type)
+                    self.sendNotice(sender.nick, "§BNOTICE: This %s is already locked." % member_type)
                 else:
-                    self.sendNotice(sender.nick, "§BThis %s is already unlocked." % member_type)
+                    self.sendNotice(sender.nick, "§BNOTICE: This %s is already unlocked." % member_type)
 
     def sendSetMemberResults(self, member_type, sender, val, status, srg_name):
         if status:
