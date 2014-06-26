@@ -8,9 +8,9 @@ class MCPBot(BotBase):
     def __init__(self, nspass):
         super(MCPBot, self).__init__(nspass=nspass)
 
-        if 'lock_control' not in self.groups:
-            self.groups['lock_control'] = []
-            self.updateConfig()
+        #if 'lock_control' not in self.groups:
+        #    self.groups['lock_control'] = {}
+        #    self.updateConfig()
 
         self.dbhost = self.config.get('DATABASE', 'HOST', "")
         self.dbport = self.config.geti('DATABASE', 'PORT', "0")

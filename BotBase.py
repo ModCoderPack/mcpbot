@@ -7,6 +7,7 @@ import ConfigParser
 import DCCSocket
 import threading
 import datetime
+import json
 from IRCHandler import CmdHandler,CmdGenerator,Sender,Color, EOL
 from ConfigHandler import AdvConfigParser
 
@@ -79,7 +80,10 @@ class BotBase(object):
         # We collect the list of groups (<group> = <authorised commands separated by ;>)
         self.groups = {}
         for option in self.config.options('GROUPS'):
-            self.groups[option] = set(self.config.get('GROUPS',option).lower().split(';') if self.config.get('GROUPS',option).strip() else [])
+            self.groups[option]             = json.loads(self.config.get('GROUPS',option))
+            self.groups[option]['commands'] = set(self.groups[option]['commands'])
+            #self.groups[option] = eval(self.config.get('GROUPS',option))
+            #self.groups[option] = set(self.config.get('GROUPS',option).lower().split(';') if self.config.get('GROUPS',option).strip() else [])
 
         # We collect the list of users (<user> = <groups authorised separated by ;>)
         self.authUsers = {}
@@ -123,6 +127,12 @@ class BotBase(object):
         self.registerCommand('sendraw',   self.sendRawCmd, ['admin'], 0, 999, "<irccmd>",    "Send a raw IRC cmd.")
 
         self.registerCommand('help',      self.helpcmd,    ['any'],   0, 0, "",              "This help message.")
+
+        #self.registerCommand('flood', self.flood, ['debug'], 1, 1, "", "")
+
+    #def flood(self, bot, sender, dest, cmd, args):
+    #    for i in range(int(args[0])):
+    #        bot.sendNotice(sender.nick, "%04d"%i)
 
     # User handling commands
     def adduser(self, bot, sender, dest, cmd, args):
@@ -232,9 +242,9 @@ class BotBase(object):
         cmd    = args[1].lower()
 
         if not group in self.groups:
-            self.groups[group] = set()
+            self.groups[group] = {'commands':set()}
 
-        self.groups[group].add(cmd)
+        self.groups[group]['commands'].add(cmd)
         bot.sendNotice(sender.nick, "Done")
         self.updateConfig()
 
@@ -245,11 +255,11 @@ class BotBase(object):
         if not group in self.groups:
             bot.sendNotice(sender.nick, "Group %s does not exist"%group)
 
-        if not cmd in self.groups[group]:
+        if not cmd in self.groups[group]['commands']:
             bot.sendNotice(sender.nick, "Command %s not in group %s"%(cmd, group))
 
-        self.groups[group].remove(cmd)
-        if len(self.groups[group]) == 0:
+        self.groups[group]['commands'].remove(cmd)
+        if len(self.groups[group]['commands']) == 0:
             del self.groups[group]
 
         bot.sendNotice(sender.nick, "Done")
@@ -257,7 +267,7 @@ class BotBase(object):
 
     def getgroups(self, bot, sender, dest, cmd, args):            
         for group,cmds in self.groups.items():
-            bot.sendNotice(sender.nick, "%s : %s"%(group, ", ".join(cmds)))
+            bot.sendNotice(sender.nick, "%s : %s"%(group, cmds))
 
     # Default help command
     def helpcmd(self, bot, sender, dest, cmd, args):
@@ -300,52 +310,54 @@ class BotBase(object):
         if not hasattr(self, "groups") or not hasattr(self, "users"): return
 
         # We remove the missing commands from the config file
-        for group,commands in self.groups.items():
-            nullCommands = []            
-            
-            for cmd in commands:
-                if not cmd in self.cmdHandler.commands:
-                    nullCommands.append(cmd)
-            for cmd in nullCommands:
-                commands.remove(cmd)
+        #for group,commands in self.groups.items():
+        #    nullCommands = []
+        #
+        #    for cmd in commands:
+        #        if not cmd in self.cmdHandler.commands:
+        #            nullCommands.append(cmd)
+        #    for cmd in nullCommands:
+        #        commands.remove(cmd)
         
         # We clean up the groups by removing those without commands
-        nullGroups = []
-        for group,commands in self.groups.items():
-            if not len(commands) > 0:
-                nullGroups.append(group)
+        #nullGroups = []
+        #for group,commands in self.groups.items():
+        #    if not len(commands) > 0:
+        #        nullGroups.append(group)
         
-        for group in nullGroups:
-            self.groups.pop(group, None)
-            self.config.remove_option('GROUPS', group)
+        #for group in nullGroups:
+        #    self.groups.pop(group, None)
+        #    self.config.remove_option('GROUPS', group)
         
         # We write down groups
-        for group,commands in self.groups.items():
-            self.config.set('GROUPS',group, ';'.join(commands))
+        for group, data in self.groups.items():
+            data['commands'] = list(data['commands'])
+            self.config.set('GROUPS',group, json.dumps(data))
+            data['commands'] = set(data['commands'])
 
         # We clean up the users by removing those without a group
-        nullUsers = []
-        for user, group in self.authUsers.items():
-            if not len(group) > 0:
-                nullUsers.append(user)
+        #nullUsers = []
+        #for user, group in self.authUsers.items():
+        #    if not len(group) > 0:
+        #        nullUsers.append(user)
 
-        for user in nullUsers:
-            self.authUsers.pop(user, None)
-            self.config.remove_option('USERS', user)
+        #for user in nullUsers:
+        #    self.authUsers.pop(user, None)
+        #    self.config.remove_option('USERS', user)
 
         # We write down all the users
         for user,group in self.authUsers.items():
             self.config.set('USERS',user, ';'.join(group))
 
         # We clean up the banlist
-        nullBans = []
-        for user, bans in self.banList.items():
-            if not len(bans) > 0:
-                nullBans.append(user)
+        #nullBans = []
+        #for user, bans in self.banList.items():
+        #    if not len(bans) > 0:
+        #        nullBans.append(user)
 
-        for ban in nullBans:
-            self.banList.pop(ban, None)
-            self.config.remove_option('BANLIST', user)
+        #for ban in nullBans:
+        #    self.banList.pop(ban, None)
+        #    self.config.remove_option('BANLIST', user)
 
         # We write down the ban list
         for user, bans in self.banList.items():

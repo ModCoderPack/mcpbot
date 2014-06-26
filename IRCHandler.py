@@ -198,8 +198,9 @@ class CmdHandler(object):
         self.commands[command] = {'command':command, 'callback':callback, 'groups':groups, 'minarg':minarg, 'maxarg':maxarg, 'descargs':descargs, 'desccmd':desccmd, 'showhelp':showhelp}
         for group in groups:
             if not group in self.bot.groups:
-                self.bot.groups[group]= set()
-            self.bot.groups[group].add(command)
+                #self.bot.groups[group]= set()
+                self.bot.groups[group] = {'commands':set()}
+            self.bot.groups[group]['commands'].add(command)
 
         self.bot.updateConfig()
 
@@ -510,12 +511,12 @@ class CmdHandler(object):
                 return
 
 
-            if cmd['command']  in bot.groups['any']:
+            if cmd['command']  in bot.groups['any']['commands']:
                 userValid = True
 
             else:
-                for group, commands in bot.groups.items():
-                    if cmd['command'].lower() in commands and sender.regnick.lower() in bot.authUsers:
+                for group, data in bot.groups.items():
+                    if cmd['command'].lower() in data['commands'] and sender.regnick.lower() in bot.authUsers:
                         if group in bot.authUsers[sender.regnick.lower()]:
                             userValid = True
 
