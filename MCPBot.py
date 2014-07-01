@@ -366,6 +366,8 @@ class MCPBot(BotBase):
                 self.sendNotice(sender.nick, "§BERROR: The new name specified is not a valid Java identifier (yes, we are blocking Unicode; names must not start with a number and can contain A-Z, a-z, 0-9, _ and $).")
             elif result['result'] == -8:
                 self.sendNotice(sender.nick, "§BERROR: The new name specified is a Java keyword or literal.")
+            elif result['result'] == -9:
+                self.sendNotice(sender.nick, "§BERROR: The new name specified is too long (limit of 32 characters).")
 
 ########################################################################################################################
 def main():
