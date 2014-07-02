@@ -1,15 +1,13 @@
 
 - create a way to auto-generate a javadoc for methods based on param comments
-- create a way to export the CSV files based on the current state
-- add support for timestamp-based snapshots?
-- fix setters to ensure that new names adhere to java naming rules
+DONE - bspkrs - create a way to export the CSV files based on the current state
+DONE - bspkrs - add support for timestamp-based snapshots?
+DONE - bspkrs - fix setters to ensure that new names adhere to java naming rules
 
-- add undo/redo commands for all members
+STARTED - bspkrs - add undo/redo commands for all members
 
-- add command parameter to #help
+DONE - bspkrs - add command parameter to #help
 
 - The top group (currently admin) should be defined in the config file. As of now, it is not possible to have an admin group that can't run dangerous commands like sqlrequest.
 
 - better concurrency for throttling... seems like if multiple people are getting throttled messages it blocks the bot from sending messages to others
-
-- ThVortex> bspkrs: *PROBLEM* (or whatever the tag was supposed to be) Better filter anything non-ASCII from commands that set field names and such. I set field 82425 to an IRC colored name. You can also do nasty stuff with Unicode BIDI overrides.

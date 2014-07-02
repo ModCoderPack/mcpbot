@@ -127,7 +127,7 @@ class BotBase(object):
 
         self.registerCommand('sendraw',   self.sendRawCmd, ['admin'], 0, 999, "<irccmd>",    "Send a raw IRC cmd.")
 
-        self.registerCommand('help',      self.helpcmd,    ['any'],   0, 0, "",              "This help message.")
+        self.registerCommand('help',      self.helpcmd,    ['any'],   0, 1, "[<command>|all]", "Lists available commands or help about a specific command.")
 
     # User handling commands
     def useradd(self, bot, sender, dest, cmd, args):
@@ -289,22 +289,55 @@ class BotBase(object):
 
     # Default help command
     def helpcmd(self, bot, sender, dest, cmd, args):
-        maxcmdlen    = len(max(self.cmdHandler.commands.keys(), key=len))
-        maxargslen   = len(max([i['descargs'] for i in self.cmdHandler.commands.values()], key=len))
+        if len(args) == 0 or args[0] == 'all':
+            maxcmdlen    = len(max(self.cmdHandler.commands.keys(), key=len))
+            maxargslen   = len(max([i['descargs'] for i in self.cmdHandler.commands.values()], key=len))
 
-        formatstr = "§B%%%ds %%%ds§N : %%s"%(maxcmdlen * -1, maxargslen * -1)
+            formatstr = "§B%%%ds %%%ds§N : %%s"%(maxcmdlen * -1, maxargslen * -1)
+            showall = len(args) > 0 and args[0] == 'all'
+            allowedcmds = []
 
-        for cmd, cmdval in self.cmdHandler.commands.items():
-            if not cmdval['showhelp']:
-                continue
-            if 'any' in cmdval['groups']:
-                bot.sendNotice(sender.nick, formatstr%(cmd, cmdval['descargs'], cmdval['desccmd']))
-            elif sender.nick.lower() in self.authUsers:
-                groups = self.authUsers[sender.nick.lower()]
-                if 'admin' in groups:
-                    bot.sendNotice(sender.nick, formatstr%(cmd, cmdval['descargs'], cmdval['desccmd']))
-                elif len(groups.intersection(set(cmdval['groups']))) > 0:
-                    bot.sendNotice(sender.nick, formatstr%(cmd, cmdval['descargs'], cmdval['desccmd']))
+            for cmd, cmdval in self.cmdHandler.commands.items():
+                if not cmdval['showhelp']:
+                    continue
+                if 'any' in cmdval['groups']:
+                    if showall:
+                        bot.sendNotice(sender.nick, formatstr%(cmd, cmdval['descargs'], cmdval['desccmd']))
+                    else:
+                        allowedcmds.append(cmd)
+                elif sender.nick.lower() in self.authUsers:
+                    groups = self.authUsers[sender.nick.lower()]
+                    if 'admin' in groups or len(groups.intersection(set(cmdval['groups']))) > 0:
+                        if showall:
+                            bot.sendNotice(sender.nick, formatstr%(cmd, cmdval['descargs'], cmdval['desccmd']))
+                        else:
+                            allowedcmds.append(cmd)
+
+            if len(allowedcmds) > 0:
+                bot.sendNotice(sender.nick, "§BCommands you have access to use §N(type §B%shelp <command>§N for help on specific commands):" % self.cmdChar)
+                bot.sendNotice(sender.nick, ", ".join(allowedcmds))
+
+
+        else:
+            if args[0] in self.cmdHandler.commands:
+                showhelp = False
+                cmdval = self.cmdHandler.commands[args[0]]
+                if cmdval['showhelp']:
+                    if 'any' in cmdval['groups']:
+                        showhelp = True
+                    elif sender.nick.lower() in self.authUsers:
+                        groups = self.authUsers[sender.nick.lower()]
+                        showhelp = 'admin' in groups or len(groups.intersection(set(cmdval['groups']))) > 0
+                        if not showhelp:
+                            bot.sendNotice(sender.nick, "§BYou do not have permission to use the command for which help was requested.")
+                else:
+                    bot.sendNotice(sender.nick, "§BNo help is available for this command.")
+
+                if showhelp:
+                    bot.sendNotice(sender.nick, "§B%s %s§N : %s" % (cmdval['command'], cmdval['descargs'], cmdval['desccmd']))
+            else:
+                bot.sendNotice(sender.nick, "§B*** Invalid command specified ***")
+
 
     # DCC Request command, in by default
     def requestDCC(self, bot, sender, dest, cmd, args):
