@@ -1,5 +1,6 @@
 import psycopg2
 import psycopg2.extras
+from psycopg2 import DatabaseError, InterfaceError
 import Logger
 
 
@@ -35,7 +36,18 @@ class Database(object):
         self.conn.close()
         self.logger.info("Done")
 
+
+    def checkdbconn(self):
+        try:
+            with self.conn.cursor() as cur:
+                cur.execute("select 1;")
+        except (DatabaseError, InterfaceError):
+            self.conn = psycopg2.connect(database=self.db, user=self.user, password=self.pwd, host=self.host, port=self.port)
+            self.logger.info("*** Connection to database re-established ***")
+
+
     def execute(self, request, arguments=None):
+        self.checkdbconn()
         with self.conn.cursor(cursor_factory=psycopg2.extras.DictCursor) as cursor:
             try:
                 if arguments:
@@ -51,6 +63,7 @@ class Database(object):
                 return None, e
 
     def executeGet(self, request, arguments):
+        self.checkdbconn()
         with self.conn.cursor(cursor_factory=psycopg2.extras.DictCursor) as cursor:
             try:
                 cursor.execute(request, arguments)
