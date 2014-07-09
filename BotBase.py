@@ -127,7 +127,7 @@ class BotBase(object):
 
         self.registerCommand('sendraw',   self.sendRawCmd, ['admin'], 0, 999, "<irccmd>",    "Send a raw IRC cmd.")
 
-        self.registerCommand('help',      self.helpcmd,    ['any'],   0, 1, "[<command>|all]", "Lists available commands or help about a specific command.")
+        self.registerCommand('help',      self.helpcmd,    ['any'],   0, 1, "[<command>|*]", "Lists available commands or help about a specific command.")
 
     # User handling commands
     def useradd(self, bot, sender, dest, cmd, args):
@@ -289,12 +289,12 @@ class BotBase(object):
 
     # Default help command
     def helpcmd(self, bot, sender, dest, cmd, args):
-        if len(args) == 0 or args[0] == 'all':
+        if len(args) == 0 or args[0] == '*':
             maxcmdlen    = len(max(self.cmdHandler.commands.keys(), key=len))
             maxargslen   = len(max([i['descargs'] for i in self.cmdHandler.commands.values()], key=len))
 
             formatstr = "§B%%%ds %%%ds§N : %%s"%(maxcmdlen * -1, maxargslen * -1)
-            showall = len(args) > 0 and args[0] == 'all'
+            showall = len(args) > 0 and args[0] == '*'
             allowedcmds = []
 
             for cmd, cmdval in self.cmdHandler.commands.items():
