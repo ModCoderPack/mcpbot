@@ -291,7 +291,7 @@ class MCPBot(BotBase):
                     self.sendNotice(sender.nick, " ".format(**entry))
 
             else:
-                self.sendNotice(sender.nick, "{obf_name} §B~>§N {pkg_name}/{srg_name}".format(**entry))
+                self.sendNotice(sender.nick, "{obf_name} §B=>§N {pkg_name}/{srg_name}".format(**entry))
 
     # Setter results
 
@@ -371,6 +371,8 @@ class MCPBot(BotBase):
                 self.sendNotice(sender.nick, "§BERROR: The new name specified is a Java keyword or literal.")
             elif result['result'] == -9:
                 self.sendNotice(sender.nick, "§BERROR: The new name specified is too long (limit of 32 characters).")
+            elif result['result'] == -10:
+                self.sendNotice(sender.nick, "§BERROR: Constructor names cannot be changed.")
 
 ########################################################################################################################
 def main():
