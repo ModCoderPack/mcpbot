@@ -5,6 +5,7 @@ DONE - bspkrs - add support for timestamp-based snapshots?
 DONE - bspkrs - fix setters to ensure that new names adhere to java naming rules
 
 STARTED - bspkrs - add undo/redo commands for all members
+    - DB functions are mostly done (untested), haven't started on the bot commands yet.
 
 DONE - bspkrs - add command parameter to #help
 
