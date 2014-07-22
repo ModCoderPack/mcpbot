@@ -72,9 +72,11 @@ class MCPBot(BotBase):
 
 
     def onStartUp(self):
+        super(MCPBot, self).onStartUp()
         self.db.connect()
 
     def onShuttingDown(self):
+        super(MCPBot, self).onShuttingDown()
         self.db.disconnect()
 
     def sqlRequest(self, bot, sender, dest, cmd, args):
