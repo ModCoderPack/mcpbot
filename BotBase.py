@@ -3,7 +3,7 @@
 import Logger
 import AsyncSocket
 import asyncore
-import ConfigParser
+import time
 import DCCSocket
 import threading
 import datetime
@@ -64,16 +64,16 @@ class BotBase(object):
 
         self.nick        = self.config.get('BOT', 'NICK', "PyBot")
         self.cmdChar     = self.config.get('BOT', 'CMDCHAR', "*")
-        self.autoInvite  = self.config.getb('BOT', 'AUTOACCEPT', "true", 'Automatically accept invites ?')
-        self.autoJoin    = self.config.getb('BOT', 'AUTOJOIN', "true", 'Automatically join channels in the chan list ?')
+        self.autoInvite  = self.config.getb('BOT', 'AUTOACCEPT', "true", 'Automatically accept invites?')
+        self.autoJoin    = self.config.getb('BOT', 'AUTOJOIN', "true", 'Automatically join channels in the chan list?')
         self.lognormal   = self.config.get('BOT', 'LOGNORMAL', "botlog.log")
         self.logerrors   = self.config.get('BOT', 'LOGERRORS', "errors.log")
 
-        self.allowunregistered = self.config.getb('AUTH', 'ALLOWUNREGISTERED', "true", 'Can users without a registered nick emit commands ?')
+        self.allowunregistered = self.config.getb('AUTH', 'ALLOWUNREGISTERED', "true", 'Can users without a registered nick emit commands?')
         self.authtimeout       = self.config.geti('AUTH', 'TIMEOUT', "60", 'Authentication refresh delay in seconds. Auth will be considered valid for this period.')
 
         self.dccActive         = self.config.getb('DCC', 'ACTIVE',    "true")
-        self.dccAllowAnon      = self.config.getb('DCC', 'ALLOWANON', "false", 'Can users connect via DCC if the user is not properly IP identified ?')
+        self.dccAllowAnon      = self.config.getb('DCC', 'ALLOWANON', "false", 'Can users connect via DCC if the user is not properly IP identified?')
 
         self.logger = Logger.getLogger("%s-%s-%s"%(__name__, self.nick, self.host) , self.lognormal, self.logerrors)
 
@@ -105,7 +105,7 @@ class BotBase(object):
 
         self.socket = AsyncSocket.AsyncSocket(self, self.host, self.port, self.floodLimit)
         self.dccSocket = DCCSocket.DCCSocket(self)
-        self.cmdHandler = CmdHandler(self, self.socket)         
+        self.cmdHandler = CmdHandler(self, self.socket)
 
         self.registerCommand('dcc',       self.requestDCC, ['any'],   0, 0, "",              "Requests a DCC connection to the bot.")
 
@@ -305,8 +305,8 @@ class BotBase(object):
                         bot.sendNotice(sender.nick, formatstr%(cmd, cmdval['descargs'], cmdval['desccmd']))
                     else:
                         allowedcmds.append(cmd)
-                elif sender.nick.lower() in self.authUsers:
-                    groups = self.authUsers[sender.nick.lower()]
+                elif sender.regnick.lower() in self.authUsers:
+                    groups = self.authUsers[sender.regnick.lower()]
                     if 'admin' in groups or len(groups.intersection(set(cmdval['groups']))) > 0:
                         if showall:
                             bot.sendNotice(sender.nick, formatstr%(cmd, cmdval['descargs'], cmdval['desccmd']))
@@ -326,7 +326,7 @@ class BotBase(object):
                     if 'any' in cmdval['groups']:
                         showhelp = True
                     elif sender.nick.lower() in self.authUsers:
-                        groups = self.authUsers[sender.nick.lower()]
+                        groups = self.authUsers[sender.regnick.lower()]
                         showhelp = 'admin' in groups or len(groups.intersection(set(cmdval['groups']))) > 0
                         if not showhelp:
                             bot.sendNotice(sender.nick, "§BYou do not have permission to use the command for which help was requested.")
@@ -406,6 +406,7 @@ class BotBase(object):
             if not len(bans) > 0:
                 nullBans.append(user)
 
+        # TODO: I'm not sure what this is supposed to be doing, but the user var is probably None
         for ban in nullBans:
             self.banList.pop(ban, None)
             self.config.remove_option('BANLIST', user)

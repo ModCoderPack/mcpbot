@@ -343,7 +343,7 @@ class CmdHandler(object):
         if sender.nick in self.bot.users:
             self.bot.users[sender.nick].unauthenticate()                    
             self.bot.users[sender.nick].whoisEvent.clear()
-        self.handleEvents('Nick', sender, params)        
+        self.handleEvents('Nick', sender, params)
 
     def onQUIT(self, sender, params):
         self.logger.debug("[S : %s] [M : %s]"%(sender.nick, " ".join(params)))        
