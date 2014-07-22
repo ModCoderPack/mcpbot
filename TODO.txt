@@ -12,3 +12,47 @@ DONE - bspkrs - add command parameter to #help
 - The top group (currently admin) should be defined in the config file. As of now, it is not possible to have an admin group that can't run dangerous commands like sqlrequest.
 
 - better concurrency for throttling... seems like if multiple people are getting throttled messages it blocks the bot from sending messages to others
+
+
+suggestions from xaero:
+
+Feature #1)  Migration helper
+I wrote a python script that helped me to migrate mappings and comments from 1.6->1.7.  It would take two arguments, new 1.7 srg name, and old 1.6 mcp name, and it would prepare a set of 'set' commands to migrate mappings.  I would manually clean up any comment formatting before pasting into an MCPBot dcc chat.  Can the bot streamline this somewhat?
+
+USE CASE #1) No problems with the old name/comment
+
+> migrate do newsrg oldmcp oldversion
+
+USE CASE #2) There was a typo/problem
+
+> migrate show newsrg oldmcp oldversion
+ - 1) the bot shows the necessary set command -
+ scf newsrg oldmcpname oldmcpcomment
+ - 2) the user makes changes
+ - 3) the user submits the command
+> scf newsrg oldmcpname_revised oldmcpcomment_revised
+
+You can of course specify the grammar however.
+
+Feature #2)  Changelog
+I wrote a bash script that would generate a changelog of changed fields/methods from MCPTest every time I ran the script, in the dual-column format of `diff -y --suppress-common-lines old.csv new.csv`.  The old MCPBot has 'getlog' but the output isn't ordered, nor can you restrict it.  It would be nice to specify a range, e.g. last 30 changes, or all changes within the last 3 days, or a combination thereof.
+
+Feature #3)  Not yet migrated MCP mappings
+Another script of mine generated a diff of mcp names that were in 1.6, but not in 1.7 latest.  This should be much simpler with the data in a DB (exclusive left outer join).
+
+Feature #4)  Not yet migrated comments
+Sometimes people set the correct MCP name, but 'forget' the comment from the previous version.  This command would be semi-automated, allowing the reviewer to correct any javadoc mistakes before committing (like feature #1 perhaps).
+
+Feature #5)  SRGs without MCP names
+I planned to make something that would make a report of what classes were yet to be mapped, and ranked by percentage.  This is to help decide what to deobfuscate.  This might be more appropriate for your MMV than the bot, but it'd be nice for the bot to do it all.
+
+In a similar vein, maybe a dumbed down version where you can list the fields/methods for a class, with output ordered.
+
+Feature #6)  Synchronize client/server - NOT NEEDED
+
+Feature #7)  In-demand MCP names that don't exist
+This is to direct deobfuscation efforts to SRG fields that are in-demand, and do not yet have MCP names.  Currently, the only way I can think to implement this is to log all of the get queries (anonymously, of course), and generate reports.
+
+Feature #8)  Conflict resolution
+Already discussed on IRC, but it bears repeating.  Fields/methods, as well as classes.  If precedent rules, at least log the attempt (this might not be appropriate for the bot though).
+
