@@ -1,8 +1,10 @@
 # coding=utf-8
 from BotBase import BotBase, BotHandler
 from Database import Database
-import sys
-import re
+from optparse import OptionParser
+import time
+
+__version__ = "0.1.0"
 
 class MCPBot(BotBase):
     def __init__(self, nspass):
@@ -378,25 +380,66 @@ class MCPBot(BotBase):
 
 ########################################################################################################################
 def main():
-    if not len(sys.argv) == 2:
-        print "Usage : MCPBot.py <nickserv password>"
-        return
+
+    parser = OptionParser(version='%prog ' + __version__,
+                          usage="%prog [options]")
+    parser.add_option('-N', '--ns-pass', help='required: the NICKSERV password to use')
+    parser.add_option('-W', '--wait', default='15', help='number of seconds to wait when attempting to restore the IRC connection [default: %default]')
+    parser.add_option('-M', '--max-reconnects', default='10', help='maximum number of times to attempt to restore the IRC connection [default: %default]')
+    parser.add_option('-R', '--reset-attempts-time', default='300', help='minimum number of seconds that must pass before resetting the number of attempted reconnects [default: %default]')
+
+    options, args = parser.parse_args()
+
+    if not options.ns_pass:
+        parser.print_help()
+        exit()
 
     restart = True
-    ns_pass = sys.argv[1]
+    reconnect_wait = int(options.wait)
+    reset_attempt_limit = int(options.reset_attempts_time)
+    max_reconnects = int(options.max_reconnects)
+    last_start = 0
+    reconnect_attempts = 0
+    throttle_sleep_time = 60
 
     while restart:
-        BotHandler.addBot('mcpbot', MCPBot(nspass = ns_pass))
+        bot = MCPBot(nspass = options.ns_pass)
+
+        if last_start != 0 and reconnect_attempts != 0:
+            bot.logger.warning('Attempting IRC reconnection in %d seconds...' % reconnect_wait)
+            time.sleep(reconnect_wait)
+
+        BotHandler.addBot('mcpbot', bot)
+
         try:
-            BotHandler.runAll()
+            BotHandler.startAll()
+            last_start = time.time()
+            BotHandler.loop()
         except SystemExit as e:
-            if e.code == 404:
-                BotHandler.remBot('mcpbot')
+            bot = BotHandler.remBot('mcpbot')
+
+            if bot and bot.logger:
+                logger = bot.logger
+
+                if e.code == 404:
+                    logger.warning('IRC connection was lost.')
+
+                    if time.time() - last_start > reset_attempt_limit:
+                        reconnect_attempts = 0
+                        throttle_sleep_time = 60
+
+                    reconnect_attempts += 1
+                    restart = reconnect_attempts <= max_reconnects
+                elif e.code == 500:
+                    logger.debug('Sleeping for %d seconds before further reconnect attempts.' % throttle_sleep_time)
+                    time.sleep(throttle_sleep_time)
+
+                    if throttle_sleep_time < reset_attempt_limit:
+                        throttle_sleep_time += 10
+                else:
+                    raise e
             else:
-                restart = False
-        except Exception as e:
-            BotHandler.remBot('mcpbot')
-            restart = False
+                raise e
 
 
 if __name__ == "__main__":

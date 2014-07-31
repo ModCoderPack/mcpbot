@@ -99,10 +99,10 @@ class DCCSocket(asyncore.dispatcher):
                 sender = self.pending[targip]                
                 welcomeMsg.append("DCC Session activated")
                 welcomeMsg.append("You can use 'help' to see the available commands.")
-                welcomeMsg.append("Have a nice day !")
+                welcomeMsg.append("Have a nice day!")
 
             if not targip in self.pending and not self.bot.dccAllowAnon:
-                self.logger.error("Address %s not found in the pending connection list !"%targip)
+                self.logger.error("Address %s not found in the pending connection list!"%targip)
                 return
 
             if not targip in self.pending and self.bot.dccAllowAnon:

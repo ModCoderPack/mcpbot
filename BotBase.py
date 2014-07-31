@@ -21,12 +21,16 @@ class BotHandler(object):
     @classmethod
     def remBot(cls, botname):
         if botname in cls.botList and cls.botList[botname]:
+            retval = cls.botList[botname]
             cls.botList.__delitem__(botname)
+            retval.onShuttingDown()
+            return retval
+        return None
 
     @classmethod
     def runAll(cls):
-        cls.__startAll()
-        cls.__loop()
+        cls.startAll()
+        cls.loop()
 
     @classmethod
     def stopAll(cls):
@@ -34,20 +38,18 @@ class BotHandler(object):
             bot.onShuttingDown()
 
     @classmethod
-    def __loop(cls):
+    def loop(cls):
         try:
             asyncore.loop()
         except KeyboardInterrupt as e:
-            print "Shutting down."
+            print("Shutting down.")
             cls.stopAll()
-            asyncore.close_all()
-        except Exception as e:
+        except:
             cls.stopAll()
-            asyncore.close_all()
-            raise e
+            raise
 
     @classmethod
-    def __startAll(cls):
+    def startAll(cls):
         for bot in cls.botList.values():
             bot.onStartUp()
             bot.connect()
@@ -80,10 +82,14 @@ class BotBase(object):
         self.logerrors   = self.config.get('BOT', 'LOGERRORS', "errors.log")
 
         self.allowunregistered = self.config.getb('AUTH', 'ALLOWUNREGISTERED', "true", 'Can users without a registered nick emit commands?')
-        self.authtimeout       = self.config.geti('AUTH', 'TIMEOUT', "60", 'Authentication refresh delay in seconds. Auth will be considered valid for this period.')
+        self.authtimeout       = self.config.geti('AUTH', 'TIMEOUT', "60", 'User authentication refresh delay in seconds. User auth will be considered valid for this period.')
 
         self.dccActive         = self.config.getb('DCC', 'ACTIVE',    "true")
         self.dccAllowAnon      = self.config.getb('DCC', 'ALLOWANON', "false", 'Can users connect via DCC if the user is not properly IP identified?')
+
+        self.monitorevents  = self.config.getb('EVENTMONITOR', 'MONITOREVENTS', "true", "Should we periodically check the last event time to see if the connection was severed? NOTE: it is the responsiblity of the bot implementation to handle reconnection if desired. This check will call sys.exit(404) if a timeout occurs.")
+        self.monitorperiod  = self.config.geti('EVENTMONITOR', 'MONITORPERIOD', "60", "The number of seconds between event monitoring checks.")
+        self.monitortimeout = self.config.geti('EVENTMONITOR', 'MONITORTIMEOUT', "240", "The minimum number of seconds that must pass without an event before we consider the connection dead.")
 
         self.logger = Logger.getLogger("%s-%s-%s"%(__name__, self.nick, self.host) , self.lognormal, self.logerrors)
 
@@ -364,69 +370,67 @@ class BotBase(object):
 
     # Config update
     def updateConfig(self):
-        fp = open(self.configfile, 'w')
-        if hasattr(self, "channels"):
-            self.config.set('SERVER', 'CHANNELS', ';'.join(self.channels))
+        with open(self.configfile, 'w') as fp:
+            if hasattr(self, "channels"):
+                self.config.set('SERVER', 'CHANNELS', ';'.join(self.channels))
 
-        if not hasattr(self, "groups") or not hasattr(self, "users"): return
+            if not hasattr(self, "groups") or not hasattr(self, "users"): return
 
-        # We remove the missing commands from the config file
-        for group,data in self.groups.items():
-            nullCommands = []
+            # We remove the missing commands from the config file
+            for group,data in self.groups.items():
+                nullCommands = []
 
-            for cmd in data['commands']:
-                if not cmd in self.cmdHandler.commands:
-                    nullCommands.append(cmd)
-            for cmd in nullCommands:
-                data['commands'].remove(cmd)
-        
-        # We clean up the groups by removing those without commands
-        nullGroups = []
-        for group,data in self.groups.items():
-            if not len(data['commands']) > 0:
-                nullGroups.append(group)
-        
-        for group in nullGroups:
-            self.groups.pop(group, None)
-            self.config.remove_option('GROUPS', group)
-        
-        # We write down groups
-        for group, data in self.groups.items():
-            data['commands'] = list(data['commands'])
-            self.config.set('GROUPS',group, json.dumps(data))
-            data['commands'] = set(data['commands'])
+                for cmd in data['commands']:
+                    if not cmd in self.cmdHandler.commands:
+                        nullCommands.append(cmd)
+                for cmd in nullCommands:
+                    data['commands'].remove(cmd)
 
-        # We clean up the users by removing those without a group
-        nullUsers = []
-        for user, group in self.authUsers.items():
-            if not len(group) > 0:
-                nullUsers.append(user)
+            # We clean up the groups by removing those without commands
+            nullGroups = []
+            for group,data in self.groups.items():
+                if not len(data['commands']) > 0:
+                    nullGroups.append(group)
 
-        for user in nullUsers:
-            self.authUsers.pop(user, None)
-            self.config.remove_option('USERS', user)
+            for group in nullGroups:
+                self.groups.pop(group, None)
+                self.config.remove_option('GROUPS', group)
 
-        # We write down all the users
-        for user,group in self.authUsers.items():
-            self.config.set('USERS',user, ';'.join(group))
+            # We write down groups
+            for group, data in self.groups.items():
+                data['commands'] = list(data['commands'])
+                self.config.set('GROUPS',group, json.dumps(data))
+                data['commands'] = set(data['commands'])
 
-        # We clean up the banlist
-        nullBans = []
-        for user, bans in self.banList.items():
-            if not len(bans) > 0:
-                nullBans.append(user)
+            # We clean up the users by removing those without a group
+            nullUsers = []
+            for user, group in self.authUsers.items():
+                if not len(group) > 0:
+                    nullUsers.append(user)
 
-        # TODO: I'm not sure what this is supposed to be doing, but the user var is probably None
-        for ban in nullBans:
-            self.banList.pop(ban, None)
-            self.config.remove_option('BANLIST', user)
+            for user in nullUsers:
+                self.authUsers.pop(user, None)
+                self.config.remove_option('USERS', user)
 
-        # We write down the ban list
-        for user, bans in self.banList.items():
-            self.config.set('BANLIST',user, ';'.join(bans))
+            # We write down all the users
+            for user,group in self.authUsers.items():
+                self.config.set('USERS',user, ';'.join(group))
 
-        self.config.write(fp)
-        fp.close()
+            # We clean up the banlist
+            nullBans = []
+            for user, bans in self.banList.items():
+                if not len(bans) > 0:
+                    nullBans.append(user)
+
+            for ban in nullBans:
+                self.banList.pop(ban, None)
+                self.config.remove_option('BANLIST', ban)
+
+            # We write down the ban list
+            for user, bans in self.banList.items():
+                self.config.set('BANLIST',user, ';'.join(bans))
+
+            self.config.write(fp)
 
     def run(self):
         if self.host == "":
@@ -440,9 +444,9 @@ class BotBase(object):
         except KeyboardInterrupt as e:
             self.logger.info("Shutting down.")
             self.onShuttingDown()
-        except Exception as e:
+        except:
             self.onShuttingDown()
-            raise e
+            raise
 
     def connect(self):
         self.socket.doConnect()
@@ -451,8 +455,10 @@ class BotBase(object):
         pass
 
     def onShuttingDown(self):
-        asyncore.close_all()
-        pass
+        self.socket.close()
+        for user in self.users:
+            if user.dccSocket:
+                user.dccSocket.close()
 
     #IRC COMMANDS QUICK ACCESS
     def sendRaw(self, msg):
@@ -463,14 +469,14 @@ class BotBase(object):
         
     def sendNotice(self, target, msg):
         msgColor = Color.doColors(str(msg))
-        if target in self.users and self.users[target].dccSocket != None:
+        if target in self.users and self.users[target].dccSocket:
             self.users[target].dccSocket.sendMsg(msgColor)
         else:
             self.sendRaw(CmdGenerator.getNOTICE(target, msgColor))
             
     def sendMessage(self, target, msg):
         msgColor = Color.doColors(str(msg))
-        if target in self.users and self.users[target].dccSocket != None:
+        if target in self.users and self.users[target].dccSocket:
             self.users[target].dccSocket.sendMsg(msgColor)
         else:
             self.sendRaw(CmdGenerator.getPRIVMSG(target, msgColor))

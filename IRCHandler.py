@@ -2,6 +2,7 @@
 import threading
 import Logger
 import re
+import sys
 import traceback
 import time
 from   collections import OrderedDict
@@ -156,6 +157,13 @@ class Color(object):
 
 ###########################################################################################################
 
+def getDurationStr(timeint):
+    formatstr = '%M:%S'
+    if timeint >= 3600:
+        formatstr = '%H:%M:%S'
+
+    return time.strftime(formatstr, time.gmtime(timeint))
+
 class CmdHandler(object):
     def __init__(self, bot, socket):
         self.bot     = bot
@@ -191,6 +199,21 @@ class CmdHandler(object):
 
         }
 
+        self.last_event_time = time.time()
+        self.next_event_check = time.time()
+        if self.bot.monitorevents:
+            self.monitorEvents()
+
+    def monitorEvents(self):
+        delta = time.time() - self.last_event_time
+        if delta >= self.bot.monitortimeout:
+            self.logger.warning('Event Monitor: time since last event (%s) exceeds timeout (%s).' % (getDurationStr(delta), getDurationStr(self.bot.monitortimeout)))
+            self.socket.handle_close()
+        else:
+            self.logger.debug('Event Monitor: time since last event: %s' % getDurationStr(delta))
+            self.next_event_check = self.next_event_check + self.bot.monitorperiod
+            threading.Timer(self.next_event_check - time.time(), self.monitorEvents).start()
+
     def registerCommand(self, command, callback, groups, minarg, maxarg, descargs = None, desccmd = None, showhelp = True):
         if not groups:
             groups = ['any']
@@ -210,6 +233,7 @@ class CmdHandler(object):
         self.callbacks[event].append(callback)
 
     def handleEvents(self, event, sender, params):
+        self.last_event_time = time.time()
         if event in self.callbacks:
            for callback in self.callbacks[event]:
                 cmdThread = threading.Thread(target=self.threadedEvent, name="%s:%s"%(sender.toString(),event), args=(event, callback, self.bot, sender, params))
@@ -225,10 +249,17 @@ class CmdHandler(object):
                 self.logger.error(line)            
 
     def parseCmd(self, msg):
-        if msg.strip() == "":
-            return
+        self.last_event_time = time.time()
+        msg = msg.strip()
 
-        elems = msg.strip().split()
+        if msg == "":
+            return
+        elif msg.find('throttled') != -1 or msg.find('Reconnecting too fast') != -1:
+            #ERROR :Reconnecting too fast, throttled.
+            self.logger.error(msg)
+            sys.exit(500)
+
+        elems = msg.split()
 
         if elems[0][0] == ':':
             self.sender = Sender(elems[0])
@@ -257,7 +288,7 @@ class CmdHandler(object):
                 for line in traceback.format_exc().split('\n'):
                     self.logger.error(line)                
         else:
-            self.logger.debug("Cmd > %s %s %s"%(self.sender, self.cmd, self.params))            
+            self.logger.debug("Unhandled Cmd > %s %s %s"%(self.sender, self.cmd, self.params))
 
     #######################################################
     #IRC Commands
