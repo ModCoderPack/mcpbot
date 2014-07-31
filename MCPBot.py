@@ -382,9 +382,22 @@ def main():
         print "Usage : MCPBot.py <nickserv password>"
         return
 
-    bot = MCPBot(nspass = sys.argv[1])
-    BotHandler.addBot(bot)
-    BotHandler.runAll()
+    restart = True
+    ns_pass = sys.argv[1]
+
+    while restart:
+        BotHandler.addBot('mcpbot', MCPBot(nspass = ns_pass))
+        try:
+            BotHandler.runAll()
+        except SystemExit as e:
+            if e.code == 404:
+                BotHandler.remBot('mcpbot')
+            else:
+                restart = False
+        except Exception as e:
+            BotHandler.remBot('mcpbot')
+            restart = False
+
 
 if __name__ == "__main__":
     main()

@@ -3,7 +3,6 @@
 import Logger
 import AsyncSocket
 import asyncore
-import time
 import DCCSocket
 import threading
 import datetime
@@ -12,11 +11,17 @@ from IRCHandler import CmdHandler,CmdGenerator,Sender,Color, EOL
 from ConfigHandler import AdvConfigParser
 
 class BotHandler(object):
-    botList = []
+    botList = {}
 
     @classmethod
-    def addBot(cls, bot):
-        cls.botList.append(bot)
+    def addBot(cls, botname, bot):
+        if not botname in cls.botList or not cls.botList[botname]:
+            cls.botList[botname] = bot
+
+    @classmethod
+    def remBot(cls, botname):
+        if botname in cls.botList and cls.botList[botname]:
+            cls.botList.__delitem__(botname)
 
     @classmethod
     def runAll(cls):
@@ -24,21 +29,26 @@ class BotHandler(object):
         cls.__loop()
 
     @classmethod
+    def stopAll(cls):
+        for bot in cls.botList.values():
+            bot.onShuttingDown()
+
+    @classmethod
     def __loop(cls):
         try:
             asyncore.loop()
         except KeyboardInterrupt as e:
             print "Shutting down."
-            for bot in cls.botList:
-                bot.onShuttingDown()
+            cls.stopAll()
+            asyncore.close_all()
         except Exception as e:
-            for bot in cls.botList:
-                bot.onShuttingDown()
+            cls.stopAll()
+            asyncore.close_all()
             raise e
 
     @classmethod
     def __startAll(cls):
-        for bot in cls.botList:
+        for bot in cls.botList.values():
             bot.onStartUp()
             bot.connect()
 
@@ -431,6 +441,7 @@ class BotBase(object):
             self.logger.info("Shutting down.")
             self.onShuttingDown()
         except Exception as e:
+            self.onShuttingDown()
             raise e
 
     def connect(self):
@@ -440,6 +451,7 @@ class BotBase(object):
         pass
 
     def onShuttingDown(self):
+        asyncore.close_all()
         pass
 
     #IRC COMMANDS QUICK ACCESS

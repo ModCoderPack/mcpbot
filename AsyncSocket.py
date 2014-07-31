@@ -1,6 +1,7 @@
 import asyncore, socket
 import Logger
 import Queue
+import sys
 import time
 from IRCHandler import CmdGenerator
 
@@ -31,6 +32,7 @@ class AsyncSocket(asyncore.dispatcher):
     def handle_close(self):
         self.logger.debug("Closing...")
         self.close()
+        sys.exit(404)
 
     def handle_read(self):
         self.recvBuffer = self.recvBuffer + self.recv(8192)
