@@ -199,6 +199,7 @@ class CmdHandler(object):
 
         }
 
+        self.monitor_thread = None
         self.last_event_time = time.time()
         self.next_event_check = time.time()
         if self.bot.monitorevents:
@@ -212,7 +213,8 @@ class CmdHandler(object):
         else:
             self.logger.debug('Event Monitor: time since last event: %s' % getDurationStr(delta))
             self.next_event_check = self.next_event_check + self.bot.monitorperiod
-            threading.Timer(self.next_event_check - time.time(), self.monitorEvents).start()
+            self.monitor_thread = threading.Timer(self.next_event_check - time.time(), self.monitorEvents)
+            self.monitor_thread.start()
 
     def registerCommand(self, command, callback, groups, minarg, maxarg, descargs = None, desccmd = None, showhelp = True):
         if not groups:

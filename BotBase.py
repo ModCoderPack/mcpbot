@@ -7,6 +7,7 @@ import DCCSocket
 import threading
 import datetime
 import json
+import sys
 from IRCHandler import CmdHandler,CmdGenerator,Sender,Color, EOL
 from ConfigHandler import AdvConfigParser
 
@@ -33,7 +34,7 @@ class BotHandler(object):
         cls.loop()
 
     @classmethod
-    def setKilled(cls):
+    def setAllKilled(cls):
         for bot in cls.botList.values():
             bot.isKilled = True
 
@@ -48,7 +49,7 @@ class BotHandler(object):
             asyncore.loop()
         except KeyboardInterrupt as e:
             print("Shutting down.")
-            cls.setKilled()
+            cls.setAllKilled()
             cls.stopAll()
         except:
             cls.stopAll()
@@ -363,10 +364,6 @@ class BotBase(object):
             else:
                 bot.sendNotice(sender.nick, "§B*** Invalid command specified ***")
 
-    def killSelf(self, bot, sender, dest, cmd, args):
-        self.isKilled = True
-        self.onShuttingDown()
-
     # DCC Request command, in by default
     def requestDCC(self, bot, sender, dest, cmd, args):
         if self.dccActive:
@@ -455,6 +452,7 @@ class BotBase(object):
             asyncore.loop()
         except KeyboardInterrupt as e:
             self.logger.info("Shutting down.")
+            self.isKilled = True
             self.onShuttingDown()
         except:
             self.onShuttingDown()
@@ -467,10 +465,17 @@ class BotBase(object):
         pass
 
     def onShuttingDown(self):
+        if self.cmdHandler.monitor_thread:
+            self.cmdHandler.monitor_thread.cancel()
         self.socket.close()
         for user in self.users.values():
             if user.dccSocket:
                 user.dccSocket.close()
+
+    def killSelf(self, bot, sender, dest, cmd, args):
+        self.isKilled = True
+        self.onShuttingDown()
+        sys.exit(0)
 
     #IRC COMMANDS QUICK ACCESS
     def sendRaw(self, msg):
@@ -511,9 +516,7 @@ class BotBase(object):
         if not self.usersInfo[target].ctcpEvent['TIME'].wait(10):
             return
         
-        timePatterns = []
-        timePatterns.append("%a %b %d %H:%M:%S")
-        timePatterns.append("%a %b %d %H:%M:%S %Y")
+        timePatterns = ["%a %b %d %H:%M:%S", "%a %b %d %H:%M:%S %Y"]
         retval = None        
         
         for pattern in timePatterns:
