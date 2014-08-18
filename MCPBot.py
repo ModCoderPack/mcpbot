@@ -162,8 +162,8 @@ class MCPBot(BotBase):
         member_type = 'method'
         if cmd['command'].find('sf') > -1: member_type = 'field'
         elif cmd['command'].find('sp') > -1: member_type = 'method_param'
-        # should be safe to assume the user is in authUsers since we made it to the callback
-        bypass_lock = 'lock_control' in self.authUsers[sender.regnick.lower()]
+        # should be safe to assume the user is in authUsers since we made it to the callback ... NOPE
+        bypass_lock = sender.regnick.lower() in self.authUsers and 'lock_control' in self.authUsers[sender.regnick.lower()]
         is_forced = cmd['command'][0] == 'f'
         if is_forced:
             self.sendNotice(sender.nick, "§R!!! CAREFUL, YOU ARE FORCING AN UPDATE TO A NAMED %s !!!" % member_type.upper().replace('_', ' '))
