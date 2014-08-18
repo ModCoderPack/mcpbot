@@ -4,6 +4,7 @@ import time
 import Queue
 import urllib
 from IRCHandler import Sender
+from contextlib import closing
 
 EOL = "\r\n"
 CTCPTAG = chr(1)
@@ -126,9 +127,14 @@ class DCCSocket(asyncore.dispatcher):
                 self.bot.sendMessage(sender.nick, msg)
 
     def getAddr(self):
+        with closing(socket.socket(socket.AF_INET, socket.SOCK_DGRAM)) as s:
+            s.connect(('8.8.8.8', 80))
+            return s.getsockname()[0], self.socket.getsockname()[1]
         #return urllib.urlopen('http://icanhazip.com/').readlines()[0].strip(), self.socket.getsockname()[1]
         #return socket.gethostbyname(self.bot.hostname), self.socket.getsockname()[1]
-        return self.socket.getsockname()[0], self.socket.getsockname()[1]
+    #     return self.socket.getsockname()[0], self.socket.getsockname()[1]
+    #
+    # python -c "import socket; s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM); s.connect(('8.8.8.8', 80)); print(s.getsockname()[0]); s.close()"
 
     def addPending(self, sender):
         try:
