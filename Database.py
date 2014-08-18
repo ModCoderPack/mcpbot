@@ -76,7 +76,7 @@ class Database(object):
     # Getters
 
     def getVersions(self, limit=0):
-        sqlrequest = "select * from mcp.version_vw order by mc_version_code desc "
+        sqlrequest = "select * from mcp.version_vw order by mcp_version_code desc "
         if limit > 0: sqlrequest += "limit " + str(limit)
         self.logger.debug(sqlrequest)
         return self.execute(sqlrequest)
