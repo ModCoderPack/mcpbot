@@ -33,6 +33,11 @@ class BotHandler(object):
         cls.loop()
 
     @classmethod
+    def setKilled(cls):
+        for bot in cls.botList.values():
+            bot.isKilled = True
+
+    @classmethod
     def stopAll(cls):
         for bot in cls.botList.values():
             bot.onShuttingDown()
@@ -43,6 +48,7 @@ class BotHandler(object):
             asyncore.loop()
         except KeyboardInterrupt as e:
             print("Shutting down.")
+            cls.setKilled()
             cls.stopAll()
         except:
             cls.stopAll()
@@ -118,10 +124,13 @@ class BotBase(object):
 
         self.isIdentified = False   #Turn to true when nick/ident commands are sent
         self.isReady      = False   #Turn to true after RPL_ENDOFMOTD. Every join/nick etc commands should be sent once this is True.
+        self.isKilled     = False   #This is set to true by the stop command to bypass restarting
 
         self.socket = AsyncSocket.AsyncSocket(self, self.host, self.port, self.floodLimit)
         self.dccSocket = DCCSocket.DCCSocket(self)
         self.cmdHandler = CmdHandler(self, self.socket)
+
+        self.registerCommand('stop', self.killSelf, ['admin'], 0, 0, "", "Kills the bot.")
 
         self.registerCommand('dcc',       self.requestDCC, ['any'],   0, 0, "",              "Requests a DCC connection to the bot.")
 
@@ -354,6 +363,9 @@ class BotBase(object):
             else:
                 bot.sendNotice(sender.nick, "§B*** Invalid command specified ***")
 
+    def killSelf(self, bot, sender, dest, cmd, args):
+        self.isKilled = True
+        self.onShuttingDown()
 
     # DCC Request command, in by default
     def requestDCC(self, bot, sender, dest, cmd, args):

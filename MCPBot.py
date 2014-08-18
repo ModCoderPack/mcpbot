@@ -418,7 +418,7 @@ def main():
         except SystemExit as e:
             bot = BotHandler.remBot('mcpbot')
 
-            if bot and bot.logger:
+            if bot and bot.logger and not bot.isKilled:
                 logger = bot.logger
 
                 if e.code == 404:
