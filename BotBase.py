@@ -456,7 +456,7 @@ class BotBase(object):
 
     def onShuttingDown(self):
         self.socket.close()
-        for user in self.users:
+        for user in self.users.values():
             if user.dccSocket:
                 user.dccSocket.close()
 

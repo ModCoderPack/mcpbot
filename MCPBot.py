@@ -247,7 +247,7 @@ class MCPBot(BotBase):
                 self.sendNotice(sender.nick,        "§UMCP§N        : {class_pkg_name}/{class_srg_name}.{mcp_name}".format(**entry))
                 self.sendNotice(sender.nick,        "§ULocked§N     : {is_locked}".format(**entry))
                 self.sendNotice(sender.nick,        "§UDescriptor§N : {obf_descriptor} §B=>§N {srg_descriptor}".format(**entry))
-                if 'srg_params' in entry:
+                if 'srg_params' in entry and entry['srg_params']:
                     self.sendNotice(sender.nick,    "§UParameters§N : {srg_params} §B=>§N {mcp_params}".format(**entry))
                 self.sendNotice(sender.nick,        "§UComment§N    : {comment}".format(**entry))
 
