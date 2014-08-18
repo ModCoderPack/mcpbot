@@ -126,9 +126,9 @@ class DCCSocket(asyncore.dispatcher):
                 self.bot.sendMessage(sender.nick, msg)
 
     def getAddr(self):
-        return urllib.urlopen('http://icanhazip.com/').readlines()[0].strip(), self.socket.getsockname()[1]
+        #return urllib.urlopen('http://icanhazip.com/').readlines()[0].strip(), self.socket.getsockname()[1]
         #return socket.gethostbyname(self.bot.hostname), self.socket.getsockname()[1]
-        #return self.socket.getsockname()[0], self.socket.getsockname()[1]
+        return self.socket.getsockname()[0], self.socket.getsockname()[1]
 
     def addPending(self, sender):
         try:
