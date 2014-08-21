@@ -378,9 +378,9 @@ class MCPBot(BotBase):
             elif result['result'] == -10:
                 self.sendNotice(sender.nick, "§BERROR: Constructor names cannot be changed.")
             elif result['result'] == -11:
-                self.sendNotice(sender.nick, "§BWARNING: Final field names should use all uppercase letters.")
+                self.sendNotice(sender.nick, "§BWARNING: Final static field names should use all uppercase letters.")
             elif result['result'] == -12:
-                self.sendNotice(sender.nick, "§BWARNING: Do not begin method, non-final field, or parameter names with an uppercase letter.")
+                self.sendNotice(sender.nick, "§BWARNING: Do not begin method, non-final-static field, or parameter names with an uppercase letter.")
             elif result['result'] == -13:
                 self.sendNotice(sender.nick, "§BWARNING: New parameter name duplicates a class field name within scope. Use fsp if you are ABSOLUTELY sure that it won't cause issues. We will find you and crucify you if you break shit...")
             else:
