@@ -38,12 +38,12 @@ class MCPBot(BotBase):
         self.registerCommand('sp',  self.setMember,  ['any'],        2, 999, "<srg name> <new name> [<comment>]", "Sets the MCP name and comment for the SRG method parameter specified. SRG index can also be used.")
         self.registerCommand('fsp', self.setMember,  ['maintainer'], 2, 999, "<srg name> <new name> [<comment>]", "Force sets the MCP name and comment for the SRG method parameter specified. SRG index can also be used.")
 
-        self.registerCommand('lf',  self.setLocked,  ['lock_control'], 1, 1, "<srg name>", "Locks the given field from being edited. SRG index can also be used.")
-        self.registerCommand('lm',  self.setLocked,  ['lock_control'], 1, 1, "<srg name>", "Locks the given method from being edited. SRG index can also be used.")
-        self.registerCommand('lp',  self.setLocked,  ['lock_control'], 1, 1, "<srg name>", "Locks the given method parameter from being edited. SRG index can also be used.")
-        self.registerCommand('ulf', self.setLocked,  ['lock_control'], 1, 1, "<srg name>", "Unlocks the given field to allow editing. SRG index can also be used.")
-        self.registerCommand('ulm', self.setLocked,  ['lock_control'], 1, 1, "<srg name>", "Unlocks the given method to allow editing. SRG index can also be used.")
-        self.registerCommand('ulp', self.setLocked,  ['lock_control'], 1, 1, "<srg name>", "Unlocks the given method parameter to allow editing. SRG index can also be used.")
+        self.registerCommand('lockf',  self.setLocked,  ['lock_control'], 1, 1, "<srg name>", "Locks the given field from being edited. SRG index can also be used.")
+        self.registerCommand('lockm',  self.setLocked,  ['lock_control'], 1, 1, "<srg name>", "Locks the given method from being edited. SRG index can also be used.")
+        self.registerCommand('lockp',  self.setLocked,  ['lock_control'], 1, 1, "<srg name>", "Locks the given method parameter from being edited. SRG index can also be used.")
+        self.registerCommand('unlockf', self.setLocked,  ['lock_control'], 1, 1, "<srg name>", "Unlocks the given field to allow editing. SRG index can also be used.")
+        self.registerCommand('unlockm', self.setLocked,  ['lock_control'], 1, 1, "<srg name>", "Unlocks the given method to allow editing. SRG index can also be used.")
+        self.registerCommand('unlockp', self.setLocked,  ['lock_control'], 1, 1, "<srg name>", "Unlocks the given method parameter to allow editing. SRG index can also be used.")
 
         # Legacy commands that only show a notice
         self.registerCommand('gcf',  self.legacyNotice, ['any'], 1, 1,   "", "", False)
@@ -370,13 +370,21 @@ class MCPBot(BotBase):
             elif result['result'] == -6:
                 self.sendNotice(sender.nick, "§BERROR: The new name specified conflicts with another %s name within its scope." % member_type_disp)
             elif result['result'] == -7:
-                self.sendNotice(sender.nick, "§BERROR: The new name specified is not a valid Java identifier (yes, we are blocking Unicode; names must not start with a number and can contain A-Z, a-z, 0-9, _ and $).")
+                self.sendNotice(sender.nick, "§BERROR: The new name specified is not a valid Java identifier or contains invalid characters (yes, we are blocking Unicode; names must not start with a number and can contain A-Z, a-z, 0-9, _ and $).")
             elif result['result'] == -8:
                 self.sendNotice(sender.nick, "§BERROR: The new name specified is a Java keyword or literal.")
             elif result['result'] == -9:
                 self.sendNotice(sender.nick, "§BERROR: The new name specified is too long (limit of 32 characters).")
             elif result['result'] == -10:
                 self.sendNotice(sender.nick, "§BERROR: Constructor names cannot be changed.")
+            elif result['result'] == -11:
+                self.sendNotice(sender.nick, "§BWARNING: Final field names should use all uppercase letters.")
+            elif result['result'] == -12:
+                self.sendNotice(sender.nick, "§BWARNING: Do not begin method, non-final field, or parameter names with an uppercase letter.")
+            elif result['result'] == -13:
+                self.sendNotice(sender.nick, "§BWARNING: New parameter name duplicates a class field name within scope. Use fsp if you are ABSOLUTELY sure that it won't cause issues. We will find you and crucify you if you break shit...")
+            else:
+                self.sendNotice(sender.nick, "§BERROR: Unhandled error %d when processing a member change. Please report this to a member of the MCP team along with the command you executed." % result['result'])
 
 ########################################################################################################################
 def main():

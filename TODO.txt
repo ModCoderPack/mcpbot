@@ -15,6 +15,8 @@ STARTED - bspkrs - add undo/redo commands for all members
     - naming conventions
     - how new commands differ from old bot
     - 
+- commands to list class members: listf listm?
+- DONE - set params should warn when there is a field with the same name within scope
 
 
 suggestions from xaero:
