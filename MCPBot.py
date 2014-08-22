@@ -206,7 +206,7 @@ class MCPBot(BotBase):
             return
 
         if len(val) > 1:
-            self.sendNotice(sender.nick, "===§B Avalable Versions §N===")
+            self.sendNotice(sender.nick, "===§B Available Versions §N===")
         else:
             self.sendNotice(sender.nick, "===§B Current Version §N===")
 
