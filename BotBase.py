@@ -115,8 +115,8 @@ class BotBase(object):
         for option in self.config.options('BANLIST'):
             self.banList[option] = set(self.config.get('BANLIST',option).lower().split(';') if self.config.get('BANLIST',option).strip() else [])
 
-        self.logger.debug("Users  : %s"%self.authUsers)
-        self.logger.debug("Groups : %s"%self.groups)
+        self.logger.info("Users  : %s"%self.authUsers)
+        self.logger.info("Groups : %s"%self.groups)
 
         self.updateConfig()
 
@@ -452,8 +452,9 @@ class BotBase(object):
             asyncore.loop()
         except KeyboardInterrupt as e:
             self.logger.info("Shutting down.")
-            self.isKilled = True
-            self.onShuttingDown()
+            if not self.isKilled:
+                self.isKilled = True
+                self.onShuttingDown()
         except:
             self.onShuttingDown()
             raise
@@ -473,8 +474,8 @@ class BotBase(object):
                 user.dccSocket.close()
 
     def killSelf(self, bot, sender, dest, cmd, args):
+        self.logger.info("Killing self.")
         self.isKilled = True
-        self.onShuttingDown()
         sys.exit(0)
 
     #IRC COMMANDS QUICK ACCESS
