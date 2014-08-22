@@ -38,9 +38,9 @@ class MCPBot(BotBase):
         self.registerCommand('findallf', self.findAllKey, ['any'], 1, 2, "<regex pattern> [<version>]",             "Returns field entries matching a regex pattern. Allows partial matches to be returned.")
         self.registerCommand('findallm', self.findAllKey, ['any'], 1, 2, "<regex pattern> [<version>]",             "Returns method entries matching a regex pattern. Allows partial matches to be returned.")
         self.registerCommand('findallp', self.findAllKey, ['any'], 1, 2, "<regex pattern> [<version>]",             "Returns parameter entries matching a regex pattern. Allows partial matches to be returned.")
-        self.registerCommand('lf',       self.listMembers,['any'], 1, 1, "<class>",                                 "Returns a list of unmapped fields for a given class. Use DCC if the list is long.")
-        self.registerCommand('lm',       self.listMembers,['any'], 1, 1, "<class>",                                 "Returns a list of unmapped methods for a given class. Use DCC if the list is long.")
-        self.registerCommand('lp',       self.listMembers,['any'], 1, 1, "<class>",                                 "Returns a list of unmapped method parameters for a given class. Use DCC if the list is long (likely).")
+        self.registerCommand('uf',       self.listMembers,['any'], 1, 1, "<class>",                                 "Returns a list of unmapped fields for a given class. Use DCC if the list is long.")
+        self.registerCommand('um',       self.listMembers,['any'], 1, 1, "<class>",                                 "Returns a list of unmapped methods for a given class. Use DCC if the list is long.")
+        self.registerCommand('up',       self.listMembers,['any'], 1, 1, "<class>",                                 "Returns a list of unmapped method parameters for a given class. Use DCC if the list is long (likely).")
 
         self.registerCommand('sf',  self.setMember,  ['any'],        2, 999, "<srg name> <new name> [<comment>]", "Sets the MCP name and comment for the SRG field specified. SRG index can also be used.")
         self.registerCommand('fsf', self.setMember,  ['maintainer'], 2, 999, "<srg name> <new name> [<comment>]", "Force sets the MCP name and comment for the SRG field specified. SRG index can also be used.")
@@ -173,11 +173,11 @@ class MCPBot(BotBase):
             self.sendClassResults(sender, val, status, limit, summary=True)
 
     def listMembers(self, bot, sender, dest, cmd, args):
-        if cmd['command'] == 'lf':
+        if cmd['command'][-1] == 'f':
             self.sendNotice(sender.nick, "+++§B UNNAMED %sS FOR %s §N+++" % ('FIELD', args[0]))
             val, status = self.db.getUnnamed('field', args)
             self.sendMemberResults(sender, val, status, 20, summary=True)
-        elif cmd['command'] == 'lm':
+        elif cmd['command'][-1] == 'm':
             self.sendNotice(sender.nick, "+++§B UNNAMED %sS FOR %s §N+++" % ('METHOD', args[0]))
             val, status = self.db.getUnnamed('method', args)
             self.sendMemberResults(sender, val, status, 20, summary=True)
