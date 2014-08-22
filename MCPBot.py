@@ -28,8 +28,19 @@ class MCPBot(BotBase):
         self.registerCommand('gf',       self.getMember,  ['any'], 1, 2, "[<class>.]<name> [<version>]",            "Returns field information. Defaults to current version. Version can be for MCP or MC.")
         self.registerCommand('gm',       self.getMember,  ['any'], 1, 2, "[<class>.]<name> [<version>]",            "Returns method information. Defaults to current version. Version can be for MCP or MC.")
         self.registerCommand('gc',       self.getClass,   ['any'], 1, 2, "<class> [<version>]",                     "Returns class information. Defaults to current version. Version can be for MCP or MC.")
-        self.registerCommand('find',     self.findKey,    ['any'], 1, 2, "<regex pattern>",                         "Returns entries matching a regex pattern. Only returns complete matches.")
-        self.registerCommand('findall',  self.findAllKey, ['any'], 1, 2, "<regex pattern>",                         "Returns entries matching a regex pattern. Allows partial matches to be returned.")
+        self.registerCommand('find',     self.findKey,    ['any'], 1, 2, "<regex pattern> [<version>]",             "Returns any entries matching a regex pattern. Only returns complete matches.")
+        self.registerCommand('findc',    self.findKey,    ['any'], 1, 2, "<regex pattern> [<version>]",             "Returns class entries matching a regex pattern. Only returns complete matches.")
+        self.registerCommand('findf',    self.findKey,    ['any'], 1, 2, "<regex pattern> [<version>]",             "Returns field entries matching a regex pattern. Only returns complete matches.")
+        self.registerCommand('findm',    self.findKey,    ['any'], 1, 2, "<regex pattern> [<version>]",             "Returns method entries matching a regex pattern. Only returns complete matches.")
+        self.registerCommand('findp',    self.findKey,    ['any'], 1, 2, "<regex pattern> [<version>]",             "Returns parameter entries matching a regex pattern. Only returns complete matches.")
+        self.registerCommand('findall',  self.findAllKey, ['any'], 1, 2, "<regex pattern> [<version>]",             "Returns any entries matching a regex pattern. Allows partial matches to be returned.")
+        self.registerCommand('findallc', self.findAllKey, ['any'], 1, 2, "<regex pattern> [<version>]",             "Returns class entries matching a regex pattern. Allows partial matches to be returned.")
+        self.registerCommand('findallf', self.findAllKey, ['any'], 1, 2, "<regex pattern> [<version>]",             "Returns field entries matching a regex pattern. Allows partial matches to be returned.")
+        self.registerCommand('findallm', self.findAllKey, ['any'], 1, 2, "<regex pattern> [<version>]",             "Returns method entries matching a regex pattern. Allows partial matches to be returned.")
+        self.registerCommand('findallp', self.findAllKey, ['any'], 1, 2, "<regex pattern> [<version>]",             "Returns parameter entries matching a regex pattern. Allows partial matches to be returned.")
+        self.registerCommand('lf',       self.listMembers,['any'], 1, 2, "<class>",                                 "Returns a list of unmapped fields for a given class. Use DCC if the list is long.")
+        self.registerCommand('lm',       self.listMembers,['any'], 1, 2, "<class>",                                 "Returns a list of unmapped methods for a given class. Use DCC if the list is long.")
+        self.registerCommand('lp',       self.listMembers,['any'], 1, 2, "<class>",                                 "Returns a list of unmapped method parameters for a given class. Use DCC if the list is long (likely).")
 
         self.registerCommand('sf',  self.setMember,  ['any'],        2, 999, "<srg name> <new name> [<comment>]", "Sets the MCP name and comment for the SRG field specified. SRG index can also be used.")
         self.registerCommand('fsf', self.setMember,  ['maintainer'], 2, 999, "<srg name> <new name> [<comment>]", "Force sets the MCP name and comment for the SRG field specified. SRG index can also be used.")
@@ -128,24 +139,41 @@ class MCPBot(BotBase):
         self.findAllKey(bot, sender, dest, cmd, args)
 
     def findAllKey(self, bot, sender, dest, cmd, args):
-        self.sendNotice(sender.nick, "+++§B FIELDS §N+++")
-        val, status = self.db.findInTable('field', args)
-        self.sendMemberResults(sender, val, status, summary=True)
+        showAll = cmd['command'][-1] in ('d', 'l')
+        showFields = cmd['command'][-1] == 'f'
+        showMethods = cmd['command'][-1] == 'm'
+        showParams = cmd['command'][-1] == 'p'
+        showClasses = cmd['command'][-1] == 'c'
+        limit = 5 if showAll else 20
 
-        self.sendNotice(sender.nick, " ")
-        self.sendNotice(sender.nick, "+++§B METHODS §N+++")
-        val, status = self.db.findInTable('method', args)
-        self.sendMemberResults(sender, val, status, summary=True)
+        if showAll or showFields:
+            self.sendNotice(sender.nick, "+++§B FIELDS §N+++")
+            val, status = self.db.findInTable('field', args)
+            self.sendMemberResults(sender, val, status, limit, summary=True)
 
-        self.sendNotice(sender.nick, " ")
-        self.sendNotice(sender.nick, "+++§B METHOD PARAMS §N+++")
-        val, status = self.db.findInTable('method_param', args)
-        self.sendParamResults(sender, val, status, summary=True)
+        if showAll or showMethods:
+            if showAll:
+                self.sendNotice(sender.nick, " ")
+            self.sendNotice(sender.nick, "+++§B METHODS §N+++")
+            val, status = self.db.findInTable('method', args)
+            self.sendMemberResults(sender, val, status, limit, summary=True)
 
-        self.sendNotice(sender.nick, " ")
-        self.sendNotice(sender.nick, "+++§B CLASSES §N+++")
-        val, status = self.db.findInTable('class', args)
-        self.sendClassResults(sender, val, status, summary=True)
+        if showAll or showParams:
+            if showAll:
+                self.sendNotice(sender.nick, " ")
+            self.sendNotice(sender.nick, "+++§B METHOD PARAMS §N+++")
+            val, status = self.db.findInTable('method_param', args)
+            self.sendParamResults(sender, val, status, limit, summary=True)
+
+        if showAll or showClasses:
+            if showAll:
+                self.sendNotice(sender.nick, " ")
+            self.sendNotice(sender.nick, "+++§B CLASSES §N+++")
+            val, status = self.db.findInTable('class', args)
+            self.sendClassResults(sender, val, status, limit, summary=True)
+
+    def listMembers(self, bot, sender, dest, cmd, args):
+        self.sendNotice(sender.nick, "+++§B Coming Soon™ §N+++")
 
     # Setters
 
@@ -189,7 +217,7 @@ class MCPBot(BotBase):
             self.sendNotice(sender.nick, "{mcp_version_code:^13}".format(**entry) + "{mc_version_code:^13}".format(**entry) + "{mc_version_type_code:^13}".format(**entry))
 
 
-    def sendParamResults(self, sender, val, status, summary=False):
+    def sendParamResults(self, sender, val, status, limit=0, summary=False):
         if status:
             self.sendNotice(sender.nick, "§B" + str(type(status)) + ' : ' + str(status))
             return
@@ -198,20 +226,16 @@ class MCPBot(BotBase):
             self.sendNotice(sender.nick, "§BNo results found.")
             return
 
-        if (not summary and len(val) > 5 and not sender.dccSocket) or (summary and len(val) > 20 and not sender.dccSocket):
-            self.sendNotice(sender.nick, "§BToo many results (§N %(count)d §B). Please use the %(cmd_char)sdcc command and try again." % {'count': len(val), 'cmd_char': self.cmdChar})
-            return
-
         for i, entry in enumerate(val):
             if not summary:
-                self.sendNotice(sender.nick,        "===§B MC {mc_version_code}: {class_srg_name}.{method_mcp_name}.{mcp_name} §N===".format(**entry))
-                self.sendNotice(sender.nick,        "§UIndex§N      : {srg_index}".format(**entry))
+                self.sendNotice(sender.nick,        "===§B MC {mc_version_code}: {class_srg_name}.{method_mcp_name}.{mcp_name} ({srg_index}) §N===".format(**entry))
                 if 'srg_member_base_class' in entry and entry['srg_member_base_class'] != entry['class_srg_name']:
                     self.sendNotice(sender.nick,    "§UBase Class§N : {obf_member_base_class} §B=>§N {srg_member_base_class}".format(**entry))
                 self.sendNotice(sender.nick,        "§UMethod§N     : {class_obf_name}.{method_obf_name} §B=>§N {class_pkg_name}/{class_srg_name}.{method_srg_name}".format(**entry))
                 self.sendNotice(sender.nick,        "§UDescriptor§N : {method_obf_descriptor} §B=>§N {method_srg_descriptor}".format(**entry))
                 self.sendNotice(sender.nick,        "§USrg§N        : {obf_descriptor} {srg_name}".format(**entry))
                 self.sendNotice(sender.nick,        "§UMCP§N        : {srg_descriptor} {mcp_name}".format(**entry))
+                self.sendNotice(sender.nick,        "§UComment§N    : {comment}".format(**entry))
                 self.sendNotice(sender.nick,        "§ULocked§N     : {is_locked}".format(**entry))
                 if entry['java_type_code']:
                     self.sendNotice(sender.nick,    "§UJava Type§N  : {java_type_code}".format(**entry))
@@ -220,10 +244,14 @@ class MCPBot(BotBase):
                 if not i == len(val) - 1:
                     self.sendNotice(sender.nick, " ".format(**entry))
             else:
-                self.sendNotice(sender.nick, "{class_srg_name}.{method_srg_name}.{srg_name} §B[§N {srg_descriptor} §B] =>§N {class_srg_name}.{method_mcp_name}.{mcp_name} §B[§N {srg_descriptor} §B]".format(**entry))
+                if i < limit or sender.dccSocket:
+                    self.sendNotice(sender.nick, "{class_srg_name}.{method_srg_name}.{srg_name} §B[§N {srg_descriptor} §B] =>§N {class_srg_name}.{method_mcp_name}.{mcp_name} §B[§N {srg_descriptor} §B]".format(**entry))
+                elif i == limit:
+                    self.sendNotice(sender.nick, "§B+ §N%(count)d§B more. Please use the %(cmd_char)sdcc command to see the full list." % {'count': len(val) - i, 'cmd_char': self.cmdChar})
+                    return
 
 
-    def sendMemberResults(self, sender, val, status, summary=False):
+    def sendMemberResults(self, sender, val, status, limit=0, summary=False):
         if status:
             self.sendNotice(sender.nick, "§B" + str(type(status)) + ' : ' + str(status))
             return
@@ -232,32 +260,31 @@ class MCPBot(BotBase):
             self.sendNotice(sender.nick, "§BNo results found.")
             return
 
-        if (not summary and len(val) > 5 and not sender.dccSocket) or (summary and len(val) > 20 and not sender.dccSocket):
-            self.sendNotice(sender.nick, "§BToo many results (§N %(count)d §B). Please use the %(cmd_char)sdcc command and try again." % {'count': len(val), 'cmd_char': self.cmdChar})
-            return
-
         for i, entry in enumerate(val):
             if not summary:
-                self.sendNotice(sender.nick,        "===§B MC {mc_version_code}: {class_srg_name}.{mcp_name} §N===".format(**entry))
-                self.sendNotice(sender.nick,        "§UIndex§N      : {srg_index}".format(**entry))
+                self.sendNotice(sender.nick,        "===§B MC {mc_version_code}: {class_srg_name}.{mcp_name} ({srg_index}) §N===".format(**entry))
                 if 'srg_member_base_class' in entry and entry['srg_member_base_class'] != entry['class_srg_name']:
                     self.sendNotice(sender.nick,    "§UBase Class§N : {obf_member_base_class} §B=>§N {srg_member_base_class}".format(**entry))
                 self.sendNotice(sender.nick,        "§UNotch§N      : {class_obf_name}.{obf_name}".format(**entry))
                 self.sendNotice(sender.nick,        "§USrg§N        : {class_pkg_name}/{class_srg_name}.{srg_name}".format(**entry))
                 self.sendNotice(sender.nick,        "§UMCP§N        : {class_pkg_name}/{class_srg_name}.{mcp_name}".format(**entry))
+                self.sendNotice(sender.nick,        "§UComment§N    : {comment}".format(**entry))
                 self.sendNotice(sender.nick,        "§ULocked§N     : {is_locked}".format(**entry))
                 self.sendNotice(sender.nick,        "§UDescriptor§N : {obf_descriptor} §B=>§N {srg_descriptor}".format(**entry))
                 if 'srg_params' in entry and entry['srg_params']:
                     self.sendNotice(sender.nick,    "§UParameters§N : {srg_params} §B=>§N {mcp_params}".format(**entry))
-                self.sendNotice(sender.nick,        "§UComment§N    : {comment}".format(**entry))
 
                 if not i == len(val) - 1:
                     self.sendNotice(sender.nick, " ".format(**entry))
             else:
-                self.sendNotice(sender.nick, "{class_obf_name}.{obf_name} §B=>§N {class_srg_name}.{mcp_name} §B[§N {srg_name} §B]".format(**entry))
+                if i < limit or sender.dccSocket:
+                    self.sendNotice(sender.nick, "{class_obf_name}.{obf_name} §B=>§N {class_srg_name}.{mcp_name} §B[§N {srg_name} §B]".format(**entry))
+                elif i == limit:
+                    self.sendNotice(sender.nick, "§B+ §N%(count)d§B more. Please use the %(cmd_char)sdcc command to see the full list." % {'count': len(val) - i, 'cmd_char': self.cmdChar})
+                    return
 
 
-    def sendClassResults(self, sender, val, status, summary=False):
+    def sendClassResults(self, sender, val, status, limit=0, summary=False):
         if status:
             self.sendNotice(sender.nick, str(type(status)) + ' : ' + str(status))
             return
@@ -266,12 +293,7 @@ class MCPBot(BotBase):
             self.sendNotice(sender.nick, "§BNo results found.")
             return
 
-        if (not summary and len(val) > 5 and not sender.dccSocket) or (summary and len(val) > 20 and not sender.dccSocket):
-            self.sendNotice(sender.nick, "§BToo many results (§N %(count)d §B). Please use the %(cmd_char)sdcc command and try again." % {'count': len(val), 'cmd_char': self.cmdChar})
-            return
-
-
-        for ientry, entry in enumerate(val):
+        for i, entry in enumerate(val):
             if not summary:
                 self.sendNotice(sender.nick,            "===§B MC {mc_version_code}: {srg_name} §N===".format(**entry))
                 self.sendNotice(sender.nick,            "§UNotch§N        : {obf_name}".format(**entry))
@@ -291,11 +313,15 @@ class MCPBot(BotBase):
                     for iclass in range(0, len(implementing), 5):
                         self.sendNotice(sender.nick,    "§UImplementing§N : {implementing}".format(implementing=' '.join(implementing[iclass:iclass+5])))
 
-                if not ientry == len(val) - 1:
+                if not i == len(val) - 1:
                     self.sendNotice(sender.nick, " ".format(**entry))
 
             else:
-                self.sendNotice(sender.nick, "{obf_name} §B=>§N {pkg_name}/{srg_name}".format(**entry))
+                if i < limit or sender.dccSocket:
+                    self.sendNotice(sender.nick, "{obf_name} §B=>§N {pkg_name}/{srg_name}".format(**entry))
+                elif i == limit:
+                    self.sendNotice(sender.nick, "§B+ §N%(count)d§B more. Please use the %(cmd_char)sdcc command to see the full list." % {'count': len(val) - i, 'cmd_char': self.cmdChar})
+                    return
 
     # Setter results
 

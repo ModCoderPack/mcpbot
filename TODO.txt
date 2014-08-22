@@ -18,6 +18,8 @@ STARTED - bspkrs - add undo/redo commands for all members
 - commands to list class members: listf listm?
 - DONE - set params should warn when there is a field with the same name within scope
 
+- cache nickserv status for users for a period of time
+
 
 suggestions from xaero:
 
