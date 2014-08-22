@@ -3,3 +3,4 @@ syntax: glob
 *.log
 *.sqlite
 .idea
+bot.cfg
