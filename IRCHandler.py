@@ -393,6 +393,8 @@ class CmdHandler(object):
 
         if msg[0] == self.bot.cmdChar:
             self.onCOMMAND(sender, dest, msg[1:])   #We remove the cmd symbol before passing the cmd to the bot
+        elif dest == self.bot.nick:
+            self.onCOMMAND(sender, dest, msg)
         elif msg[0] == CTCPTAG and msg[-1] == CTCPTAG:
             self.onCTCP(sender, dest, msg[1:-1].split())
         else:

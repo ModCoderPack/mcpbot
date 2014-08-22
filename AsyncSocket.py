@@ -32,7 +32,7 @@ class AsyncSocket(asyncore.dispatcher):
     def handle_close(self):
         self.logger.debug("Closing...")
         self.close()
-        if not self.bot.isKilled:
+        if not self.bot.isTerminating:
             sys.exit(404)
 
     def handle_read(self):
@@ -70,3 +70,6 @@ class AsyncSocket(asyncore.dispatcher):
             self.sendBuffer.put_nowait(CmdGenerator.getNICK(self.bot.nick, self.bot.nick))
             self.sendBuffer.put_nowait(CmdGenerator.getUSER(self.bot.nick))
             self.bot.isIdentified = True
+
+        if self.bot.isTerminating:
+            sys.exit(187)

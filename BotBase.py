@@ -36,7 +36,7 @@ class BotHandler(object):
     @classmethod
     def setAllKilled(cls):
         for bot in cls.botList.values():
-            bot.isKilled = True
+            bot.isTerminating = True
 
     @classmethod
     def stopAll(cls):
@@ -125,7 +125,8 @@ class BotBase(object):
 
         self.isIdentified = False   #Turn to true when nick/ident commands are sent
         self.isReady      = False   #Turn to true after RPL_ENDOFMOTD. Every join/nick etc commands should be sent once this is True.
-        self.isKilled     = False   #This is set to true by the stop command to bypass restarting
+        self.isTerminating     = False   #This is set to true by the stop command to bypass restarting
+        self.isRunning = True
 
         self.socket = AsyncSocket.AsyncSocket(self, self.host, self.port, self.floodLimit)
         self.dccSocket = DCCSocket.DCCSocket(self)
@@ -452,8 +453,8 @@ class BotBase(object):
             asyncore.loop()
         except KeyboardInterrupt as e:
             self.logger.info("Shutting down.")
-            if not self.isKilled:
-                self.isKilled = True
+            if not self.isTerminating:
+                self.isTerminating = True
                 self.onShuttingDown()
         except:
             self.onShuttingDown()
@@ -466,17 +467,20 @@ class BotBase(object):
         pass
 
     def onShuttingDown(self):
-        if self.cmdHandler.monitor_thread:
-            self.cmdHandler.monitor_thread.cancel()
-        self.socket.close()
-        for user in self.users.values():
-            if user.dccSocket:
-                user.dccSocket.close()
+        if self.isRunning:
+            if self.cmdHandler.monitor_thread:
+                self.cmdHandler.monitor_thread.cancel()
+            self.socket.close()
+            for user in self.users.values():
+                if user.dccSocket:
+                    user.dccSocket.close()
+
+            self.isRunning = False
 
     def killSelf(self, bot, sender, dest, cmd, args):
         self.logger.info("Killing self.")
-        self.isKilled = True
-        sys.exit(0)
+        self.isTerminating = True
+        self.sendNotice(sender, "Killing self.")
 
     #IRC COMMANDS QUICK ACCESS
     def sendRaw(self, msg):

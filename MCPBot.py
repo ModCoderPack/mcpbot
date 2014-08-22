@@ -89,8 +89,9 @@ class MCPBot(BotBase):
         self.db.connect()
 
     def onShuttingDown(self):
-        super(MCPBot, self).onShuttingDown()
-        self.db.disconnect()
+        if self.isRunning:
+            super(MCPBot, self).onShuttingDown()
+            self.db.disconnect()
 
     def sqlRequest(self, bot, sender, dest, cmd, args):
         sql = ' '.join(args)
@@ -274,17 +275,18 @@ class MCPBot(BotBase):
 
         for i, entry in enumerate(val):
             if not summary:
-                self.sendNotice(sender.nick,        "===§B MC {mc_version_code}: {class_srg_name}.{mcp_name} ({srg_index}) §N===".format(**entry))
+                if entry['is_locked']: locked = 'LOCKED'
+                else: locked = 'UNLOCKED'
+                header =                            "===§B MC {mc_version_code}: {class_pkg_name}/{class_srg_name}.{mcp_name} ({class_obf_name}.{obf_name}) §U" + locked + "§N ==="
+                self.sendNotice(sender.nick,        header.format(**entry))
                 if 'srg_member_base_class' in entry and entry['srg_member_base_class'] != entry['class_srg_name']:
                     self.sendNotice(sender.nick,    "§UBase Class§N : {obf_member_base_class} §B=>§N {srg_member_base_class}".format(**entry))
-                self.sendNotice(sender.nick,        "§UNotch§N      : {class_obf_name}.{obf_name}".format(**entry))
-                self.sendNotice(sender.nick,        "§USrg§N        : {class_pkg_name}/{class_srg_name}.{srg_name}".format(**entry))
-                self.sendNotice(sender.nick,        "§UMCP§N        : {class_pkg_name}/{class_srg_name}.{mcp_name}".format(**entry))
-                self.sendNotice(sender.nick,        "§UComment§N    : {comment}".format(**entry))
-                self.sendNotice(sender.nick,        "§ULocked§N     : {is_locked}".format(**entry))
+                self.sendNotice(sender.nick,        "§UName§N       : {obf_name} §B=>§N {srg_name} §B=>§N {mcp_name}".format(**entry))
                 self.sendNotice(sender.nick,        "§UDescriptor§N : {obf_descriptor} §B=>§N {srg_descriptor}".format(**entry))
+                self.sendNotice(sender.nick,        "§UComment§N    : {comment}".format(**entry))
                 if 'srg_params' in entry and entry['srg_params']:
-                    self.sendNotice(sender.nick,    "§UParameters§N : {srg_params} §B=>§N {mcp_params}".format(**entry))
+                    self.sendNotice(sender.nick,    "§USRG Params§N : {srg_params}".format(**entry))
+                    self.sendNotice(sender.nick,    "§UMCP Params§N : {mcp_params}".format(**entry))
 
                 if not i == len(val) - 1:
                     self.sendNotice(sender.nick, " ".format(**entry))
@@ -464,7 +466,7 @@ def main():
         except SystemExit as e:
             bot = BotHandler.remBot('mcpbot')
 
-            if bot and bot.logger and not bot.isKilled:
+            if bot and bot.logger and not bot.isTerminating:
                 logger = bot.logger
 
                 if e.code == 404:
