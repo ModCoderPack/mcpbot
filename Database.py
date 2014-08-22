@@ -2,7 +2,7 @@ import psycopg2
 import psycopg2.extras
 from psycopg2 import DatabaseError, InterfaceError
 import Logger
-
+from contextlib import closing
 
 class Database(object):
     def __init__(self, host, port, user, db, pwd, bot):
@@ -48,26 +48,18 @@ class Database(object):
 
     def execute(self, request, arguments=None):
         self.checkdbconn()
-        with self.conn.cursor(cursor_factory=psycopg2.extras.DictCursor) as cursor:
+        with closing(self.conn.cursor(cursor_factory=psycopg2.extras.DictCursor)) as cursor:
             try:
                 if arguments:
-                    cursor.execute(request, arguments)
+                    bound_request = cursor.mogrify(request, arguments)
                 else:
-                    cursor.execute(request)
+                    bound_request = request
+
+                self.logger.info(bound_request)
+                cursor.execute(bound_request)
                 retval = cursor.fetchall()
                 self.conn.commit()
 
-                return retval, None
-            except Exception as e:
-                self.conn.rollback()
-                return None, e
-
-    def executeGet(self, request, arguments):
-        self.checkdbconn()
-        with self.conn.cursor(cursor_factory=psycopg2.extras.DictCursor) as cursor:
-            try:
-                cursor.execute(request, arguments)
-                retval = cursor.fetchall()
                 return retval, None
             except Exception as e:
                 self.conn.rollback()
@@ -78,7 +70,6 @@ class Database(object):
     def getVersions(self, limit=0):
         sqlrequest = "select * from mcp.version_vw order by mcp_version_code desc "
         if limit > 0: sqlrequest += "limit " + str(limit)
-        self.logger.debug(sqlrequest)
         return self.execute(sqlrequest)
 
     def getParam(self, args):
@@ -115,8 +106,7 @@ class Database(object):
         else: # if the class is not specified, only return the record for the base class entry
             sqlrequest += "AND class_srg_name = srg_member_base_class "
 
-        self.logger.debug(sqlrequest)
-        return self.executeGet(sqlrequest, params)
+        return self.execute(sqlrequest, params)
 
     def getMember(self, table, args):
         member = args[0]
@@ -132,18 +122,13 @@ class Database(object):
 
         splitted = member.split('.')
         if len(splitted) == 1:
-            sqlrequest += """AND (srg_index = %(member)s
-                             OR   mcp_name = %(member)s
-                             OR   srg_name = %(member)s)"""
+            sqlrequest += "AND (srg_index = %(member)s OR mcp_name = %(member)s OR srg_name = %(member)s)"
             params.update({'member':member})
         else:
-            sqlrequest += """AND ((class_srg_name = %(class)s AND mcp_name = %(member)s)
-                            OR   (class_srg_name = %(class)s AND srg_name = %(member)s)
-                            OR   (class_obf_name = %(class)s AND obf_name = %(member)s))"""
+            sqlrequest += "AND ((class_srg_name = %(class)s AND mcp_name = %(member)s) OR (class_srg_name = %(class)s AND srg_name = %(member)s) OR(class_obf_name = %(class)s AND obf_name = %(member)s))"
             params.update({'class':splitted[0], 'member':splitted[1]})
 
-        self.logger.debug(sqlrequest)
-        return self.executeGet(sqlrequest, params)
+        return self.execute(sqlrequest, params)
 
     def getClass(self, args):
         sqlrequest = """SELECT * FROM mcp.class_vw """
@@ -152,21 +137,49 @@ class Database(object):
 
         sqlrequest += """AND (obf_name=%(clazz)s
                          OR srg_name=%(clazz)s)"""
-        self.logger.debug(sqlrequest)
 
-        if len(args) > 1: return self.executeGet(sqlrequest, {'clazz':args[0], 'version':args[1]})
-        else: return self.executeGet(sqlrequest, {'clazz':args[0]})
+        if len(args) > 1: return self.execute(sqlrequest, {'clazz':args[0], 'version':args[1]})
+        else: return self.execute(sqlrequest, {'clazz':args[0]})
 
     def findInTable(self, table, args):
         sqlrequest = "SELECT * FROM mcp.%s "%(table + '_vw')
         if len(args) > 1: sqlrequest += "where (mc_version_code like %(version)s or mcp_version_code like %(version)s) "
         else: sqlrequest += "WHERE is_current "
         sqlrequest += "AND (mcp_name ~* %(match)s OR srg_name ~* %(match)s"
-        if table != 'class': sqlrequest += " OR srg_index ~* %(match)s"
-        sqlrequest += ")"
-        self.logger.debug(sqlrequest)
-        if len(args) > 1: return self.executeGet(sqlrequest, {'match': args[0], 'version': args[1]})
-        else: return self.executeGet(sqlrequest, {'match': args[0]})
+        if table != 'class':
+            sqlrequest += " OR srg_index ~* %(match)s) ORDER BY class_srg_name"
+            if table == 'method_param':
+                sqlrequest += ', srg_name'
+            else:
+                sqlrequest += ', mcp_name'
+        else:
+            sqlrequest += ") ORDER BY pkg_name, srg_name"
+        if len(args) > 1: return self.execute(sqlrequest, {'match': args[0], 'version': args[1]})
+        else: return self.execute(sqlrequest, {'match': args[0]})
+
+    def getUnnamed(self, table, args):
+        pkg, _, class_name = args[0].rpartition('/')
+        sqlrequest = "SELECT * FROM mcp.%s WHERE is_current " % (table + '_vw')
+
+        if pkg == '':
+            sqlrequest += "AND class_srg_name = %(class_name)s "
+            qry_params = {'class_name': class_name}
+        else:
+            sqlrequest += "AND class_srg_name = %(class_name)s AND class_pkg_name = %(pkg)s "
+            qry_params = {'class_name': class_name, 'pkg': pkg}
+
+        sqlrequest += 'AND mcp_name '
+
+        if table == 'method':
+            sqlrequest += "~ 'func_[0-9]+_[a-zA-Z]+' "
+        elif table == 'field':
+            sqlrequest += "~ 'field_[0-9]+_[a-zA-Z]+' "
+        else:
+            sqlrequest += "~ 'p_i?[0-9]+_[0-9]+_' "
+
+        sqlrequest += 'ORDER BY srg_name'
+
+        return self.execute(sqlrequest, qry_params)
 
     # Setters
 
@@ -174,7 +187,6 @@ class Database(object):
         params = {'member_type': member_type, 'is_lock': is_lock, 'nick': sender.regnick.lower(),
                   'command': command, 'params': ' '.join(args), 'srg_name': args[0]}
         sqlrequest = "select mcp.set_member_lock(%(member_type)s, %(command)s, %(nick)s, %(params)s, %(srg_name)s, %(is_lock)s) as result;"
-        self.logger.debug(sqlrequest)
         return self.execute(sqlrequest, params)
 
     def setMember(self, member_type, is_forced, bypass_lock, command, sender, args):
@@ -184,9 +196,8 @@ class Database(object):
         else: params['new_desc'] = None
         sqlrequest = """select mcp.process_member_change(%(member_type)s, %(command)s, %(nick)s, %(params)s, %(srg_name)s,
                             %(new_name)s, %(new_desc)s, %(is_forced)s, %(bypass_lock)s) as result;"""
-        self.logger.debug(sqlrequest)
         return self.execute(sqlrequest, params)
 
     def getMemberChange(self, member_type, staged_pid):
         sqlrequest = "select * from mcp.staged_%(member_type)s where staged_%(member_type)s_pid = %%(staged_pid)s" % {'member_type': member_type}
-        return self.executeGet(sqlrequest, {'staged_pid': staged_pid})
+        return self.execute(sqlrequest, {'staged_pid': staged_pid})
