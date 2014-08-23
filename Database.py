@@ -124,7 +124,7 @@ class Database(object):
         if len(splitted) == 1:
             sqlrequest += "AND class_srg_name = srg_member_base_class "
             params.update({'member':member})
-            if member.startswith('func_'):
+            if member.startswith('func_') or member.startswith('field_'):
                 sqlrequest += 'AND srg_name = %(member)s'
             elif is_integer(member):
                 sqlrequest += 'AND srg_index = %(member)s'
