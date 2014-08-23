@@ -241,17 +241,19 @@ class MCPBot(BotBase):
 
         for i, entry in enumerate(val):
             if not summary:
-                self.sendNotice(sender.nick,        "===§B MC {mc_version_code}: {class_srg_name}.{method_mcp_name}.{mcp_name} ({srg_index}) §N===".format(**entry))
+                if entry['is_locked']: locked = 'LOCKED'
+                else: locked = 'UNLOCKED'
+                header =                            "===§B MC {mc_version_code}: {class_pkg_name}/{class_srg_name}.{method_srg_name}.{mcp_name} §U" + locked + "§N ==="
+                self.sendNotice(sender.nick,        header.format(**entry))
                 if 'srg_member_base_class' in entry and entry['srg_member_base_class'] != entry['class_srg_name']:
                     self.sendNotice(sender.nick,    "§UBase Class§N : {obf_member_base_class} §B=>§N {srg_member_base_class}".format(**entry))
-                self.sendNotice(sender.nick,        "§UMethod§N     : {class_obf_name}.{method_obf_name} §B=>§N {class_pkg_name}/{class_srg_name}.{method_srg_name}".format(**entry))
-                self.sendNotice(sender.nick,        "§UDescriptor§N : {method_obf_descriptor} §B=>§N {method_srg_descriptor}".format(**entry))
-                self.sendNotice(sender.nick,        "§USrg§N        : {obf_descriptor} {srg_name}".format(**entry))
-                self.sendNotice(sender.nick,        "§UMCP§N        : {srg_descriptor} {mcp_name}".format(**entry))
-                self.sendNotice(sender.nick,        "§UComment§N    : {comment}".format(**entry))
-                self.sendNotice(sender.nick,        "§ULocked§N     : {is_locked}".format(**entry))
+                self.sendNotice(sender.nick,        "§UName§N       : {srg_name} §B=>§N {mcp_name}".format(**entry))
+                self.sendNotice(sender.nick,        "§UMethod§N     : {class_obf_name}.{method_obf_name} §B=>§N {class_srg_name}.{method_srg_name}".format(**entry))
                 if entry['java_type_code']:
-                    self.sendNotice(sender.nick,    "§UJava Type§N  : {java_type_code}".format(**entry))
+                    self.sendNotice(sender.nick,    "§UDescriptor§N : {method_obf_descriptor} §B=>§N {method_srg_descriptor} ({java_type_code})".format(**entry))
+                else:
+                    self.sendNotice(sender.nick,    "§UDescriptor§N : {method_obf_descriptor} §B=>§N {method_srg_descriptor}".format(**entry))
+                self.sendNotice(sender.nick,        "§UComment§N    : {comment}".format(**entry))
 
 
                 if not i == len(val) - 1:
