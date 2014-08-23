@@ -51,6 +51,7 @@ class BotHandler(object):
             print("Shutting down.")
             cls.setAllKilled()
             cls.stopAll()
+            sys.exit(187)
         except:
             cls.stopAll()
             raise

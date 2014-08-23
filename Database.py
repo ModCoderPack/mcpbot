@@ -122,10 +122,10 @@ class Database(object):
 
         splitted = member.split('.')
         if len(splitted) == 1:
-            sqlrequest += "AND (srg_index = %(member)s OR mcp_name = %(member)s OR srg_name = %(member)s)"
+            sqlrequest += "AND class_srg_name = srg_member_base_class AND (srg_index = %(member)s OR mcp_name = %(member)s OR srg_name = %(member)s)"
             params.update({'member':member})
         else:
-            sqlrequest += "AND ((class_srg_name = %(class)s AND mcp_name = %(member)s) OR (class_srg_name = %(class)s AND srg_name = %(member)s) OR(class_obf_name = %(class)s AND obf_name = %(member)s))"
+            sqlrequest += "AND ((class_srg_name = %(class)s AND (mcp_name = %(member)s OR srg_name = %(member)s)) OR (class_obf_name = %(class)s AND obf_name = %(member)s))"
             params.update({'class':splitted[0], 'member':splitted[1]})
 
         return self.execute(sqlrequest, params)

@@ -455,6 +455,8 @@ class CmdHandler(object):
     #RPL_376
     def onRPL_ENDOFMOTD(self, sender, params):
         self.logger.debug("[S : %s] [M : %s]"%(sender.nick, " ".join(params)))
+        if self.bot.nspass:
+            self.bot.sendRaw(self.bot.nsreply.format(nickserv=self.bot.nickserv, nspass=self.bot.nspass) + EOL)
 
     #######################################################
     # User defined commands
