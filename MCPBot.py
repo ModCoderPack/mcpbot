@@ -38,9 +38,9 @@ class MCPBot(BotBase):
         self.registerCommand('findallf', self.findAllKey, ['any'], 1, 2, "<regex pattern> [<version>]",             "Returns field entries matching a regex pattern. Allows partial matches to be returned.")
         self.registerCommand('findallm', self.findAllKey, ['any'], 1, 2, "<regex pattern> [<version>]",             "Returns method entries matching a regex pattern. Allows partial matches to be returned.")
         self.registerCommand('findallp', self.findAllKey, ['any'], 1, 2, "<regex pattern> [<version>]",             "Returns parameter entries matching a regex pattern. Allows partial matches to be returned.")
-        self.registerCommand('uf',       self.listMembers,['any'], 1, 1, "<class>",                                 "Returns a list of unmapped fields for a given class. Use DCC if the list is long.")
-        self.registerCommand('um',       self.listMembers,['any'], 1, 1, "<class>",                                 "Returns a list of unmapped methods for a given class. Use DCC if the list is long.")
-        self.registerCommand('up',       self.listMembers,['any'], 1, 1, "<class>",                                 "Returns a list of unmapped method parameters for a given class. Use DCC if the list is long.")
+        self.registerCommand('uf',       self.listMembers,['any'], 1, 1, "<class>",                                 "Returns a list of unnamed fields for a given class. Use DCC if the list is long.")
+        self.registerCommand('um',       self.listMembers,['any'], 1, 1, "<class>",                                 "Returns a list of unnamed methods for a given class. Use DCC if the list is long.")
+        self.registerCommand('up',       self.listMembers,['any'], 1, 1, "<class>",                                 "Returns a list of unnamed method parameters for a given class. Use DCC if the list is long.")
         self.registerCommand('undo',     self.undoChange, ['any', 'undo_any'], 1, 1, "<srg name>"                   "Undoes the last *STAGED* name change to a given method/field/param. By default you can only undo your own changes.")
         self.registerCommand('redo',     self.undoChange, ['any', 'undo_any'], 1, 1, "<srg name>"                   "Redoes the last *UNDONE* staged change to a given method/field/param. By default you can only redo your own changes.")
 
@@ -189,15 +189,15 @@ class MCPBot(BotBase):
         if cmd['command'][-1] == 'f':
             self.sendNotice(sender.nick, "+++§B UNNAMED %sS FOR %s §N+++" % ('FIELD', args[0]))
             val, status = self.db.getUnnamed('field', args)
-            self.sendMemberResults(sender, val, status, 20, summary=True)
+            self.sendMemberResults(sender, val, status, 10, summary=True, is_unnamed=True)
         elif cmd['command'][-1] == 'm':
             self.sendNotice(sender.nick, "+++§B UNNAMED %sS FOR %s §N+++" % ('METHOD', args[0]))
             val, status = self.db.getUnnamed('method', args)
-            self.sendMemberResults(sender, val, status, 20, summary=True)
+            self.sendMemberResults(sender, val, status, 10, summary=True, is_unnamed=True)
         else:
             self.sendNotice(sender.nick, "+++§B UNNAMED %sS FOR %s §N+++" % ('METHOD PARAM', args[0]))
             val, status = self.db.getUnnamed('method_param', args)
-            self.sendParamResults(sender, val, status, 20, summary=True)
+            self.sendParamResults(sender, val, status, 10, summary=True, is_unnamed=True)
 
 
     # Setters
@@ -254,7 +254,7 @@ class MCPBot(BotBase):
             self.sendNotice(sender.nick, "{mcp_version_code:^13}".format(**entry) + "{mc_version_code:^13}".format(**entry) + "{mc_version_type_code:^13}".format(**entry))
 
 
-    def sendParamResults(self, sender, val, status, limit=0, summary=False):
+    def sendParamResults(self, sender, val, status, limit=0, summary=False, is_unnamed=False):
         if status:
             self.sendNotice(sender.nick, "§B" + str(type(status)) + ' : ' + str(status))
             return
@@ -284,13 +284,16 @@ class MCPBot(BotBase):
                     self.sendNotice(sender.nick, " ".format(**entry))
             else:
                 if i < limit or sender.dccSocket:
-                    self.sendNotice(sender.nick, "{class_srg_name}.{method_srg_name}.{srg_name} §B[§N {srg_descriptor} §B] =>§N {class_srg_name}.{method_mcp_name}.{mcp_name} §B[§N {java_type_code} §B]".format(**entry))
+                    if is_unnamed:
+                        self.sendNotice(sender.nick, "{method_mcp_name}.{mcp_name} §B[§N {srg_descriptor} §B]".format(**entry))
+                    else:
+                        self.sendNotice(sender.nick, "{class_srg_name}.{method_srg_name}.{srg_name} §B[§N {srg_descriptor} §B] =>§N {class_srg_name}.{method_mcp_name}.{mcp_name} §B[§N {java_type_code} §B]".format(**entry))
                 elif i == limit:
                     self.sendNotice(sender.nick, "§B+ §N%(count)d§B more. Please use the %(cmd_char)sdcc command to see the full list." % {'count': len(val) - i, 'cmd_char': self.cmdChar})
                     return
 
 
-    def sendMemberResults(self, sender, val, status, limit=0, summary=False):
+    def sendMemberResults(self, sender, val, status, limit=0, summary=False, is_unnamed=False):
         if status:
             self.sendNotice(sender.nick, "§B" + str(type(status)) + ' : ' + str(status))
             return
@@ -318,7 +321,10 @@ class MCPBot(BotBase):
                     self.sendNotice(sender.nick, " ".format(**entry))
             else:
                 if i < limit or sender.dccSocket:
-                    self.sendNotice(sender.nick, "{class_obf_name}.{obf_name} §B=>§N {class_srg_name}.{mcp_name} §B[§N {srg_name} §B]".format(**entry))
+                    if is_unnamed:
+                        self.sendNotice(sender.nick, "{srg_name} §B[§N {srg_descriptor} §B]".format(**entry))
+                    else:
+                        self.sendNotice(sender.nick, "{class_obf_name}.{obf_name} §B=>§N {class_srg_name}.{mcp_name} §B[§N {srg_name} §B]".format(**entry))
                 elif i == limit:
                     self.sendNotice(sender.nick, "§B+ §N%(count)d§B more. Please use the %(cmd_char)sdcc command to see the full list." % {'count': len(val) - i, 'cmd_char': self.cmdChar})
                     return
