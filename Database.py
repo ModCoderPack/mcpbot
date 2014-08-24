@@ -18,6 +18,7 @@ class Database(object):
 
         self.logger = Logger.getLogger("MCPBot.Database", self.bot.lognormal, self.bot.logerrors)
 
+
     def connect(self):
         self.conn = psycopg2.connect(database=self.db, user=self.user, password=self.pwd, host=self.host, port=self.port)
         if not self.conn:
@@ -28,6 +29,7 @@ class Database(object):
             #self.cursor = self.conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
             #return self.cursor
             return self.conn
+
 
     def disconnect(self):
         self.logger.info("Committing all changes and shutting down db connection")
@@ -65,12 +67,14 @@ class Database(object):
                 self.conn.rollback()
                 return None, e
 
+
     # Getters
 
     def getVersions(self, limit=0):
         sqlrequest = "select * from mcp.version_vw order by mcp_version_code desc "
         if limit > 0: sqlrequest += "limit " + str(limit)
         return self.execute(sqlrequest)
+
 
     def getParam(self, args):
         arg1 = args[0]
@@ -108,6 +112,7 @@ class Database(object):
 
         return self.execute(sqlrequest, params)
 
+
     def getMember(self, table, args):
         member = args[0]
         if member[0] == ".": member = member[1:]
@@ -136,6 +141,7 @@ class Database(object):
 
         return self.execute(sqlrequest, params)
 
+
     def getClass(self, args):
         sqlrequest = """SELECT * FROM mcp.class_vw """
         if len(args) > 1: sqlrequest += "where (mc_version_code like %(version)s or mcp_version_code like %(version)s) "
@@ -146,6 +152,7 @@ class Database(object):
 
         if len(args) > 1: return self.execute(sqlrequest, {'clazz':args[0], 'version':args[1]})
         else: return self.execute(sqlrequest, {'clazz':args[0]})
+
 
     def findInTable(self, table, args):
         sqlrequest = "SELECT * FROM mcp.%s "%(table + '_vw')
@@ -162,6 +169,7 @@ class Database(object):
             sqlrequest += ") ORDER BY pkg_name, srg_name"
         if len(args) > 1: return self.execute(sqlrequest, {'match': args[0], 'version': args[1]})
         else: return self.execute(sqlrequest, {'match': args[0]})
+
 
     def getUnnamed(self, table, args):
         pkg, _, class_name = args[0].rpartition('/')
@@ -187,6 +195,7 @@ class Database(object):
 
         return self.execute(sqlrequest, qry_params)
 
+
     # Setters
 
     def setMemberLock(self, member_type, is_lock, command, sender, args):
@@ -194,6 +203,14 @@ class Database(object):
                   'command': command, 'params': ' '.join(args), 'srg_name': args[0]}
         sqlrequest = "select mcp.set_member_lock(%(member_type)s, %(command)s, %(nick)s, %(params)s, %(srg_name)s, %(is_lock)s) as result;"
         return self.execute(sqlrequest, params)
+
+
+    def doMemberUndo(self, member_type, is_undo, can_undo_any, command, sender, args):
+        params = {'member_type': member_type, 'is_undo': is_undo, 'can_undo_any': can_undo_any, 'nick': sender.regnick.lower(),
+                  'command': command, 'params': ' '.join(args), 'srg_name': args[0]}
+        sqlrequest = "select mcp.undo_staged_member(%(member_type)s, %(command)s, %(nick)s, %(params)s, %(srg_name)s, %(is_undo)s, %(can_undo_any)s) as result;"
+        return self.execute(sqlrequest, params)
+
 
     def setMember(self, member_type, is_forced, bypass_lock, command, sender, args):
         params = {'member_type': member_type, 'is_forced': is_forced, 'bypass_lock': bypass_lock, 'nick': sender.regnick.lower(),
@@ -203,6 +220,7 @@ class Database(object):
         sqlrequest = """select mcp.process_member_change(%(member_type)s, %(command)s, %(nick)s, %(params)s, %(srg_name)s,
                             %(new_name)s, %(new_desc)s, %(is_forced)s, %(bypass_lock)s) as result;"""
         return self.execute(sqlrequest, params)
+
 
     def getMemberChange(self, member_type, staged_pid):
         sqlrequest = "select * from mcp.staged_%(member_type)s where staged_%(member_type)s_pid = %%(staged_pid)s" % {'member_type': member_type}

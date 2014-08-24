@@ -40,7 +40,9 @@ class MCPBot(BotBase):
         self.registerCommand('findallp', self.findAllKey, ['any'], 1, 2, "<regex pattern> [<version>]",             "Returns parameter entries matching a regex pattern. Allows partial matches to be returned.")
         self.registerCommand('uf',       self.listMembers,['any'], 1, 1, "<class>",                                 "Returns a list of unmapped fields for a given class. Use DCC if the list is long.")
         self.registerCommand('um',       self.listMembers,['any'], 1, 1, "<class>",                                 "Returns a list of unmapped methods for a given class. Use DCC if the list is long.")
-        self.registerCommand('up',       self.listMembers,['any'], 1, 1, "<class>",                                 "Returns a list of unmapped method parameters for a given class. Use DCC if the list is long (likely).")
+        self.registerCommand('up',       self.listMembers,['any'], 1, 1, "<class>",                                 "Returns a list of unmapped method parameters for a given class. Use DCC if the list is long.")
+        self.registerCommand('undo',     self.undoChange, ['any', 'undo_any'], 1, 1, "<srg name>"                   "Undoes the last *STAGED* name change to a given method/field/param. By default you can only undo your own changes.")
+        self.registerCommand('redo',     self.undoChange, ['any', 'undo_any'], 1, 1, "<srg name>"                   "Redoes the last *UNDONE* staged change to a given method/field/param. By default you can only redo your own changes.")
 
         self.registerCommand('sf',  self.setMember,  ['any'],        2, 999, "<srg name> <new name> [<comment>]", "Sets the MCP name and comment for the SRG field specified. SRG index can also be used.")
         self.registerCommand('fsf', self.setMember,  ['maintainer'], 2, 999, "<srg name> <new name> [<comment>]", "Force sets the MCP name and comment for the SRG field specified. SRG index can also be used.")
@@ -88,10 +90,12 @@ class MCPBot(BotBase):
         super(MCPBot, self).onStartUp()
         self.db.connect()
 
+
     def onShuttingDown(self):
         if self.isRunning:
             super(MCPBot, self).onShuttingDown()
             self.db.disconnect()
+
 
     def sqlRequest(self, bot, sender, dest, cmd, args):
         sql = ' '.join(args)
@@ -108,10 +112,12 @@ class MCPBot(BotBase):
         else:
             self.sendNotice(sender.nick, "No result found.")
 
+
     # Legacy command notice handler
 
     def legacyNotice(self, bot, sender, dest, cmd, args):
         self.sendNotice(sender.nick, "§BNOTICE: The legacy command §U%s§N§B is no longer supported, please use §U%s§N§B instead." % (cmd['command'], self.legacyCommandMap[cmd['command']]))
+
 
     # Getters
 
@@ -121,9 +127,11 @@ class MCPBot(BotBase):
         val, status = self.db.getVersions(limit)
         self.sendVersionResults(sender, val, status)
 
+
     def getParam(self, bot, sender, dest, cmd, args):
         val, status = self.db.getParam(args)
         self.sendParamResults(sender, val, status)
+
 
     def getMember(self, bot, sender, dest, cmd, args):
         member_type = 'field'
@@ -131,13 +139,16 @@ class MCPBot(BotBase):
         val, status = self.db.getMember(member_type, args)
         self.sendMemberResults(sender, val, status)
 
+
     def getClass(self, bot, sender, dest, cmd, args):
         val, status = self.db.getClass(args)
         self.sendClassResults(sender, val, status)
 
+
     def findKey(self, bot, sender, dest, cmd, args):
         args[0] = "^" + args[0] + "$"
         self.findAllKey(bot, sender, dest, cmd, args)
+
 
     def findAllKey(self, bot, sender, dest, cmd, args):
         showAll = cmd['command'][-1] in ('d', 'l')
@@ -173,6 +184,7 @@ class MCPBot(BotBase):
             val, status = self.db.findInTable('class', args)
             self.sendClassResults(sender, val, status, limit, summary=True)
 
+
     def listMembers(self, bot, sender, dest, cmd, args):
         if cmd['command'][-1] == 'f':
             self.sendNotice(sender.nick, "+++§B UNNAMED %sS FOR %s §N+++" % ('FIELD', args[0]))
@@ -199,6 +211,17 @@ class MCPBot(BotBase):
         self.sendSetLockResults(member_type, sender, val, status, args[0], is_lock)
 
 
+    def undoChange(self, bot, sender, dest, cmd, args):
+        # self.sendNotice(sender.nick, "Coming Soon™")
+        can_undo_any = sender.regnick.lower() in self.authUsers and 'undo_any' in self.authUsers[sender.regnick.lower()]
+        is_undo = cmd['command'] == 'undo'
+        if args[0].startswith('func_'): member_type = 'method'
+        elif args[0].startswith('field_'): member_type = 'field'
+        else: member_type = 'method_param'
+        val, status = self.db.doMemberUndo(member_type, is_undo, can_undo_any, cmd['command'], sender, args)
+        self.sendUndoResults(member_type, sender, val, status, args[0], cmd['command'])
+
+
     def setMember(self, bot, sender, dest, cmd, args):
         member_type = 'method'
         if cmd['command'].find('sf') > -1: member_type = 'field'
@@ -210,6 +233,7 @@ class MCPBot(BotBase):
             self.sendNotice(sender.nick, "§R!!! CAREFUL, YOU ARE FORCING AN UPDATE TO A NAMED %s !!!" % member_type.upper().replace('_', ' '))
         val, status = self.db.setMember(member_type, is_forced, bypass_lock, cmd['command'], sender, args)
         self.sendSetMemberResults(member_type, sender, val, status, args[0])
+
 
     # Send Results
 
@@ -339,6 +363,7 @@ class MCPBot(BotBase):
                     self.sendNotice(sender.nick, "§B+ §N%(count)d§B more. Please use the %(cmd_char)sdcc command to see the full list." % {'count': len(val) - i, 'cmd_char': self.cmdChar})
                     return
 
+
     # Setter results
 
     def sendSetLockResults(self, member_type, sender, val, status, srg_name, is_lock):
@@ -347,29 +372,72 @@ class MCPBot(BotBase):
             return
 
         if member_type == 'method_param':
-            member_type = 'Method Param'
+            member_type_disp = 'Method Param'
         else:
-            member_type = member_type[0].upper() + member_type[1:]
+            member_type_disp = member_type[0].upper() + member_type[1:]
 
         if is_lock:
-            self.sendNotice(sender.nick, "===§B Lock %s: %s §N===" % (member_type, srg_name))
+            self.sendNotice(sender.nick, "===§B Lock %s: %s §N===" % (member_type_disp, srg_name))
         else:
-            self.sendNotice(sender.nick, "===§B Unlock %s: %s §N===" % (member_type, srg_name))
+            self.sendNotice(sender.nick, "===§B Unlock %s: %s §N===" % (member_type_disp, srg_name))
 
         for result in val:
             if result['result'] > 0:
                 self.sendNotice(sender.nick, "§BLocked status§N : %s" % str(is_lock))
             elif result['result'] == 0:
-                self.sendNotice(sender.nick, "§BERROR: SRG Name/Index specified is not a valid %s in the current version." % member_type)
+                self.sendNotice(sender.nick, "§BERROR: SRG Name/Index specified is not a valid %s in the current version." % member_type_disp)
             elif result['result'] == -1:
-                self.sendNotice(sender.nick, "§BERROR: Invalid Member Type %s specified. Please report this to a member of the MCP team." % member_type)
+                self.sendNotice(sender.nick, "§BERROR: Invalid Member Type %s specified. Please report this to a member of the MCP team." % member_type_disp)
             elif result['result'] == -2:
-                self.sendNotice(sender.nick, "§BERROR: Ambiguous request: multiple %ss would be affected." % member_type)
+                self.sendNotice(sender.nick, "§BERROR: Ambiguous request: multiple %ss would be affected." % member_type_disp)
             elif result['result'] == -3:
                 if is_lock:
-                    self.sendNotice(sender.nick, "§BNOTICE: This %s is already locked." % member_type)
+                    self.sendNotice(sender.nick, "§BNOTICE: This %s is already locked." % member_type_disp)
                 else:
-                    self.sendNotice(sender.nick, "§BNOTICE: This %s is already unlocked." % member_type)
+                    self.sendNotice(sender.nick, "§BNOTICE: This %s is already unlocked." % member_type_disp)
+            else:
+                self.sendNotice(sender.nick, "§BERROR: Unhandled error %d when locking/unlocking a member. Please report this to a member of the MCP team along with the command you executed." % result['result'])
+
+
+    def sendUndoResults(self, member_type, sender, val, status, srg_name, command):
+        if status:
+            self.sendNotice(sender.nick, str(type(status)) + ' : ' + str(status))
+            return
+
+        if member_type == 'method_param':
+            member_type_disp = 'Method Param'
+        else:
+            member_type_disp = member_type[0].upper() + member_type[1:]
+
+        if command == 'undo':
+            self.sendNotice(sender.nick, "===§B Undo last *STAGED* change to %s: %s §N===" % (member_type_disp, srg_name))
+        else:
+            self.sendNotice(sender.nick, "===§B Redo last *UNDONE* staged change to %s: %s §N===" % (member_type_disp, srg_name))
+
+        for result in val:
+            if result['result'] > 0:
+                change, status = self.db.getMemberChange(member_type, result['result'])
+                if status:
+                    self.sendNotice(sender.nick, str(type(status)) + ' : ' + str(status))
+                    return
+
+                for row in change:
+                    self.sendNotice(sender.nick, "§BName§N     : {old_mcp_name} §B=>§N {new_mcp_name}".format(**row))
+                    self.sendNotice(sender.nick, "§BOld desc§N : {old_mcp_desc}".format(**row))
+                    self.sendNotice(sender.nick, "§BNew desc§N : {new_mcp_desc}".format(**row))
+            elif result['result'] == 0:
+                self.sendNotice(sender.nick, "§BERROR: SRG Name/Index specified is not a valid %s in the current version." % member_type_disp)
+            elif result['result'] == -1:
+                self.sendNotice(sender.nick, "§BERROR: Invalid Member Type %s specified. Please report this to a member of the MCP team." % member_type_disp)
+            elif result['result'] == -2:
+                self.sendNotice(sender.nick, "§BERROR: Ambiguous request: multiple %ss would be affected." % member_type_disp)
+            elif result['result'] == -3:
+                self.sendNotice(sender.nick, "§BERROR: Nothing to %s." % command)
+            elif result['result'] == -4:
+                self.sendNotice(sender.nick, "§BWARNING: You do not have permission to %s others' changes." % command)
+            else:
+                self.sendNotice(sender.nick, "§BERROR: Unhandled error %d when %sing a member change. Please report this to a member of the MCP team along with the command you executed." % (result['result'], command))
+
 
     def sendSetMemberResults(self, member_type, sender, val, status, srg_name):
         if status:
@@ -395,9 +463,7 @@ class MCPBot(BotBase):
                     self.sendNotice(sender.nick, "§BOld desc§N : {old_mcp_desc}".format(**row))
                     self.sendNotice(sender.nick, "§BNew desc§N : {new_mcp_desc}".format(**row))
 
-                return
-
-            if result['result'] == 0:
+            elif result['result'] == 0:
                 self.sendNotice(sender.nick, "§BERROR: SRG Name/Index specified is not a valid %s in the current version." % member_type_disp)
             elif result['result'] == -1:
                 self.sendNotice(sender.nick, "§BERROR: Invalid Member Type %s specified. Please report this to a member of the MCP team." % member_type_disp)
@@ -427,6 +493,7 @@ class MCPBot(BotBase):
                 self.sendNotice(sender.nick, "§BWARNING: New parameter name duplicates a class field name within scope. Use fsp if you are ABSOLUTELY sure that it won't cause issues. We will find you and crucify you if you break shit...")
             else:
                 self.sendNotice(sender.nick, "§BERROR: Unhandled error %d when processing a member change. Please report this to a member of the MCP team along with the command you executed." % result['result'])
+
 
 ########################################################################################################################
 def main():
