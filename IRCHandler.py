@@ -547,7 +547,6 @@ class CmdHandler(object):
                 bot.sendNotice(sender.nick, "You are prevented from using this command.")
                 return
 
-
             if cmd['command']  in bot.groups['any']['commands']:
                 userValid = True
 
@@ -557,8 +556,9 @@ class CmdHandler(object):
                         if group in bot.authUsers[sender.regnick.lower()]:
                             userValid = True
 
-            if sender.regnick.lower() in bot.authUsers and 'admin' in bot.authUsers[sender.regnick.lower()]:
-                userValid = True
+            # giving admins the right to run ANY command is probably not a good idea...
+            # if sender.regnick.lower() in bot.authUsers and 'admin' in bot.authUsers[sender.regnick.lower()]:
+            #     userValid = True
 
             if userValid:
                 callback(bot, sender, dest, cmd, args)
