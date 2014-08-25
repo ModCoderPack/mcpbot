@@ -23,6 +23,8 @@ DONE - bspkrs - add undo/redo commands for all members
 
 - cache nickserv status for users for a period of time
 
+- cache long lists of results per user and add a command to display more of the list (%next or something)
+
 
 suggestions from xaero:
 
