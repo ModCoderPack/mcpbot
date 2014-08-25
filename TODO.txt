@@ -1,21 +1,24 @@
 
 - create a way to auto-generate a javadoc for methods based on param comments
 
-STARTED - bspkrs - add undo/redo commands for all members
-    - DB functions are mostly done (untested), haven't started on the bot commands yet.
+DONE - bspkrs - add undo/redo commands for all members
 
 - The top group (currently admin) should be defined in the config file. As of now, it is not possible to have an admin group that can't run dangerous commands like sqlrequest.
 
 - better concurrency for throttling... seems like if multiple people are getting throttled messages it blocks the bot from sending messages to others
 
+- add nickserv auth success detection and move channel join to there (unless nspass is not set)
+
 - commit workflow
 - info commands
+    - DONE - unnamed members in a class
+    - change history
 - automatic export of CSVs periodically
 - create wiki pages for new bot:
     - naming conventions
     - how new commands differ from old bot
     - 
-- commands to list class members: listf listm?
+- DONE - commands to list class members: listf listm?
 - DONE - set params should warn when there is a field with the same name within scope
 
 - cache nickserv status for users for a period of time
