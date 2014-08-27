@@ -1,5 +1,5 @@
 
-- create a way to auto-generate a javadoc for methods based on param comments
+DONE - create a way to auto-generate a javadoc for methods based on param comments
 
 DONE - bspkrs - add undo/redo commands for all members
 
@@ -7,7 +7,7 @@ DONE - bspkrs - add undo/redo commands for all members
 
 - better concurrency for throttling... seems like if multiple people are getting throttled messages it blocks the bot from sending messages to others
 
-- add nickserv auth success detection and move channel join to there (unless nspass is not set)
+DONE - add nickserv auth success detection and move channel join to there (unless nspass is not set)
 
 - commit workflow
 - info commands
@@ -20,8 +20,6 @@ DONE - bspkrs - add undo/redo commands for all members
     - 
 - DONE - commands to list class members: listf listm?
 - DONE - set params should warn when there is a field with the same name within scope
-
-- cache nickserv status for users for a period of time
 
 - cache long lists of results per user and add a command to display more of the list (%next or something)
 
