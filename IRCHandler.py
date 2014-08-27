@@ -317,6 +317,13 @@ class CmdHandler(object):
             if reMatch:
                 self.bot.sendRaw(self.bot.nsreply.format(nickserv=self.bot.nickserv, nspass=self.bot.nspass) + EOL)
 
+            reMatch = re.match(self.bot.nsidentify, " ".join(params[1:])[1:])
+            if reMatch:
+                for chan in self.bot.channels:
+                    if not chan.strip() or not chan[0] == '#':
+                        continue
+                    self.bot.join(chan)
+
         dest = params[0]             #Chan or private dest
         msg  = ' '.join(params[1:])  #We stich the chat msg back together
         msg  = msg[1:]               #We remove the leading :
@@ -415,10 +422,11 @@ class CmdHandler(object):
         self.logger.debug("[S : %s] [M : %s]"%(sender.nick, " ".join(params)))        
         if self.bot.autoJoin and not self.bot.isReady:
             self.bot.isReady = True
-            for chan in self.bot.channels:
-                if not chan.strip() or not chan[0] == '#':
-                    continue
-                self.bot.join(chan) 
+            if not self.bot.nspass:
+                for chan in self.bot.channels:
+                    if not chan.strip() or not chan[0] == '#':
+                        continue
+                    self.bot.join(chan)
 
     #RPL_311
     def onRPL_WHOISUSER(self, sender, params):
@@ -455,8 +463,6 @@ class CmdHandler(object):
     #RPL_376
     def onRPL_ENDOFMOTD(self, sender, params):
         self.logger.debug("[S : %s] [M : %s]"%(sender.nick, " ".join(params)))
-        if self.bot.nspass:
-            self.bot.sendRaw(self.bot.nsreply.format(nickserv=self.bot.nickserv, nspass=self.bot.nspass) + EOL)
 
     #######################################################
     # User defined commands

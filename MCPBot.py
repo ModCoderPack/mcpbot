@@ -19,7 +19,7 @@ class MCPBot(BotBase):
         self.db = Database(self.dbhost, self.dbport, self.dbuser, self.dbname, self.dbpass, self)
 
         # TODO: remove this!
-        self.registerCommand('sql', self.sqlRequest, ['db_admin'], 1, 999, "<sql command>", "Executes a raw SQL command.")
+        self.registerCommand('sql', self.sqlRequest, ['db_admin'], 1, 999, "<sql command>", "Executes a raw SQL command.", False)
 
         self.registerCommand('version',  self.getVersion, ['any'], 0, 0, "", "Gets info about the current version.")
         self.registerCommand('versions', self.getVersion, ['any'], 0, 0, "", "Gets info about versions that are available in the database.")

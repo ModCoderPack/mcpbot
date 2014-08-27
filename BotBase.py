@@ -80,6 +80,7 @@ class BotBase(object):
         self.nickAuth   = self.config.get('NICKSERV', 'NICKAUTH', "PRIVMSG {nickserv} :acc {nick}", 'Command to use to determine the ACC level of a user')
         self.authRegex  = self.config.get('NICKSERV', 'AUTHREGEX',"(?P<nick>.+) ACC (?P<level>[0-9])", 'Regexp to parse the ACC answer')
         self.nsmarker   = self.config.get('NICKSERV', 'NSMARKER', "This nickname is registered", 'Regexp to parse in the nickserv msg when the nick need to be identified')
+        self.nsidentify = self.config.get('NICKSERV', 'NSIDENTIFY',"You are now identified for", 'Regexp to parse in the nickserv msg when identify was successful')
         self.nsreply    = self.config.get('NICKSERV', 'NSREPLY',  "PRIVMSG {nickserv} :identify {nspass}", 'Reply to an identify request')
 
         self.nick        = self.config.get('BOT', 'NICK', "PyBot")
