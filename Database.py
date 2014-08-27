@@ -84,29 +84,37 @@ class Database(object):
 
         sqlrequest = "SELECT * FROM mcp.method_param_vw "
         if len(args) > 1:
-            sqlrequest += "where (mc_version_code like %(version)s or mcp_version_code like %(version)s) "
+            versplit = args[1].split('.')
+            if len(versplit) == 2:
+                sqlrequest += "where mcp_version_code like %(version)s "
+            else:
+                sqlrequest += "where mc_version_code like %(version)s "
             params['version'] = args[1]
         else: sqlrequest += "WHERE is_current "
 
 
         splitted = arg1.split('.')
-        length = len(splitted)
-        if length == 1:
-            sqlrequest += "AND (srg_index = %(param)s OR mcp_name = %(param)s OR srg_name = %(param)s) "
-            params['param'] = arg1
-        else: # exclude srg_index if there is more than one param
-            sqlrequest += "AND (mcp_name = %(param)s OR srg_name = %(param)s) "
+        params['param'] = splitted[-1]
+        _splitted = splitted[-1].split('_')
 
-        if length == 2:
-            sqlrequest += "AND (method_srg_name = %(method)s OR method_mcp_name = %(method)s) "
-            params['method'] = splitted[0]
-            params['param'] = splitted[1]
+        if arg1.startswith('p_'):
+            sqlrequest += 'AND srg_name = %(param)s '
+        elif len(_splitted) == 2 and is_integer(_splitted[0]) and is_integer(_splitted[1]):
+            sqlrequest += 'AND srg_index = %(param)s '
+        else:
+            sqlrequest += 'AND mcp_name = %(param)s '
 
-        if length == 3:
+        if len(splitted) >= 2:
+            if splitted[-2].startswith('func_'):
+                sqlrequest += 'AND method_srg_name = %(method)s '
+            else:
+                sqlrequest += 'AND method_mcp_name = %(method)s '
+
+            params['method'] = splitted[-2]
+
+        if len(splitted) == 3:
             sqlrequest += "AND class_srg_name = %(class)s "
             params['class'] = splitted[0]
-            params['method'] = splitted[1]
-            params['param'] = splitted[2]
         else: # if the class is not specified, only return the record for the base class entry
             sqlrequest += "AND class_srg_name = srg_member_base_class "
 
@@ -119,9 +127,13 @@ class Database(object):
 
         params = {}
 
-        sqlrequest = "SELECT * FROM mcp.%s "%(table + "_vw")
+        sqlrequest = "SELECT * FROM mcp.%s " % (table + "_vw")
         if len(args) > 1:
-            sqlrequest += "where (mc_version_code like %(version)s or mcp_version_code like %(version)s) "
+            versplit = args[1].split('.')
+            if len(versplit) == 2:
+                sqlrequest += "where mcp_version_code like %(version)s "
+            else:
+                sqlrequest += "where mc_version_code like %(version)s "
             params['version'] = args[1]
         else: sqlrequest += "WHERE is_current "
 
@@ -129,44 +141,73 @@ class Database(object):
         if len(splitted) == 1:
             sqlrequest += "AND class_srg_name = srg_member_base_class "
             params.update({'member':member})
-            if member.startswith('func_') or member.startswith('field_'):
-                sqlrequest += 'AND srg_name = %(member)s'
-            elif is_integer(member):
-                sqlrequest += 'AND srg_index = %(member)s'
-            else:
-                sqlrequest += 'AND mcp_name = %(member)s'
         else:
-            sqlrequest += "AND ((class_srg_name = %(class)s AND (srg_name = %(member)s OR mcp_name = %(member)s)) OR (class_obf_name = %(class)s AND obf_name = %(member)s))"
+            sqlrequest += "AND (class_srg_name = %(class)s OR class_obf_name = %(class)s) "
             params.update({'class':splitted[0], 'member':splitted[1]})
+
+        if params['member'].startswith('func_') or params['member'].startswith('field_'):
+            sqlrequest += 'AND srg_name = %(member)s'
+        elif is_integer(params['member']):
+            sqlrequest += 'AND srg_index = %(member)s'
+        else:
+            sqlrequest += 'AND (mcp_name = %(member)s OR obf_name = %(member)s)'
 
         return self.execute(sqlrequest, params)
 
 
     def getClass(self, args):
-        sqlrequest = """SELECT * FROM mcp.class_vw """
-        if len(args) > 1: sqlrequest += "where (mc_version_code like %(version)s or mcp_version_code like %(version)s) "
-        else: sqlrequest += "WHERE is_current "
+        sqlrequest = "SELECT * FROM mcp.class_vw "
 
-        sqlrequest += """AND (obf_name=%(clazz)s
-                         OR srg_name=%(clazz)s)"""
+        if len(args) > 1:
+            versplit = args[1].split('.')
+            if len(versplit) == 2:
+                sqlrequest += "where mcp_version_code like %(version)s "
+            else:
+                sqlrequest += "where mc_version_code like %(version)s "
+        else:
+            sqlrequest += "WHERE is_current "
+
+        sqlrequest += """AND (obf_name = %(clazz)s
+                         OR srg_name = %(clazz)s)"""
 
         if len(args) > 1: return self.execute(sqlrequest, {'clazz':args[0], 'version':args[1]})
         else: return self.execute(sqlrequest, {'clazz':args[0]})
 
 
     def findInTable(self, table, args):
-        sqlrequest = "SELECT * FROM mcp.%s "%(table + '_vw')
-        if len(args) > 1: sqlrequest += "where (mc_version_code like %(version)s or mcp_version_code like %(version)s) "
-        else: sqlrequest += "WHERE is_current "
-        sqlrequest += "AND (mcp_name ~* %(match)s OR srg_name ~* %(match)s"
+        sqlrequest = "SELECT * FROM mcp.%s " % (table + '_vw')
+        if len(args) > 1:
+            versplit = args[1].split('.')
+            if len(versplit) == 2:
+                sqlrequest += "where mcp_version_code like %(version)s "
+            else:
+                sqlrequest += "where mc_version_code like %(version)s "
+        else:
+            sqlrequest += "WHERE is_current "
+
+        if args[0].lstrip('^').startswith('func_') or args[0].lstrip('^').startswith('field_') or args[0].lstrip('^').startswith('p_'):
+            sqlrequest += "AND srg_name ~ %(match)s "
+        elif is_integer(args[0]):
+            sqlrequest += "AND srg_index ~ %(match)s "
+        else:
+            arg0split = args[0].lstrip('^').rstrip('$').split('_')
+            if table == 'method_param' and len(arg0split) == 2 and is_integer(arg0split[0]) and is_integer(arg0split[1]):
+                sqlrequest += "AND srg_index ~ %(match)s "
+            else:
+                if table == 'class':
+                    sqlrequest += 'AND srg_name ~* %(match)s '
+                else:
+                    sqlrequest += "AND (mcp_name ~* %(match)s OR srg_name ~ %(match)s OR srg_index ~ %(match)s) "
+
         if table != 'class':
-            sqlrequest += " OR srg_index ~* %(match)s) ORDER BY class_srg_name"
+            sqlrequest += "ORDER BY class_srg_name"
             if table == 'method_param':
                 sqlrequest += ', srg_name'
             else:
                 sqlrequest += ', mcp_name'
         else:
-            sqlrequest += ") ORDER BY pkg_name, srg_name"
+            sqlrequest += "ORDER BY pkg_name, srg_name"
+
         if len(args) > 1: return self.execute(sqlrequest, {'match': args[0], 'version': args[1]})
         else: return self.execute(sqlrequest, {'match': args[0]})
 
