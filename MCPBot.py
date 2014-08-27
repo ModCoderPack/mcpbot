@@ -18,8 +18,7 @@ class MCPBot(BotBase):
 
         self.db = Database(self.dbhost, self.dbport, self.dbuser, self.dbname, self.dbpass, self)
 
-        # TODO: remove this!
-        self.registerCommand('sql', self.sqlRequest, ['db_admin'], 1, 999, "<sql command>", "Executes a raw SQL command.", False)
+        #self.registerCommand('sql', self.sqlRequest, ['db_admin'], 1, 999, "<sql command>", "Executes a raw SQL command.", False)
 
         self.registerCommand('version',  self.getVersion, ['any'], 0, 0, "", "Gets info about the current version.")
         self.registerCommand('versions', self.getVersion, ['any'], 0, 0, "", "Gets info about versions that are available in the database.")
@@ -97,20 +96,20 @@ class MCPBot(BotBase):
             self.db.disconnect()
 
 
-    def sqlRequest(self, bot, sender, dest, cmd, args):
-        sql = ' '.join(args)
-
-        val, status = self.db.execute(sql)
-
-        if status:
-            self.sendNotice(sender.nick, str(type(status)) + ' : ' + str(status))
-            return
-
-        if len(val) > 0:
-            for entry in val:
-                self.sendNotice(sender.nick, dict(entry))
-        else:
-            self.sendNotice(sender.nick, "No result found.")
+    # def sqlRequest(self, bot, sender, dest, cmd, args):
+    #     sql = ' '.join(args)
+    #
+    #     val, status = self.db.execute(sql)
+    #
+    #     if status:
+    #         self.sendNotice(sender.nick, str(type(status)) + ' : ' + str(status))
+    #         return
+    #
+    #     if len(val) > 0:
+    #         for entry in val:
+    #             self.sendNotice(sender.nick, dict(entry))
+    #     else:
+    #         self.sendNotice(sender.nick, "No result found.")
 
 
     # Legacy command notice handler
@@ -554,7 +553,7 @@ def main():
                     reconnect_attempts += 1
                     restart = reconnect_attempts <= max_reconnects
                 elif e.code == 500:
-                    logger.debug('Sleeping for %d seconds before further reconnect attempts.' % throttle_sleep_time)
+                    logger.info('Sleeping for %d seconds before further reconnect attempts.' % throttle_sleep_time)
                     time.sleep(throttle_sleep_time)
 
                     if throttle_sleep_time < reset_attempt_limit:
