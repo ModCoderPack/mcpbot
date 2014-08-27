@@ -50,7 +50,7 @@ class DCCHandler(asyncore.dispatcher):
     def handle_write(self):
         if not self.sendBuffer.empty():
             msg = self.sendBuffer.get_nowait()
-            self.logger.debug("Send >" + msg.strip())
+            self.logger.info("Send >" + msg.strip())
             self.send(msg)
             self.sendBuffer.task_done()
         else:
@@ -90,7 +90,7 @@ class DCCSocket(asyncore.dispatcher):
         pair = self.accept()
         if pair is not None:
             sock, addr = pair
-            self.logger.debug('Incoming connection from %s' % repr(addr))
+            self.logger.info('Incoming connection from %s' % repr(addr))
 
             targip = addr[0]
             sender = None
@@ -138,7 +138,7 @@ class DCCSocket(asyncore.dispatcher):
 
     def addPending(self, sender):
         try:
-            self.logger.debug("Adding %s - %s to the pending list"%(socket.gethostbyname(sender.host), sender))
+            self.logger.info("Adding %s - %s to the pending list"%(socket.gethostbyname(sender.host), sender))
             self.pending[socket.gethostbyname(sender.host)] = sender
             return True
         except Exception as e:

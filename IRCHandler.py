@@ -211,7 +211,7 @@ class CmdHandler(object):
             self.logger.warning('Event Monitor: time since last event (%s) exceeds timeout (%s).' % (getDurationStr(delta), getDurationStr(self.bot.monitortimeout)))
             self.socket.handle_close()
         else:
-            self.logger.debug('Event Monitor: time since last event: %s' % getDurationStr(delta))
+            self.logger.info('Event Monitor: time since last event: %s' % getDurationStr(delta))
             self.next_event_check = self.next_event_check + self.bot.monitorperiod
             self.monitor_thread = threading.Timer(self.next_event_check - time.time(), self.monitorEvents)
             self.monitor_thread.start()
@@ -295,12 +295,12 @@ class CmdHandler(object):
     #######################################################
     #IRC Commands
     def onPING(self, sender, params):
-        self.logger.debug("[S : %s] [M : %s]"%(sender.nick, " ".join(params)))        
+        self.logger.info("[S : %s] [M : %s]"%(sender.nick, " ".join(params)))        
         self.bot.sendRaw(CmdGenerator.getPONG(params[0]))
         self.handleEvents('Ping', sender, params)
 
     def onNOTICE(self, sender, params):
-        self.logger.debug("[S : %s] [M : %s]"%(sender.nick, " ".join(params)))        
+        self.logger.info("[S : %s] [M : %s]"%(sender.nick, " ".join(params)))        
 
         #We received a notice from NickServ. We check if it is an ACC notice
         if sender.nick.lower() == self.bot.nickserv.lower():
@@ -311,7 +311,7 @@ class CmdHandler(object):
                     self.logger.error("Received unkown user auth level : %s %s"%(reMatch.group('nick'), reMatch.group('level')))
                 else:
                     self.bot.users[reMatch.group('nick')].authenticate(int(reMatch.group('level')))
-                    self.logger.debug("Auth notice for %s with level %s"%(reMatch.group('nick'), reMatch.group('level')))
+                    self.logger.info("Auth notice for %s with level %s"%(reMatch.group('nick'), reMatch.group('level')))
 
             reMatch = re.match(self.bot.nsmarker, " ".join(params[1:])[1:])
             if reMatch:
@@ -338,7 +338,7 @@ class CmdHandler(object):
         
 
     def onINVITE(self, sender, params):
-        self.logger.debug("[S : %s] [M : %s]"%(sender.nick, " ".join(params)))        
+        self.logger.info("[S : %s] [M : %s]"%(sender.nick, " ".join(params)))
         if self.bot.autoInvite:
             self.bot.join(params[1])
         self.handleEvents('Invite', sender, params)
@@ -346,7 +346,7 @@ class CmdHandler(object):
     def onJOIN(self, sender, params):
         self.logger.debug("[S : %s] [M : %s]"%(sender.nick, " ".join(params)))        
         if sender.nick == self.bot.nick:
-            self.logger.debug("Adding chan %s to chan list"%(params[0]))
+            self.logger.info("Adding chan %s to chan list"%(params[0]))
             self.bot.channels.add(params[0])
             self.bot.updateConfig()
 
@@ -355,7 +355,7 @@ class CmdHandler(object):
     def onPART(self, sender, params):
         self.logger.debug("[S : %s] [M : %s]"%(sender.nick, " ".join(params)))        
         if sender.nick == self.bot.nick:        
-            self.logger.debug("Removing chan %s to chan list"%(params[0]))
+            self.logger.info("Removing chan %s from chan list"%(params[0]))
             self.bot.channels.remove(params[0])   
             self.bot.updateConfig()
         if sender.nick in self.bot.users:
@@ -370,7 +370,7 @@ class CmdHandler(object):
     def onKICK(self, sender, params):
         self.logger.debug("[S : %s] [M : %s]"%(sender.nick, " ".join(params)))        
         if params[1] == self.bot.nick:        
-            self.logger.debug("Removing chan %s from chan list"%(params[0]))
+            self.logger.info("Removing chan %s from chan list"%(params[0]))
             self.bot.channels.remove(params[0])   
             self.bot.updateConfig()           
         if sender.nick in self.bot.users:
@@ -488,14 +488,14 @@ class CmdHandler(object):
 
         #We already know this sender
         if sender.nick in self.bot.users and sender == self.bot.users[sender.nick]:
-            self.logger.debug("Found user %s in current users"%sender.nick)
+            self.logger.info("Found user %s in current users"%sender.nick)
             
             if -1 < self.bot.authtimeout < time.time() - self.bot.users[sender.nick].lastAuth:
                 self.bot.users[sender.nick].unauthenticate()
             
             # If current auth is not 3, we retry to authenticate the account but resending the request and resetting the flags
             if self.bot.users[sender.nick].auth != 3:
-                self.logger.debug("Reauthenticating user %s"%sender.nick)
+                self.logger.info("Reauthenticating user %s"%sender.nick)
                 self.bot.users[sender.nick].unauthenticate()
                 self.bot.sendRaw(self.bot.nickAuth.format(nickserv=self.bot.nickserv, nick=sender.nick) + EOL)
                 self.bot.sendRaw(CmdGenerator.getWHOIS(sender.nick))
@@ -504,7 +504,7 @@ class CmdHandler(object):
             cmdThread.start()
 
         else:
-            self.logger.debug("Adding and authenticating user %s"%sender.nick)
+            self.logger.info("Adding and authenticating user %s"%sender.nick)
             self.bot.users[sender.nick] = sender
             self.bot.sendRaw(self.bot.nickAuth.format(nickserv=self.bot.nickserv, nick=sender.nick) + EOL)
             self.bot.sendRaw(CmdGenerator.getWHOIS(sender.nick))

@@ -17,7 +17,7 @@ def getLogger(name, lognormal='botlog.log', logerror='errors.log'):
         logger.addHandler(fh)
 
         nh = logging.FileHandler(lognormal)
-        nh.setLevel(logging.DEBUG)
+        nh.setLevel(logging.INFO)
         nh.setFormatter(formatter)
         logger.addHandler(nh)
 

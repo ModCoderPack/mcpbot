@@ -446,7 +446,7 @@ class BotBase(object):
 
     def run(self):
         if self.host == "":
-            self.logger.info("Please set an IRC server in the config file.")
+            self.logger.error("Please set an IRC server in the config file.")
             return
 
         self.onStartUp()
