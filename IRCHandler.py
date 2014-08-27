@@ -395,14 +395,14 @@ class CmdHandler(object):
 
     def onPRIVMSG(self, sender, params):
         dest = params[0]             #Chan or private dest
-        msg  = ' '.join(params[1:])  #We stich the chat msg back together
+        msg  = ' '.join(params[1:])  #We stitch the chat msg back together
         msg  = msg[1:]               #We remove the leading :
 
-        if msg[0] == self.bot.cmdChar:
+        if len(msg) > 0 and msg[0] == self.bot.cmdChar:
             self.onCOMMAND(sender, dest, msg[1:])   #We remove the cmd symbol before passing the cmd to the bot
         elif dest == self.bot.nick:
             self.onCOMMAND(sender, dest, msg)
-        elif msg[0] == CTCPTAG and msg[-1] == CTCPTAG:
+        elif len(msg) > 0 and msg[0] == CTCPTAG and msg[-1] == CTCPTAG:
             self.onCTCP(sender, dest, msg[1:-1].split())
         else:
             self.logger.debug("%s %s"%(sender.nick, " ".join(params)))        
