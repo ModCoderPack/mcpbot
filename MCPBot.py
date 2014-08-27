@@ -266,16 +266,22 @@ class MCPBot(BotBase):
             if not summary:
                 if entry['is_locked']: locked = 'LOCKED'
                 else: locked = 'UNLOCKED'
-                header =                            "===§B MC {mc_version_code}: {class_pkg_name}/{class_srg_name}.{method_srg_name}.{mcp_name} §U" + locked + "§N ==="
+                header =                            "===§B MC {mc_version_code}: {class_pkg_name}/{class_srg_name}.{method_mcp_name}.{mcp_name} §U" + locked + "§N ==="
                 self.sendNotice(sender.nick,        header.format(**entry))
                 if 'srg_member_base_class' in entry and entry['srg_member_base_class'] != entry['class_srg_name']:
                     self.sendNotice(sender.nick,    "§UBase Class§N : {obf_member_base_class} §B=>§N {srg_member_base_class}".format(**entry))
-                self.sendNotice(sender.nick,        "§UName§N       : {srg_name} §B=>§N {mcp_name}".format(**entry))
-                self.sendNotice(sender.nick,        "§UMethod§N     : {class_obf_name}.{method_obf_name} §B=>§N {class_srg_name}.{method_srg_name}".format(**entry))
-                if entry['java_type_code']:
-                    self.sendNotice(sender.nick,    "§UDescriptor§N : {method_obf_descriptor} §B=>§N {method_srg_descriptor} ({java_type_code})".format(**entry))
+                if entry['srg_name'] != entry['mcp_name']:
+                    self.sendNotice(sender.nick,        "§UName§N       : {srg_name} §B=>§N {mcp_name}".format(**entry))
                 else:
+                    self.sendNotice(sender.nick,        "§UName§N       : {srg_name}".format(**entry))
+                if entry['method_srg_name'] != entry['method_mcp_name']:
+                    self.sendNotice(sender.nick,        "§UMethod§N     : {class_obf_name}.{method_obf_name} §B=>§N {class_srg_name}.{method_srg_name} §B=>§N {class_srg_name}.{method_mcp_name}".format(**entry))
+                else:
+                    self.sendNotice(sender.nick,        "§UMethod§N     : {class_obf_name}.{method_obf_name} §B=>§N {class_srg_name}.{method_srg_name}".format(**entry))
+                if entry['method_obf_descriptor'] != entry['method_srg_descriptor']:
                     self.sendNotice(sender.nick,    "§UDescriptor§N : {method_obf_descriptor} §B=>§N {method_srg_descriptor}".format(**entry))
+                else:
+                    self.sendNotice(sender.nick,    "§UDescriptor§N : {method_obf_descriptor}".format(**entry))
                 self.sendNotice(sender.nick,        "§UComment§N    : {comment}".format(**entry))
 
 
@@ -309,8 +315,14 @@ class MCPBot(BotBase):
                 self.sendNotice(sender.nick,        header.format(**entry))
                 if 'srg_member_base_class' in entry and entry['srg_member_base_class'] != entry['class_srg_name']:
                     self.sendNotice(sender.nick,    "§UBase Class§N : {obf_member_base_class} §B=>§N {srg_member_base_class}".format(**entry))
-                self.sendNotice(sender.nick,        "§UName§N       : {obf_name} §B=>§N {srg_name} §B=>§N {mcp_name}".format(**entry))
-                self.sendNotice(sender.nick,        "§UDescriptor§N : {obf_descriptor} §B=>§N {srg_descriptor}".format(**entry))
+                if entry['srg_name'] != entry['mcp_name']:
+                    self.sendNotice(sender.nick,    "§UName§N       : {obf_name} §B=>§N {srg_name} §B=>§N {mcp_name}".format(**entry))
+                else:
+                    self.sendNotice(sender.nick,    "§UName§N       : {obf_name} §B=>§N {srg_name}".format(**entry))
+                if entry['obf_descriptor'] != entry['srg_descriptor']:
+                    self.sendNotice(sender.nick,    "§UDescriptor§N : {obf_descriptor} §B=>§N {srg_descriptor}".format(**entry))
+                else:
+                    self.sendNotice(sender.nick,    "§UDescriptor§N : {obf_descriptor}".format(**entry))
                 self.sendNotice(sender.nick,        "§UComment§N    : {comment}".format(**entry))
                 if 'srg_params' in entry and entry['srg_params']:
                     self.sendNotice(sender.nick,    "§USRG Params§N : {srg_params}".format(**entry))
