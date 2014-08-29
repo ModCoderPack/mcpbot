@@ -134,8 +134,6 @@ class BotBase(object):
         self.dccSocket = DCCSocket.DCCSocket(self)
         self.cmdHandler = CmdHandler(self, self.socket)
 
-        self.registerCommand('stop', self.killSelf, ['admin'], 0, 0, "", "Kills the bot.")
-
         self.registerCommand('dcc',       self.requestDCC, ['any'],   0, 0, "",              "Requests a DCC connection to the bot.")
 
         self.registerCommand('useradd',  self.useradd,   ['admin'], 2, 2, "<user> <group>","Adds user to group.")
@@ -155,6 +153,7 @@ class BotBase(object):
         self.registerCommand('banall', self.banall, ['admin'], 0, 0, "",                  "Returns a complete dump of the ban table.")
 
         self.registerCommand('sendraw',   self.sendRawCmd, ['admin'], 0, 999, "<irccmd>",    "Send a raw IRC cmd.")
+        self.registerCommand('shutdown', self.killSelf, ['admin'], 0, 0, "", "Kills the bot.")
 
         self.registerCommand('help',      self.helpcmd,    ['any'],   0, 1, "[<command>|*]", "Lists available commands or help about a specific command.")
 
