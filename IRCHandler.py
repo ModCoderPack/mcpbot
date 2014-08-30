@@ -351,8 +351,6 @@ class CmdHandler(object):
                 self.bot.channels.add(params[0])
                 self.bot.updateConfig()
 
-            self.bot.sendMessage(params[0], 'Hi! To learn how to use me type %shelp or visit %s' % (self.bot.cmdChar, self.bot.help_url))
-
 
         self.handleEvents('Join', sender, params)
 

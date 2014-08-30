@@ -84,15 +84,15 @@ test_exports = \
                     from mcp.staged_method where undo_command_history_pid is null) sm
                     on sm.method_pid = m.method_pid and sm.row_num = 1
                 left join (
-                        select mp.method_pid, string_agg('@param ' || coalesce(sm.mcp_name, mp.mcp_name) || ' ' || coalesce(sm.desc, mp.comment), '\\n') as desc
+                        select mp.method_pid, string_agg('@param ' || coalesce(smp.mcp_name, mp.mcp_name) || ' ' || coalesce(smp.desc, mp.comment), '\\n') as desc
                         from mcp.method_param mp
                         left join (select method_param_pid, new_mcp_name as mcp_name, new_mcp_desc as desc, created_ts,
                                 row_number() over (partition by method_param_pid order by created_ts desc) as row_num
-                            from mcp.staged_method_param where undo_command_history_pid is null) sm
-                            on sm.method_param_pid = mp.method_param_pid and sm.row_num = 1
+                            from mcp.staged_method_param where undo_command_history_pid is null) smp
+                            on smp.method_param_pid = mp.method_param_pid and smp.row_num = 1
                         where mp.srg_name ~ 'p_i?[0-9]+_'
                             and mp.mcp_version_pid = %(mcp_version)s
-                            and coalesce(mp.mcp_name, sm.mcp_name) is not null -- and coalesce(mp.comment, sm.desc) is not null
+                            and coalesce(mp.mcp_name, smp.mcp_name) is not null and coalesce(mp.comment, smp.desc) is not null
                         group by mp.method_pid
                         ) p on p.method_pid = m.method_pid
                 where m.srg_name ~ 'func_[0-9]+_[a-zA-Z]+'
