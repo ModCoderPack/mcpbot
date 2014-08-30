@@ -64,7 +64,7 @@ exports = \
                     (case when m.is_on_client and not m.is_on_server then 0 when not m.is_on_client and m.is_on_server then 1 else 2 end) as side
                 from mcp.method_param mp
                 join mcp.method m on m.method_pid = mp.method_pid
-                where mp.srg_name ~ 'p_[i|][0-9]+_'
+                where mp.srg_name ~ 'p_i?[0-9]+_'
                     and mp.mcp_version_pid = %(mcp_version)s
                     and mp.mcp_name is not null
                 order by mp.srg_name;"""
@@ -127,7 +127,7 @@ test_exports = \
                         row_number() over (partition by method_param_pid order by created_ts desc) as row_num
                     from mcp.staged_method_param where undo_command_history_pid is null) sm
                     on sm.method_param_pid = mp.method_param_pid and sm.row_num = 1
-                where mp.srg_name ~ 'p_[i|][0-9]+_'
+                where mp.srg_name ~ 'p_i?[0-9]+_'
                     and mp.mcp_version_pid = %(mcp_version)s
                     and (mp.mcp_name is not null or sm.mcp_name is not null)
                 order by mp.srg_name;"""
