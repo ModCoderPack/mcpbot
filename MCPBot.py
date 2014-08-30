@@ -3,6 +3,8 @@ from BotBase import BotBase, BotHandler
 from Database import Database
 from optparse import OptionParser
 import time
+import threading
+import export_csv
 
 __version__ = "0.1.0"
 
@@ -16,12 +18,19 @@ class MCPBot(BotBase):
         self.dbname = self.config.get('DATABASE', 'NAME', "")
         self.dbpass = self.config.get('DATABASE', 'PASS', "")
 
+        self.test_export_period = self.config.geti('EXPORT', 'TEST_EXPORT_PERIOD', '30', 'How often in minutes to run the test CSV export. Use 0 to disable.')
+        self.test_export_path = self.config.get('EXPORT', 'TEST_EXPORT_PATH', 'testcsv', 'Relative path to write the test CSV files to.')
+        self.test_export_url = self.config.get('EXPORT', 'TEST_EXPORT_URL', 'http://mcpbot.bspk.rs/testcsv/')
+        self.next_export = None
+        self.test_export_thread = None
+
         self.db = Database(self.dbhost, self.dbport, self.dbuser, self.dbname, self.dbpass, self)
 
         #self.registerCommand('sql', self.sqlRequest, ['db_admin'], 1, 999, "<sql command>", "Executes a raw SQL command.", False)
 
         self.registerCommand('version',  self.getVersion, ['any'], 0, 0, "", "Gets info about the current version.")
         self.registerCommand('versions', self.getVersion, ['any'], 0, 0, "", "Gets info about versions that are available in the database.")
+        self.registerCommand('testcsv',  self.getTestCSVURL, ['any'], 0, 0, "", "Gets the URL for the running export of staged changes.")
 
         self.registerCommand('gp',       self.getParam,   ['any'], 1, 2, "[[<class>.]<method>.]<name> [<version>]", "Returns method parameter information. Defaults to current version. Version can be for MCP or MC. Obf class and method names not supported.")
         self.registerCommand('gf',       self.getMember,  ['any'], 1, 2, "[<class>.]<name> [<version>]",            "Returns field information. Defaults to current version. Version can be for MCP or MC.")
@@ -88,12 +97,33 @@ class MCPBot(BotBase):
     def onStartUp(self):
         super(MCPBot, self).onStartUp()
         self.db.connect()
+        if self.test_export_period > 0:
+            self.exportTimer()
 
 
     def onShuttingDown(self):
         if self.isRunning:
             super(MCPBot, self).onShuttingDown()
             self.db.disconnect()
+            if self.test_export_thread:
+                self.test_export_thread.cancel()
+
+
+    def exportTimer(self):
+        if not self.next_export:
+            self.next_export = time.time()
+        else:
+            self.logger.info('Running test CSV export.')
+            export_csv.do_export(self.dbhost, self.dbport, self.dbname, self.dbuser, self.dbpass, test_csv=True, export_path=self.test_export_path)
+            self.sendMessage('#testwa', 'Exported test csv: %s' % self.test_export_url)
+
+        self.next_export += (self.test_export_period * 60)
+        self.test_export_thread = threading.Timer(self.next_export - time.time(), self.exportTimer)
+        self.test_export_thread.start()
+
+
+    def getTestCSVURL(self, bot, sender, dest, cmd, args):
+        self.sendMessage(dest, self.test_export_url)
 
 
     # def sqlRequest(self, bot, sender, dest, cmd, args):

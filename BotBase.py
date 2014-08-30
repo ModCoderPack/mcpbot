@@ -89,6 +89,7 @@ class BotBase(object):
         self.autoJoin    = self.config.getb('BOT', 'AUTOJOIN', "true", 'Automatically join channels in the chan list?')
         self.lognormal   = self.config.get('BOT', 'LOGNORMAL', "botlog.log")
         self.logerrors   = self.config.get('BOT', 'LOGERRORS', "errors.log")
+        self.help_url    = self.config.get('BOT', 'HELP_URL',  '')
 
         self.allowunregistered = self.config.getb('AUTH', 'ALLOWUNREGISTERED', "true", 'Can users without a registered nick emit commands?')
         self.authtimeout       = self.config.geti('AUTH', 'TIMEOUT', "60", 'User authentication refresh delay in seconds. User auth will be considered valid for this period.')

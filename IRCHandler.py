@@ -347,8 +347,12 @@ class CmdHandler(object):
         self.logger.debug("[S : %s] [M : %s]"%(sender.nick, " ".join(params)))        
         if sender.nick == self.bot.nick:
             self.logger.info("Adding chan %s to chan list"%(params[0]))
-            self.bot.channels.add(params[0])
-            self.bot.updateConfig()
+            if not params[0] in self.bot.channels:
+                self.bot.channels.add(params[0])
+                self.bot.updateConfig()
+
+            self.bot.sendMessage(params[0], 'Hi! To learn how to use me type %shelp or visit %s' % (self.bot.cmdChar, self.bot.help_url))
+
 
         self.handleEvents('Join', sender, params)
 
