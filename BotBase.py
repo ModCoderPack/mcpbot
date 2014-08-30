@@ -345,6 +345,7 @@ class BotBase(object):
             if len(allowedcmds) > 0:
                 bot.sendNotice(sender.nick, "§BCommands you have access to use §N(type §B%shelp <command>§N for help on specific commands):" % self.cmdChar)
                 bot.sendNotice(sender.nick, ", ".join(allowedcmds))
+                bot.sendNotice(sender.nick, 'More info can be found at %s' % self.help_url)
 
 
         else:
