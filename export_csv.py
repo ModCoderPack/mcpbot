@@ -30,7 +30,7 @@ exports = \
             'columns': ['searge', 'name', 'side', 'desc'],
             'query': """select m.srg_name as searge, m.mcp_name as name,
                     (case when m.is_on_client and not m.is_on_server then 0 when not m.is_on_client and m.is_on_server then 1 else 2 end) as side,
-                    m.comment || (case when p.desc is not null then '\\n\\n' || p.desc else '' end) as desc
+                    m.comment || (case when p.desc is not null then '\\n \\n' || p.desc else '' end) as desc
                 from mcp.method m
                 left join (
                         select mp.method_pid, string_agg('@param ' || mp.mcp_name || ' ' || mp.comment, '\\n' order by mp.param_number) as desc
@@ -77,7 +77,7 @@ test_exports = \
             'columns': ['searge', 'name', 'side', 'desc'],
             'query': """select m.srg_name as searge, coalesce(sm.mcp_name, m.mcp_name) as name,
                     (case when m.is_on_client and not m.is_on_server then 0 when not m.is_on_client and m.is_on_server then 1 else 2 end) as side,
-                    coalesce(sm.comment, m.comment) || (case when p.desc is not null then '\\n\\n' || p.desc else '' end) as desc
+                    coalesce(sm.comment, m.comment) || (case when p.desc is not null then '\\n \\n' || p.desc else '' end) as desc
                 from mcp.method m
                 left join (select method_pid, new_mcp_name as mcp_name, new_mcp_desc as comment, created_ts,
                         row_number() over (partition by method_pid order by created_ts desc) as row_num
@@ -165,6 +165,9 @@ def getLogger(name, lognormal='export_csv.log', logerror='export_csv_err.log', d
     return newlogger
 
 
+logger = getLogger("Export_CSV", "export_csv.log", "export_csv-err.log")
+
+
 def export_data(pgconn, query, csvfile, columns, export_path):
     pgcursor = pgconn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
 
@@ -246,7 +249,7 @@ def run():
 
 
     options, args = parser.parse_args()
-    logger = getLogger("Export_CSV", "export_csv.log", "export_csv-err.log")
+    #logger = getLogger("Export_CSV", "export_csv.log", "export_csv-err.log")
     logger.info('MCPBot CSV Export v' + __version__)
 
     configfile = 'export.cfg'
