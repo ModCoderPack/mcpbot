@@ -33,7 +33,7 @@ exports = \
                     m.comment || (case when p.desc is not null then '\\n\\n' || p.desc else '' end) as desc
                 from mcp.method m
                 left join (
-                        select mp.method_pid, string_agg('@param ' || mp.mcp_name || ' ' || mp.comment, '\\n') as desc
+                        select mp.method_pid, string_agg('@param ' || mp.mcp_name || ' ' || mp.comment, '\\n' order by mp.param_number) as desc
                         from mcp.method_param mp
                         where mp.srg_name ~ 'p_i?[0-9]+_'
                             and mp.mcp_version_pid = %(mcp_version)s
@@ -84,7 +84,7 @@ test_exports = \
                     from mcp.staged_method where undo_command_history_pid is null) sm
                     on sm.method_pid = m.method_pid and sm.row_num = 1
                 left join (
-                        select mp.method_pid, string_agg('@param ' || coalesce(smp.mcp_name, mp.mcp_name) || ' ' || coalesce(smp.desc, mp.comment), '\\n') as desc
+                        select mp.method_pid, string_agg('@param ' || coalesce(smp.mcp_name, mp.mcp_name) || ' ' || coalesce(smp.desc, mp.comment), '\\n' order by mp.param_number) as desc
                         from mcp.method_param mp
                         left join (select method_param_pid, new_mcp_name as mcp_name, new_mcp_desc as desc, created_ts,
                                 row_number() over (partition by method_param_pid order by created_ts desc) as row_num
