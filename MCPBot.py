@@ -115,7 +115,7 @@ class MCPBot(BotBase):
         else:
             self.logger.info('Running test CSV export.')
             export_csv.do_export(self.dbhost, self.dbport, self.dbname, self.dbuser, self.dbpass, test_csv=True, export_path=self.test_export_path)
-            self.sendMessage('#testwa', 'Exported test csv: %s' % self.test_export_url)
+            #self.sendMessage('#testwa', 'Exported test csv: %s' % self.test_export_url)
 
         self.next_export += (self.test_export_period * 60)
         self.test_export_thread = threading.Timer(self.next_export - time.time(), self.exportTimer)
