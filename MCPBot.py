@@ -21,6 +21,9 @@ class MCPBot(BotBase):
         self.test_export_period = self.config.geti('EXPORT', 'TEST_EXPORT_PERIOD', '30', 'How often in minutes to run the test CSV export. Use 0 to disable.')
         self.test_export_path = self.config.get('EXPORT', 'TEST_EXPORT_PATH', 'testcsv', 'Relative path to write the test CSV files to.')
         self.test_export_url = self.config.get('EXPORT', 'TEST_EXPORT_URL', 'http://mcpbot.bspk.rs/testcsv/')
+        self.maven_repo_url = self.config.get('EXPORT', 'MAVEN_REPO_URL', 'http://files.minecraftforge.net/maven/manage/upload/de/ocean-labs/mcp/')
+        self.maven_repo_user = self.config.get('EXPORT', 'MAVEN_REPO_USER', 'mcp')
+        self.maven_repo_pass = self.config.get('EXPORT', 'MAVEN_REPO_PASS', '')
         self.next_export = None
         self.test_export_thread = None
 
@@ -116,6 +119,10 @@ class MCPBot(BotBase):
             self.logger.info('Running test CSV export.')
             export_csv.do_export(self.dbhost, self.dbport, self.dbname, self.dbuser, self.dbpass, test_csv=True, export_path=self.test_export_path)
             #self.sendMessage('#testwa', 'Exported test csv: %s' % self.test_export_url)
+
+            # path to send shit to: http://files.minecraftforge.net/maven/manage/upload/de/ocean-labs/mcp/
+            # path where it goes  : http://files.minecraftforge.net/maven/de/ocean-labs/mcp/
+# requests.put('http://files.minecraftforge.net/maven/manage/upload/de/ocean-labs/mcp/<somefilename>', auth=('mcp', 'some awesome mcp password'), data=open('the file'))
 
         self.next_export += (self.test_export_period * 60)
         self.test_export_thread = threading.Timer(self.next_export - time.time(), self.exportTimer)
