@@ -7,7 +7,7 @@ def getLogger(name, lognormal='botlog.log', logerror='errors.log'):
     if len(logger.handlers) == 0:
         ch = logging.StreamHandler()
         ch.setLevel(logging.DEBUG)
-        formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(funcName)20s - %(message)s')
+        formatter = logging.Formatter('%(asctime)s - %(levelname)8s - %(funcName)20s - %(message)s')
         ch.setFormatter(formatter)
         logger.addHandler(ch)
 

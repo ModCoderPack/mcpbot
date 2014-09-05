@@ -8,6 +8,7 @@ import threading
 import datetime
 import json
 import sys
+import time
 from IRCHandler import CmdHandler,CmdGenerator,Sender,Color, EOL
 from ConfigHandler import AdvConfigParser
 
@@ -484,6 +485,7 @@ class BotBase(object):
         self.logger.info("Killing self.")
         self.isTerminating = True
         self.sendNotice(sender, "Killing self.")
+        time.sleep(5) # just to give time to send the notice
 
     #IRC COMMANDS QUICK ACCESS
     def sendRaw(self, msg):

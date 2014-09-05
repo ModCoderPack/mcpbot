@@ -13,15 +13,15 @@ __version__ = "0.1.0"
 from optparse import OptionParser
 import psycopg2
 import psycopg2.extras
-try:
-    import ConfigParser
-except ImportError:
-    import configparser
-import logging
 import csv
 from sys import exit
 import os
 from contextlib import closing
+import Logger
+try:
+    import ConfigParser
+except ImportError:
+    import configparser as ConfigParser
 
 
 exports = \
@@ -135,37 +135,7 @@ test_exports = \
     ]
 
 
-def getLogger(name, lognormal='export_csv.log', logerror='export_csv_err.log', delete_logs=False):
-    if delete_logs:
-        if os.path.isfile(lognormal):
-            print("Removing log file %s" % lognormal)
-            os.remove(lognormal)
-        if os.path.isfile(logerror):
-            print("Removing log file %s" % logerror)
-            os.remove(logerror)
-
-    newlogger = logging.getLogger(name)
-    newlogger.setLevel(logging.DEBUG)
-    ch = logging.StreamHandler()
-    ch.setLevel(logging.INFO)
-    formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(funcName)s - %(message)s')
-    ch.setFormatter(formatter)
-    newlogger.addHandler(ch)
-
-    fh = logging.FileHandler(logerror)
-    fh.setLevel(logging.WARNING)
-    fh.setFormatter(formatter)
-    newlogger.addHandler(fh)
-
-    nh = logging.FileHandler(lognormal)
-    nh.setLevel(logging.DEBUG)
-    nh.setFormatter(formatter)
-    newlogger.addHandler(nh)
-
-    return newlogger
-
-
-logger = getLogger("Export_CSV", "export_csv.log", "export_csv-err.log")
+logger = Logger.getLogger("Export_CSV", "export_csv.log", "export_csv-err.log")
 
 
 def export_data(pgconn, query, csvfile, columns, export_path):
@@ -234,8 +204,6 @@ def getConfig(config, section, option, default):
 
 
 def run():
-    global logger
-
     parser = OptionParser(version='%prog ' + __version__,
                           usage="%prog [options]")
     parser.add_option('-C', '--config-only',
@@ -249,7 +217,6 @@ def run():
 
 
     options, args = parser.parse_args()
-    #logger = getLogger("Export_CSV", "export_csv.log", "export_csv-err.log")
     logger.info('MCPBot CSV Export v' + __version__)
 
     configfile = 'export.cfg'

@@ -3,10 +3,13 @@ from BotBase import BotBase, BotHandler
 from Database import Database
 from optparse import OptionParser
 import time
+from datetime import timedelta, datetime, time as time_class
 import threading
 import export_csv
+from MavenHandler import MavenHandler
+import zipfile, os
 
-__version__ = "0.1.0"
+__version__ = "0.5.0"
 
 class MCPBot(BotBase):
     def __init__(self, nspass):
@@ -18,14 +21,31 @@ class MCPBot(BotBase):
         self.dbname = self.config.get('DATABASE', 'NAME', "")
         self.dbpass = self.config.get('DATABASE', 'PASS', "")
 
+        self.primary_channel = self.config.get('BOT', 'PRIMARY_CHANNEL', '#mcpbot', 'Important bot messages will be sent to this channel.')
+
         self.test_export_period = self.config.geti('EXPORT', 'TEST_EXPORT_PERIOD', '30', 'How often in minutes to run the test CSV export. Use 0 to disable.')
         self.test_export_path = self.config.get('EXPORT', 'TEST_EXPORT_PATH', 'testcsv', 'Relative path to write the test CSV files to.')
         self.test_export_url = self.config.get('EXPORT', 'TEST_EXPORT_URL', 'http://mcpbot.bspk.rs/testcsv/')
-        self.maven_repo_url = self.config.get('EXPORT', 'MAVEN_REPO_URL', 'http://files.minecraftforge.net/maven/manage/upload/de/ocean-labs/mcp/')
+        self.maven_repo_url = self.config.get('EXPORT', 'MAVEN_REPO_URL', 'http://files.minecraftforge.net/maven/manage/upload/de/ocean-labs/mcp/', )
         self.maven_repo_user = self.config.get('EXPORT', 'MAVEN_REPO_USER', 'mcp')
         self.maven_repo_pass = self.config.get('EXPORT', 'MAVEN_REPO_PASS', '')
+        self.maven_snapshot_path = self.config.get('EXPORT', 'MAVEN_SNAPSHOT_PATH', '%(mc_version_code)s/snapshots')
+        self.maven_stable_path = self.config.get('EXPORT', 'MAVEN_STABLE_PATH', '%(mc_version_code)s/stable/%(version_control_pid)s')
+        self.maven_upload_time_str = self.config.get('EXPORT', 'MAVEN_UPLOAD_TIME', '3:00', 'The approximate time that the maven upload will take place daily. Will happen within TEST_EXPORT_PERIOD / 2 minutes of this time. Use H:MM format, with 24 hour clock.')
+        self.upload_retry_count = self.config.geti('EXPORT', 'UPLOAD_RETRY_COUNT', '3', 'Number of times to retry the maven upload if it fails. Attempts will be made 5 minutes apart.')
         self.next_export = None
         self.test_export_thread = None
+
+        if self.maven_upload_time_str:
+            if len(self.maven_upload_time_str.split(':')) > 1:
+                upload_hour, _, upload_minute = self.maven_upload_time_str.partition(':')
+            else:
+                upload_hour = self.maven_upload_time_str
+                upload_minute = '0'
+
+            self.maven_upload_time = time_class(int(upload_hour), int(upload_minute), 0)
+        else:
+            self.maven_upload_time = None
 
         self.db = Database(self.dbhost, self.dbport, self.dbuser, self.dbname, self.dbpass, self)
 
@@ -114,17 +134,48 @@ class MCPBot(BotBase):
 
     def exportTimer(self):
         if not self.next_export:
-            self.next_export = time.time()
+            self.next_export = time.time() + (self.test_export_period * 60)
         else:
+            self.next_export += (self.test_export_period * 60)
+            now = datetime.now()
+
             self.logger.info('Running test CSV export.')
             export_csv.do_export(self.dbhost, self.dbport, self.dbname, self.dbuser, self.dbpass, test_csv=True, export_path=self.test_export_path)
-            #self.sendMessage('#testwa', 'Exported test csv: %s' % self.test_export_url)
 
-            # path to send shit to: http://files.minecraftforge.net/maven/manage/upload/de/ocean-labs/mcp/
-            # path where it goes  : http://files.minecraftforge.net/maven/de/ocean-labs/mcp/
-# requests.put('http://files.minecraftforge.net/maven/manage/upload/de/ocean-labs/mcp/<somefilename>', auth=('mcp', 'some awesome mcp password'), data=open('the file'))
+            if self.maven_upload_time:
+                min_upload_time = datetime.combine(now.date(), self.maven_upload_time) - timedelta(minutes=self.test_export_period/2)
+                max_upload_time = datetime.combine(now.date(), self.maven_upload_time) + timedelta(minutes=self.test_export_period/2)
+                if min_upload_time <= now <= max_upload_time:
+                    self.logger.info("Pushing snapshot mappings to Forge Maven.")
+                    self.sendMessage(self.primary_channel, "[TEST CSV] Pushing snapshot mappings to Forge Maven.")
+                    result, status = self.db.getVersions(1)
+                    if status:
+                        self.logger.error(status)
+                        return
 
-        self.next_export += (self.test_export_period * 60)
+                    zip_name = 'csv-%s-%s.zip' % (result[0]['mc_version_code'], now.strftime('%Y%m%d'))
+                    zipContents(self.test_export_path, zip_name)
+
+                    tries = 0
+                    success = MavenHandler.upload(self.maven_repo_url, self.maven_repo_user, self.maven_repo_pass,
+                            zip_name, remote_path=self.maven_snapshot_path % result[0], logger=self.logger)
+                    while tries < self.upload_retry_count and not success:
+                        tries += 1
+                        self.sendMessage(self.primary_channel, '[TEST CSV] WARNING: Upload attempt failed. Trying again in 3 minutes.')
+                        time.sleep(180)
+                        success = MavenHandler.upload(self.maven_repo_url, self.maven_repo_user, self.maven_repo_pass,
+                                zip_name, remote_path=self.maven_snapshot_path % result[0], logger=self.logger)
+
+                    if success and tries == 0:
+                        self.logger.info('Maven upload successful.')
+                        self.sendMessage(self.primary_channel, '[TEST CSV] Maven upload successful.')
+                    elif success and tries > 0:
+                        self.logger.info('Maven upload successful after %d %s.' % (tries, 'retry' if tries == 1 else 'retries'))
+                        self.sendMessage(self.primary_channel, '[TEST CSV] Maven upload successful after %d %s.' % (tries, 'retry' if tries == 1 else 'retries'))
+                    else:
+                        self.logger.error('Maven upload failed after %d retries.' % tries)
+                        self.sendMessage(self.primary_channel, '[TEST CSV] ERROR: Maven upload failed after %d retries!' % tries)
+
         self.test_export_thread = threading.Timer(self.next_export - time.time(), self.exportTimer)
         self.test_export_thread.start()
 
@@ -144,7 +195,7 @@ class MCPBot(BotBase):
     #
     #     if len(val) > 0:
     #         for entry in val:
-    #             self.sendNotice(sender.nick, dict(entry))
+    #             self.sendNotice(sender.nick, dict(entry)):
     #     else:
     #         self.sendNotice(sender.nick, "No result found.")
 
@@ -545,11 +596,23 @@ class MCPBot(BotBase):
                 self.sendNotice(sender.nick, "§BWARNING: Do not begin method, non-final-static field, or parameter names with an uppercase letter.")
             elif result['result'] == -13:
                 self.sendNotice(sender.nick, "§BWARNING: New parameter name duplicates a class field name within scope. Use fsp if you are ABSOLUTELY sure that it won't cause issues. We will find you and crucify you if you break shit...")
+            elif result['result'] == -14:
+                self.sendNotice(sender.nick, "§BWARNING: New parameter name is reserved for use by the JAD-style local field renaming process.")
             else:
                 self.sendNotice(sender.nick, "§BERROR: Unhandled error %d when processing a member change. Please report this to a member of the MCP team along with the command you executed." % result['result'])
 
 
 ########################################################################################################################
+
+
+def zipContents(path, targetfilename=None):
+    if not targetfilename: targetfilename = path.replace('/', '_') + '.zip'
+    with zipfile.ZipFile(targetfilename, 'w', compression=zipfile.ZIP_DEFLATED) as zfile:
+        files = os.listdir(path)
+        for item in [item for item in files if os.path.isfile(item)]:
+            zfile.write(path + '/' + os.path.basename(item), arcname=os.path.basename(item))
+
+
 def main():
 
     parser = OptionParser(version='%prog ' + __version__,
