@@ -8,6 +8,7 @@ import threading
 import export_csv
 from MavenHandler import MavenHandler
 import zipfile, os
+import psycopg2.extras
 
 __version__ = "0.5.0"
 
@@ -29,8 +30,8 @@ class MCPBot(BotBase):
         self.maven_repo_url = self.config.get('EXPORT', 'MAVEN_REPO_URL', 'http://files.minecraftforge.net/maven/manage/upload/de/ocean-labs/mcp/', )
         self.maven_repo_user = self.config.get('EXPORT', 'MAVEN_REPO_USER', 'mcp')
         self.maven_repo_pass = self.config.get('EXPORT', 'MAVEN_REPO_PASS', '')
-        self.maven_snapshot_path = self.config.get('EXPORT', 'MAVEN_SNAPSHOT_PATH', '%(mc_version_code)s/snapshots')
-        self.maven_stable_path = self.config.get('EXPORT', 'MAVEN_STABLE_PATH', '%(mc_version_code)s/stable/%(version_control_pid)s')
+        self.maven_snapshot_path = self.config.get('EXPORT', 'MAVEN_SNAPSHOT_PATH', 'mcp_snapshot/%(date)s-%(mc_version_code)s')
+        self.maven_stable_path = self.config.get('EXPORT', 'MAVEN_STABLE_PATH', 'mcp_stable/%(version_control_pid)s-%(mc_version_code)s')
         self.maven_upload_time_str = self.config.get('EXPORT', 'MAVEN_UPLOAD_TIME', '3:00', 'The approximate time that the maven upload will take place daily. Will happen within TEST_EXPORT_PERIOD / 2 minutes of this time. Use H:MM format, with 24 hour clock.')
         self.upload_retry_count = self.config.geti('EXPORT', 'UPLOAD_RETRY_COUNT', '3', 'Number of times to retry the maven upload if it fails. Attempts will be made 5 minutes apart.')
         self.next_export = None
@@ -148,12 +149,13 @@ class MCPBot(BotBase):
                 if min_upload_time <= now <= max_upload_time:
                     self.logger.info("Pushing snapshot mappings to Forge Maven.")
                     self.sendMessage(self.primary_channel, "[TEST CSV] Pushing snapshot mappings to Forge Maven.")
-                    result, status = self.db.getVersions(1)
+                    result, status = self.db.getVersions(1, psycopg2.extras.RealDictCursor)
                     if status:
                         self.logger.error(status)
                         return
 
-                    zip_name = 'csv-%s-%s.zip' % (result[0]['mc_version_code'], now.strftime('%Y%m%d'))
+                    result[0]['date'] = now.strftime('%Y%m%d')
+                    zip_name = (self.maven_snapshot_path.replace('/', '-') + '.zip') % result[0]
                     zipContents(self.test_export_path, zip_name)
 
                     tries = 0

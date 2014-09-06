@@ -48,9 +48,9 @@ class Database(object):
             self.logger.info("*** Connection to database re-established ***")
 
 
-    def execute(self, request, arguments=None):
+    def execute(self, request, arguments=None, cursor_type=psycopg2.extras.DictCursor):
         self.checkdbconn()
-        with closing(self.conn.cursor(cursor_factory=psycopg2.extras.DictCursor)) as cursor:
+        with closing(self.conn.cursor(cursor_factory=cursor_type)) as cursor:
             try:
                 if arguments:
                     bound_request = cursor.mogrify(request, arguments)
@@ -70,10 +70,10 @@ class Database(object):
 
     # Getters
 
-    def getVersions(self, limit=0):
+    def getVersions(self, limit=0, cursor_type=psycopg2.extras.DictCursor):
         sqlrequest = "select * from mcp.version_vw order by mcp_version_code desc "
         if limit > 0: sqlrequest += "limit " + str(limit)
-        return self.execute(sqlrequest)
+        return self.execute(sqlrequest, cursor_type=cursor_type)
 
 
     def getParam(self, args):
