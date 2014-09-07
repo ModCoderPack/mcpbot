@@ -135,48 +135,48 @@ class MCPBot(BotBase):
 
     def exportTimer(self):
         if not self.next_export:
-            self.next_export = time.time() + (self.test_export_period * 60)
-        else:
-            self.next_export += (self.test_export_period * 60)
-            now = datetime.now()
+            self.next_export = time.time()
 
-            self.logger.info('Running test CSV export.')
-            export_csv.do_export(self.dbhost, self.dbport, self.dbname, self.dbuser, self.dbpass, test_csv=True, export_path=self.test_export_path)
+        self.next_export += (self.test_export_period * 60)
+        now = datetime.now()
 
-            if self.maven_upload_time:
-                min_upload_time = datetime.combine(now.date(), self.maven_upload_time) - timedelta(minutes=self.test_export_period/2)
-                max_upload_time = datetime.combine(now.date(), self.maven_upload_time) + timedelta(minutes=self.test_export_period/2)
-                if min_upload_time <= now <= max_upload_time:
-                    self.logger.info("Pushing snapshot mappings to Forge Maven.")
-                    self.sendMessage(self.primary_channel, "[TEST CSV] Pushing snapshot mappings to Forge Maven.")
-                    result, status = self.db.getVersions(1, psycopg2.extras.RealDictCursor)
-                    if status:
-                        self.logger.error(status)
-                        return
+        self.logger.info('Running test CSV export.')
+        export_csv.do_export(self.dbhost, self.dbport, self.dbname, self.dbuser, self.dbpass, test_csv=True, export_path=self.test_export_path)
 
-                    result[0]['date'] = now.strftime('%Y%m%d')
-                    zip_name = (self.maven_snapshot_path.replace('/', '-') + '.zip') % result[0]
-                    zipContents(self.test_export_path, zip_name)
+        if self.maven_upload_time:
+            min_upload_time = datetime.combine(now.date(), self.maven_upload_time) - timedelta(minutes=self.test_export_period/2)
+            max_upload_time = datetime.combine(now.date(), self.maven_upload_time) + timedelta(minutes=self.test_export_period/2)
+            if min_upload_time <= now <= max_upload_time:
+                self.logger.info("Pushing nightly snapshot mappings to Forge Maven.")
+                self.sendMessage(self.primary_channel, "[TEST CSV] Pushing nightly snapshot mappings to Forge Maven.")
+                result, status = self.db.getVersions(1, psycopg2.extras.RealDictCursor)
+                if status:
+                    self.logger.error(status)
+                    return
 
-                    tries = 0
+                result[0]['date'] = now.strftime('%Y%m%d')
+                zip_name = (self.maven_snapshot_path.replace('/', '-') + '.zip') % result[0]
+                zipContents(self.test_export_path, zip_name)
+
+                tries = 0
+                success = MavenHandler.upload(self.maven_repo_url, self.maven_repo_user, self.maven_repo_pass,
+                        zip_name, remote_path=self.maven_snapshot_path % result[0], logger=self.logger)
+                while tries < self.upload_retry_count and not success:
+                    tries += 1
+                    self.sendMessage(self.primary_channel, '[TEST CSV] WARNING: Upload attempt failed. Trying again in 3 minutes.')
+                    time.sleep(180)
                     success = MavenHandler.upload(self.maven_repo_url, self.maven_repo_user, self.maven_repo_pass,
                             zip_name, remote_path=self.maven_snapshot_path % result[0], logger=self.logger)
-                    while tries < self.upload_retry_count and not success:
-                        tries += 1
-                        self.sendMessage(self.primary_channel, '[TEST CSV] WARNING: Upload attempt failed. Trying again in 3 minutes.')
-                        time.sleep(180)
-                        success = MavenHandler.upload(self.maven_repo_url, self.maven_repo_user, self.maven_repo_pass,
-                                zip_name, remote_path=self.maven_snapshot_path % result[0], logger=self.logger)
 
-                    if success and tries == 0:
-                        self.logger.info('Maven upload successful.')
-                        self.sendMessage(self.primary_channel, '[TEST CSV] Maven upload successful.')
-                    elif success and tries > 0:
-                        self.logger.info('Maven upload successful after %d %s.' % (tries, 'retry' if tries == 1 else 'retries'))
-                        self.sendMessage(self.primary_channel, '[TEST CSV] Maven upload successful after %d %s.' % (tries, 'retry' if tries == 1 else 'retries'))
-                    else:
-                        self.logger.error('Maven upload failed after %d retries.' % tries)
-                        self.sendMessage(self.primary_channel, '[TEST CSV] ERROR: Maven upload failed after %d retries!' % tries)
+                if success and tries == 0:
+                    self.logger.info('Maven upload successful.')
+                    self.sendMessage(self.primary_channel, '[TEST CSV] Maven upload successful.')
+                elif success and tries > 0:
+                    self.logger.info('Maven upload successful after %d %s.' % (tries, 'retry' if tries == 1 else 'retries'))
+                    self.sendMessage(self.primary_channel, '[TEST CSV] Maven upload successful after %d %s.' % (tries, 'retry' if tries == 1 else 'retries'))
+                else:
+                    self.logger.error('Maven upload failed after %d retries.' % tries)
+                    self.sendMessage(self.primary_channel, '[TEST CSV] ERROR: Maven upload failed after %d retries!' % tries)
 
         self.test_export_thread = threading.Timer(self.next_export - time.time(), self.exportTimer)
         self.test_export_thread.start()
