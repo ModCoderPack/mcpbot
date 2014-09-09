@@ -611,8 +611,8 @@ def zipContents(path, targetfilename=None):
     if not targetfilename: targetfilename = path.replace('/', '_') + '.zip'
     with zipfile.ZipFile(targetfilename, 'w', compression=zipfile.ZIP_DEFLATED) as zfile:
         files = os.listdir(path)
-        for item in [item for item in files if os.path.isfile(item)]:
-            zfile.write(path + '/' + os.path.basename(item), arcname=os.path.basename(item))
+        for item in [item for item in files if os.path.isfile(path + '/' + item) and item.endswith('.csv')]:
+            zfile.write(path + '/' + item, arcname=item)
 
 
 def main():
