@@ -35,7 +35,7 @@ class MCPBot(BotBase):
         self.maven_stable_path = self.config.get('EXPORT', 'MAVEN_STABLE_PATH', 'mcp_stable/%(version_control_pid)s-%(mc_version_code)s')
         self.maven_stable_nodoc_path = self.config.get('EXPORT', 'MAVEN_STABLE_NODOC_PATH', self.maven_stable_path.replace('mcp_stable', 'mcp_stable_nodoc'))
         self.maven_upload_time_str = self.config.get('EXPORT', 'MAVEN_UPLOAD_TIME', '3:00', 'The approximate time that the maven upload will take place daily. Will happen within TEST_EXPORT_PERIOD / 2 minutes of this time. Use H:MM format, with 24 hour clock.')
-        self.upload_retry_count = self.config.geti('EXPORT', 'UPLOAD_RETRY_COUNT', '3', 'Number of times to retry the maven upload if it fails. Attempts will be made 5 minutes apart.')
+        self.upload_retry_count = self.config.geti('EXPORT', 'UPLOAD_RETRY_COUNT', '3', 'Number of times to retry the maven upload if it fails. Attempts will be made 3 minutes apart.')
         self.next_export = None
         self.test_export_thread = None
 
