@@ -31,7 +31,9 @@ class MCPBot(BotBase):
         self.maven_repo_user = self.config.get('EXPORT', 'MAVEN_REPO_USER', 'mcp')
         self.maven_repo_pass = self.config.get('EXPORT', 'MAVEN_REPO_PASS', '')
         self.maven_snapshot_path = self.config.get('EXPORT', 'MAVEN_SNAPSHOT_PATH', 'mcp_snapshot/%(date)s-%(mc_version_code)s')
+        self.maven_snapshot_nodoc_path = self.config.get('EXPORT', 'MAVEN_SNAPSHOT_NODOC_PATH', self.maven_snapshot_path.replace('mcp_snapshot', 'mcp_snapshot_nodoc'))
         self.maven_stable_path = self.config.get('EXPORT', 'MAVEN_STABLE_PATH', 'mcp_stable/%(version_control_pid)s-%(mc_version_code)s')
+        self.maven_stable_nodoc_path = self.config.get('EXPORT', 'MAVEN_STABLE_NODOC_PATH', self.maven_stable_path.replace('mcp_stable', 'mcp_stable_nodoc'))
         self.maven_upload_time_str = self.config.get('EXPORT', 'MAVEN_UPLOAD_TIME', '3:00', 'The approximate time that the maven upload will take place daily. Will happen within TEST_EXPORT_PERIOD / 2 minutes of this time. Use H:MM format, with 24 hour clock.')
         self.upload_retry_count = self.config.geti('EXPORT', 'UPLOAD_RETRY_COUNT', '3', 'Number of times to retry the maven upload if it fails. Attempts will be made 5 minutes apart.')
         self.next_export = None
@@ -154,9 +156,14 @@ class MCPBot(BotBase):
                     self.logger.error(status)
                     return
 
+                self.logger.info('Running test CSV no-doc export.')
+                export_csv.do_export(self.dbhost, self.dbport, self.dbname, self.dbuser, self.dbpass, test_csv=True, export_path=self.test_export_path + '_nodoc', no_doc=True)
+
                 result[0]['date'] = now.strftime('%Y%m%d')
                 zip_name = (self.maven_snapshot_path.replace('/', '-') + '.zip') % result[0]
+                zip_name_nodoc = (self.maven_snapshot_nodoc_path.replace('/', '-') + '.zip') % result[0]
                 zipContents(self.test_export_path, zip_name)
+                zipContents(self.test_export_path + '_nodoc', zip_name_nodoc)
 
                 tries = 0
                 success = MavenHandler.upload(self.maven_repo_url, self.maven_repo_user, self.maven_repo_pass,
@@ -177,6 +184,24 @@ class MCPBot(BotBase):
                 else:
                     self.logger.error('Maven upload failed after %d retries.' % tries)
                     self.sendMessage(self.primary_channel, '[TEST CSV] ERROR: Maven upload failed after %d retries!' % tries)
+
+                if success:
+                    tries = 0
+                    success = MavenHandler.upload(self.maven_repo_url, self.maven_repo_user, self.maven_repo_pass,
+                            zip_name_nodoc, remote_path=self.maven_snapshot_nodoc_path % result[0], logger=self.logger)
+                    while tries < self.upload_retry_count and not success:
+                        tries += 1
+                        self.logger.warning('Upload attempt failed. Trying again in 3 minutes.')
+                        time.sleep(180)
+                        success = MavenHandler.upload(self.maven_repo_url, self.maven_repo_user, self.maven_repo_pass,
+                                zip_name_nodoc, remote_path=self.maven_snapshot_nodoc_path % result[0], logger=self.logger)
+
+                    if success and tries == 0:
+                        self.logger.info('Maven upload successful.')
+                    elif success and tries > 0:
+                        self.logger.info('Maven upload successful after %d %s.' % (tries, 'retry' if tries == 1 else 'retries'))
+                    else:
+                        self.logger.error('Maven upload failed after %d retries.' % tries)
 
         self.test_export_thread = threading.Timer(self.next_export - time.time(), self.exportTimer)
         self.test_export_thread.start()

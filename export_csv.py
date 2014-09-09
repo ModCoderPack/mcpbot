@@ -8,7 +8,7 @@
 #################################################################################
 
 __author__ = "bspkrs (bspkrs@gmail.com)"
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 
 from optparse import OptionParser
 import psycopg2
@@ -69,6 +69,26 @@ exports = \
                     and mp.mcp_name is not null
                 order by mp.srg_name;"""
         },
+    ]
+
+exports_nodoc = \
+    [
+        {   'csvfile': exports[0]['csvfile'], 'columns': exports[0]['columns'],
+            'query': """select m.srg_name as searge, m.mcp_name as name,
+                    (case when m.is_on_client and not m.is_on_server then 0 when not m.is_on_client and m.is_on_server then 1 else 2 end) as side,
+                    '' as desc
+                from mcp.method m
+                where m.srg_name ~ 'func_[0-9]+_[a-zA-Z]+'
+                    and m.mcp_version_pid = %(mcp_version)s
+                    and m.mcp_name is not null
+                order by m.srg_name"""
+        },
+
+        {   'csvfile': exports[1]['csvfile'], 'columns': exports[1]['columns'],
+            'query': exports[1]['query'].replace('f.comment', "''")
+        },
+
+        exports[2],
     ]
 
 test_exports = \
@@ -134,6 +154,30 @@ test_exports = \
         },
     ]
 
+test_exports_nodoc = \
+    [
+        {   'csvfile': test_exports[0]['csvfile'], 'columns': test_exports[0]['columns'],
+            'query': """select m.srg_name as searge, coalesce(sm.mcp_name, m.mcp_name) as name,
+                    (case when m.is_on_client and not m.is_on_server then 0 when not m.is_on_client and m.is_on_server then 1 else 2 end) as side,
+                    '' as desc
+                from mcp.method m
+                left join (select method_pid, new_mcp_name as mcp_name, new_mcp_desc as comment, created_ts,
+                        row_number() over (partition by method_pid order by created_ts desc) as row_num
+                    from mcp.staged_method where undo_command_history_pid is null) sm
+                    on sm.method_pid = m.method_pid and sm.row_num = 1
+                where m.srg_name ~ 'func_[0-9]+_[a-zA-Z]+'
+                    and m.mcp_version_pid = %(mcp_version)s
+                    and (m.mcp_name is not null or sm.mcp_name is not null)
+                order by m.srg_name"""
+        },
+
+        {   'csvfile': test_exports[1]['csvfile'], 'columns': test_exports[1]['columns'],
+            'query': test_exports[1]['query'].replace('coalesce(sf.comment, f.comment)', "''")
+        },
+
+        test_exports[2],
+    ]
+
 
 logger = Logger.getLogger("Export_CSV", "export_csv.log", "export_csv-err.log")
 
@@ -158,7 +202,7 @@ def export_data(pgconn, query, csvfile, columns, export_path):
     pgcursor.close()
 
 
-def do_export(dbhost, dbport, dbname, dbuser, dbpass, test_csv, export_path):
+def do_export(dbhost, dbport, dbname, dbuser, dbpass, test_csv, export_path, no_doc=False):
     logger.info("=== Starting CSV Export ===")
 
     pgconn = psycopg2.connect(database=dbname, user=dbuser, password=dbpass, host=dbhost, port=dbport)
@@ -171,7 +215,7 @@ def do_export(dbhost, dbport, dbname, dbuser, dbpass, test_csv, export_path):
                 order by vc.promoted_ts DESC limit 1;
             ''')
             result = cur.fetchAll()[0]
-            export_path = os.path.join(export_path, '%(mcp_version_code)s_%(mc_version_code)s/%(version_control_pid)s' % result)
+            export_path = os.path.join(export_path, '%(mc_version_code)s/%(version_control_pid)s' % result)
 
     if not os.path.exists(export_path):
         try:
@@ -181,13 +225,20 @@ def do_export(dbhost, dbport, dbname, dbuser, dbpass, test_csv, export_path):
                 raise
 
     if test_csv:
+        if no_doc:
+            export_list = test_exports_nodoc
+        else:
+            export_list = test_exports
         logger.info("Exporting Test CSV data...")
-        for export in test_exports:
-            export_data(pgconn, export['query'], export['csvfile'], export['columns'], export_path)
     else:
+        if no_doc:
+            export_list = exports_nodoc
+        else:
+            export_list = exports
         logger.info("Exporting Committed CSV data...")
-        for export in exports:
-            export_data(pgconn, export['query'], export['csvfile'], export['columns'], export_path)
+
+    for export in export_list:
+        export_data(pgconn, export['query'], export['csvfile'], export['columns'], export_path)
 
     pgconn.close()
 
@@ -206,13 +257,13 @@ def getConfig(config, section, option, default):
 def run():
     parser = OptionParser(version='%prog ' + __version__,
                           usage="%prog [options]")
-    parser.add_option('-C', '--config-only',
-                      action='store_true', default=False,
+    parser.add_option('-C', '--config-only', action='store_true', default=False,
                       help='Generates the config file and exits (other options ignored) [default: %default]')
+    parser.add_option('-N', '--no-doc', action='store_true', default=False,
+                      help="Use this flag if you don't require comments in the csv files [default: %default]")
     parser.add_option('-P', '--export-path', default=".",
                       help="The path to export to (will be created if it doesn't exist) [default: %default]")
-    parser.add_option('-T', '--test-csv',
-                      action='store_true', default=False,
+    parser.add_option('-T', '--test-csv', action='store_true', default=False,
                       help='Exports staged mappings as opposed to only committed mappings [default: %default]')
 
 
@@ -236,7 +287,7 @@ def run():
         logger.info('-C or --config-only flag specified, bailing out.')
         exit()
 
-    do_export(dbhost, dbport, dbname, dbuser, dbpass, options.test_csv, options.export_path)
+    do_export(dbhost, dbport, dbname, dbuser, dbpass, options.test_csv, options.export_path, options.no_doc)
 
     logger.info("MCPBot CSV Export is Complete. Review logs for any errors.")
 

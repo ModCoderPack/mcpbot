@@ -7,8 +7,8 @@ import Logger
 
 with zipfile.ZipFile('test.zip', 'w', compression=zipfile.ZIP_DEFLATED) as zfile:
     files = os.listdir('testcsv')
-    for item in files:
-        zfile.write('testcsv/' + os.path.basename(item), arcname=os.path.basename(item))
+    for item in [item for item in files if os.path.isfile('testcsv' + '/' + item) and item.endswith('.csv')]:
+        zfile.write('testcsv' + '/' + item, arcname=item)
 
 print('Zip file test.zip created.')
 
