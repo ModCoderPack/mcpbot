@@ -27,13 +27,13 @@ class AsyncSocket(asyncore.dispatcher):
         self.connect((self.host, self.port))
 
     def handle_connect(self):
-        self.logger.info("Connecting...")
+        self.logger.info("Connecting Socket...")
 
     def handle_close(self):
-        self.logger.info("Closing...")
+        self.logger.info("Closing Socket...")
         self.close()
         if not self.bot.isTerminating:
-            sys.exit(404)
+            sys.exit(408)
 
     def handle_read(self):
         self.recvBuffer = self.recvBuffer + self.recv(8192)
@@ -57,7 +57,7 @@ class AsyncSocket(asyncore.dispatcher):
         if not self.sendBuffer.empty() and (time.time() - self.timeLastWrite > self.floodLimit):
             msg = self.sendBuffer.get_nowait()
             if not ':identify' in msg:
-                self.logger.info("Send >" + msg.strip())
+                self.logger.debug("Send >" + msg.strip())
             self.send(msg)
             self.sendBuffer.task_done()
             self.timeLastWrite = time.time()

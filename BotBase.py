@@ -98,7 +98,7 @@ class BotBase(object):
         self.dccActive         = self.config.getb('DCC', 'ACTIVE',    "true")
         self.dccAllowAnon      = self.config.getb('DCC', 'ALLOWANON', "false", 'Can users connect via DCC if the user is not properly IP identified?')
 
-        self.monitorevents  = self.config.getb('EVENTMONITOR', 'MONITOREVENTS', "true", "Should we periodically check the last event time to see if the connection was severed? NOTE: it is the responsiblity of the bot implementation to handle reconnection if desired. This check will call sys.exit(404) if a timeout occurs.")
+        self.monitorevents  = self.config.getb('EVENTMONITOR', 'MONITOREVENTS', "true", "Should we periodically check the last event time to see if the connection was severed? NOTE: it is the responsiblity of the bot implementation to handle reconnection if desired. This check will call sys.exit(408) if a timeout occurs.")
         self.monitorperiod  = self.config.geti('EVENTMONITOR', 'MONITORPERIOD', "60", "The number of seconds between event monitoring checks.")
         self.monitortimeout = self.config.geti('EVENTMONITOR', 'MONITORTIMEOUT', "240", "The minimum number of seconds that must pass without an event before we consider the connection dead.")
 
@@ -474,12 +474,12 @@ class BotBase(object):
         if self.isRunning:
             if self.cmdHandler.monitor_thread:
                 self.cmdHandler.monitor_thread.cancel()
-            self.socket.close()
             for user in self.users.values():
                 if user.dccSocket:
-                    user.dccSocket.close()
+                    user.dccSocket.handle_close()
 
             self.isRunning = False
+            self.socket.handle_close()
 
     def killSelf(self, bot, sender, dest, cmd, args):
         self.logger.info("Killing self.")

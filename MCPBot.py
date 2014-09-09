@@ -129,10 +129,11 @@ class MCPBot(BotBase):
 
     def onShuttingDown(self):
         if self.isRunning:
-            super(MCPBot, self).onShuttingDown()
             self.db.disconnect()
             if self.test_export_thread:
                 self.test_export_thread.cancel()
+
+            super(MCPBot, self).onShuttingDown()
 
 
     def exportTimer(self):
@@ -154,54 +155,54 @@ class MCPBot(BotBase):
                 result, status = self.db.getVersions(1, psycopg2.extras.RealDictCursor)
                 if status:
                     self.logger.error(status)
-                    return
-
-                self.logger.info('Running test CSV no-doc export.')
-                export_csv.do_export(self.dbhost, self.dbport, self.dbname, self.dbuser, self.dbpass, test_csv=True, export_path=self.test_export_path + '_nodoc', no_doc=True)
-
-                result[0]['date'] = now.strftime('%Y%m%d')
-                zip_name = (self.maven_snapshot_path.replace('/', '-') + '.zip') % result[0]
-                zip_name_nodoc = (self.maven_snapshot_nodoc_path.replace('/', '-') + '.zip') % result[0]
-                zipContents(self.test_export_path, zip_name)
-                zipContents(self.test_export_path + '_nodoc', zip_name_nodoc)
-
-                tries = 0
-                success = MavenHandler.upload(self.maven_repo_url, self.maven_repo_user, self.maven_repo_pass,
-                        zip_name, remote_path=self.maven_snapshot_path % result[0], logger=self.logger)
-                while tries < self.upload_retry_count and not success:
-                    tries += 1
-                    self.sendMessage(self.primary_channel, '[TEST CSV] WARNING: Upload attempt failed. Trying again in 3 minutes.')
-                    time.sleep(180)
-                    success = MavenHandler.upload(self.maven_repo_url, self.maven_repo_user, self.maven_repo_pass,
-                            zip_name, remote_path=self.maven_snapshot_path % result[0], logger=self.logger)
-
-                if success and tries == 0:
-                    self.logger.info('Maven upload successful.')
-                    self.sendMessage(self.primary_channel, '[TEST CSV] Maven upload successful.')
-                elif success and tries > 0:
-                    self.logger.info('Maven upload successful after %d %s.' % (tries, 'retry' if tries == 1 else 'retries'))
-                    self.sendMessage(self.primary_channel, '[TEST CSV] Maven upload successful after %d %s.' % (tries, 'retry' if tries == 1 else 'retries'))
+                    self.sendMessage(self.primary_channel, '[TEST CSV] Database error occurred, Maven upload skipped.')
                 else:
-                    self.logger.error('Maven upload failed after %d retries.' % tries)
-                    self.sendMessage(self.primary_channel, '[TEST CSV] ERROR: Maven upload failed after %d retries!' % tries)
+                    self.logger.info('Running test CSV no-doc export.')
+                    export_csv.do_export(self.dbhost, self.dbport, self.dbname, self.dbuser, self.dbpass, test_csv=True, export_path=self.test_export_path + '_nodoc', no_doc=True)
 
-                if success:
+                    result[0]['date'] = now.strftime('%Y%m%d')
+                    zip_name = (self.maven_snapshot_path.replace('/', '-') + '.zip') % result[0]
+                    zip_name_nodoc = (self.maven_snapshot_nodoc_path.replace('/', '-') + '.zip') % result[0]
+                    zipContents(self.test_export_path, zip_name)
+                    zipContents(self.test_export_path + '_nodoc', zip_name_nodoc)
+
                     tries = 0
                     success = MavenHandler.upload(self.maven_repo_url, self.maven_repo_user, self.maven_repo_pass,
-                            zip_name_nodoc, remote_path=self.maven_snapshot_nodoc_path % result[0], logger=self.logger)
+                            zip_name, remote_path=self.maven_snapshot_path % result[0], logger=self.logger)
                     while tries < self.upload_retry_count and not success:
                         tries += 1
-                        self.logger.warning('Upload attempt failed. Trying again in 3 minutes.')
+                        self.sendMessage(self.primary_channel, '[TEST CSV] WARNING: Upload attempt failed. Trying again in 3 minutes.')
                         time.sleep(180)
                         success = MavenHandler.upload(self.maven_repo_url, self.maven_repo_user, self.maven_repo_pass,
-                                zip_name_nodoc, remote_path=self.maven_snapshot_nodoc_path % result[0], logger=self.logger)
+                                zip_name, remote_path=self.maven_snapshot_path % result[0], logger=self.logger)
 
                     if success and tries == 0:
                         self.logger.info('Maven upload successful.')
+                        self.sendMessage(self.primary_channel, '[TEST CSV] Maven upload successful.')
                     elif success and tries > 0:
                         self.logger.info('Maven upload successful after %d %s.' % (tries, 'retry' if tries == 1 else 'retries'))
+                        self.sendMessage(self.primary_channel, '[TEST CSV] Maven upload successful after %d %s.' % (tries, 'retry' if tries == 1 else 'retries'))
                     else:
                         self.logger.error('Maven upload failed after %d retries.' % tries)
+                        self.sendMessage(self.primary_channel, '[TEST CSV] ERROR: Maven upload failed after %d retries!' % tries)
+
+                    if success:
+                        tries = 0
+                        success = MavenHandler.upload(self.maven_repo_url, self.maven_repo_user, self.maven_repo_pass,
+                                zip_name_nodoc, remote_path=self.maven_snapshot_nodoc_path % result[0], logger=self.logger)
+                        while tries < self.upload_retry_count and not success:
+                            tries += 1
+                            self.logger.warning('Upload attempt failed. Trying again in 3 minutes.')
+                            time.sleep(180)
+                            success = MavenHandler.upload(self.maven_repo_url, self.maven_repo_user, self.maven_repo_pass,
+                                    zip_name_nodoc, remote_path=self.maven_snapshot_nodoc_path % result[0], logger=self.logger)
+
+                        if success and tries == 0:
+                            self.logger.info('Maven upload successful.')
+                        elif success and tries > 0:
+                            self.logger.info('Maven upload successful after %d %s.' % (tries, 'retry' if tries == 1 else 'retries'))
+                        else:
+                            self.logger.error('Maven upload failed after %d retries.' % tries)
 
         self.test_export_thread = threading.Timer(self.next_export - time.time(), self.exportTimer)
         self.test_export_thread.start()
@@ -661,7 +662,6 @@ def main():
     max_reconnects = int(options.max_reconnects)
     last_start = 0
     reconnect_attempts = 0
-    throttle_sleep_time = 60
 
     while restart:
         bot = MCPBot(nspass = options.ns_pass)
@@ -682,21 +682,14 @@ def main():
             if bot and bot.logger and not bot.isTerminating:
                 logger = bot.logger
 
-                if e.code == 404:
+                if e.code == 408:
                     logger.warning('IRC connection was lost.')
 
                     if time.time() - last_start > reset_attempt_limit:
                         reconnect_attempts = 0
-                        throttle_sleep_time = 60
 
                     reconnect_attempts += 1
                     restart = reconnect_attempts <= max_reconnects
-                elif e.code == 500:
-                    logger.info('Sleeping for %d seconds before further reconnect attempts.' % throttle_sleep_time)
-                    time.sleep(throttle_sleep_time)
-
-                    if throttle_sleep_time < reset_attempt_limit:
-                        throttle_sleep_time += 10
                 else:
                     raise e
             else:

@@ -189,7 +189,7 @@ def export_data(pgconn, query, csvfile, columns, export_path):
     result = pgcursor.fetchall()
     mcp_version = result[0]['mcp_version']
 
-    logger.info("Fetching %s data..." % csvfile.rstrip('.csv'))
+    #logger.info("Fetching %s data..." % csvfile.rstrip('.csv'))
     pgcursor.execute(query, {'mcp_version': mcp_version})
     data = pgcursor.fetchall()
     logger.info("Writing %d rows to %s..." % (len(data), csvfile))
@@ -198,7 +198,7 @@ def export_data(pgconn, query, csvfile, columns, export_path):
         w.writeheader()
         w.writerows(data)
 
-    logger.info("%d total rows exported" % len(data))
+    logger.debug("%d total rows exported" % len(data))
     pgcursor.close()
 
 

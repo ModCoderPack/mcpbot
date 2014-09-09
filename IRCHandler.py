@@ -209,9 +209,9 @@ class CmdHandler(object):
         delta = time.time() - self.last_event_time
         if delta >= self.bot.monitortimeout:
             self.logger.warning('Event Monitor: time since last event (%s) exceeds timeout (%s).' % (getDurationStr(delta), getDurationStr(self.bot.monitortimeout)))
-            self.socket.handle_close()
+            self.bot.onShuttingDown()
         else:
-            self.logger.info('Event Monitor: time since last event: %s' % getDurationStr(delta))
+            self.logger.debug('Event Monitor: time since last event: %s' % getDurationStr(delta))
             self.next_event_check = self.next_event_check + self.bot.monitorperiod
             self.monitor_thread = threading.Timer(self.next_event_check - time.time(), self.monitorEvents)
             self.monitor_thread.start()
@@ -256,10 +256,6 @@ class CmdHandler(object):
 
         if msg == "":
             return
-        elif msg.find('throttled') != -1 or msg.find('Reconnecting too fast') != -1:
-            #ERROR :Reconnecting too fast, throttled.
-            self.logger.error(msg)
-            sys.exit(500)
 
         elems = msg.split()
 
@@ -295,7 +291,7 @@ class CmdHandler(object):
     #######################################################
     #IRC Commands
     def onPING(self, sender, params):
-        self.logger.info("[S : %s] [M : %s]"%(sender.nick, " ".join(params)))        
+        self.logger.debug("[S : %s] [M : %s]"%(sender.nick, " ".join(params)))
         self.bot.sendRaw(CmdGenerator.getPONG(params[0]))
         self.handleEvents('Ping', sender, params)
 
