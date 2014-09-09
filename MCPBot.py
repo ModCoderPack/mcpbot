@@ -187,6 +187,7 @@ class MCPBot(BotBase):
                         self.sendMessage(self.primary_channel, '[TEST CSV] ERROR: Maven upload failed after %d retries!' % tries)
 
                     if success:
+                        self.sendNotice('@'+ self.primary_channel, success)
                         tries = 0
                         success = MavenHandler.upload(self.maven_repo_url, self.maven_repo_user, self.maven_repo_pass,
                                 zip_name_nodoc, remote_path=self.maven_snapshot_nodoc_path % result[0], logger=self.logger)
@@ -203,6 +204,9 @@ class MCPBot(BotBase):
                             self.logger.info('Maven upload successful after %d %s.' % (tries, 'retry' if tries == 1 else 'retries'))
                         else:
                             self.logger.error('Maven upload failed after %d retries.' % tries)
+
+                        if success:
+                            self.sendNotice('@'+ self.primary_channel, success)
 
         self.test_export_thread = threading.Timer(self.next_export - time.time(), self.exportTimer)
         self.test_export_thread.start()
