@@ -22,8 +22,6 @@ class MCPBot(BotBase):
         self.dbname = self.config.get('DATABASE', 'NAME', "")
         self.dbpass = self.config.get('DATABASE', 'PASS', "")
 
-        self.primary_channel = self.config.get('BOT', 'PRIMARY_CHANNEL', '#mcpbot', 'Important bot messages will be sent to this channel.')
-
         self.test_export_period = self.config.geti('EXPORT', 'TEST_EXPORT_PERIOD', '30', 'How often in minutes to run the test CSV export. Use 0 to disable.')
         self.test_export_path = self.config.get('EXPORT', 'TEST_EXPORT_PATH', 'testcsv', 'Relative path to write the test CSV files to.')
         self.test_export_url = self.config.get('EXPORT', 'TEST_EXPORT_URL', 'http://mcpbot.bspk.rs/testcsv/')
@@ -150,63 +148,7 @@ class MCPBot(BotBase):
             min_upload_time = datetime.combine(now.date(), self.maven_upload_time) - timedelta(minutes=self.test_export_period/2)
             max_upload_time = datetime.combine(now.date(), self.maven_upload_time) + timedelta(minutes=self.test_export_period/2)
             if min_upload_time <= now <= max_upload_time:
-                self.logger.info("Pushing nightly snapshot mappings to Forge Maven.")
-                self.sendMessage(self.primary_channel, "[TEST CSV] Pushing nightly snapshot mappings to Forge Maven.")
-                result, status = self.db.getVersions(1, psycopg2.extras.RealDictCursor)
-                if status:
-                    self.logger.error(status)
-                    self.sendMessage(self.primary_channel, '[TEST CSV] Database error occurred, Maven upload skipped.')
-                else:
-                    self.logger.info('Running test CSV no-doc export.')
-                    export_csv.do_export(self.dbhost, self.dbport, self.dbname, self.dbuser, self.dbpass, test_csv=True, export_path=self.test_export_path + '_nodoc', no_doc=True)
-
-                    result[0]['date'] = now.strftime('%Y%m%d')
-                    zip_name = (self.maven_snapshot_path.replace('/', '-') + '.zip') % result[0]
-                    zip_name_nodoc = (self.maven_snapshot_nodoc_path.replace('/', '-') + '.zip') % result[0]
-                    zipContents(self.test_export_path, zip_name)
-                    zipContents(self.test_export_path + '_nodoc', zip_name_nodoc)
-
-                    tries = 0
-                    success = MavenHandler.upload(self.maven_repo_url, self.maven_repo_user, self.maven_repo_pass,
-                            zip_name, remote_path=self.maven_snapshot_path % result[0], logger=self.logger)
-                    while tries < self.upload_retry_count and not success:
-                        tries += 1
-                        self.sendMessage(self.primary_channel, '[TEST CSV] WARNING: Upload attempt failed. Trying again in 3 minutes.')
-                        time.sleep(180)
-                        success = MavenHandler.upload(self.maven_repo_url, self.maven_repo_user, self.maven_repo_pass,
-                                zip_name, remote_path=self.maven_snapshot_path % result[0], logger=self.logger)
-
-                    if success and tries == 0:
-                        self.logger.info('Maven upload successful.')
-                        self.sendMessage(self.primary_channel, '[TEST CSV] Maven upload successful.')
-                    elif success and tries > 0:
-                        self.logger.info('Maven upload successful after %d %s.' % (tries, 'retry' if tries == 1 else 'retries'))
-                        self.sendMessage(self.primary_channel, '[TEST CSV] Maven upload successful after %d %s.' % (tries, 'retry' if tries == 1 else 'retries'))
-                    else:
-                        self.logger.error('Maven upload failed after %d retries.' % tries)
-                        self.sendMessage(self.primary_channel, '[TEST CSV] ERROR: Maven upload failed after %d retries!' % tries)
-
-                    if success:
-                        self.sendNotice('@'+ self.primary_channel, success)
-                        tries = 0
-                        success = MavenHandler.upload(self.maven_repo_url, self.maven_repo_user, self.maven_repo_pass,
-                                zip_name_nodoc, remote_path=self.maven_snapshot_nodoc_path % result[0], logger=self.logger)
-                        while tries < self.upload_retry_count and not success:
-                            tries += 1
-                            self.logger.warning('Upload attempt failed. Trying again in 3 minutes.')
-                            time.sleep(180)
-                            success = MavenHandler.upload(self.maven_repo_url, self.maven_repo_user, self.maven_repo_pass,
-                                    zip_name_nodoc, remote_path=self.maven_snapshot_nodoc_path % result[0], logger=self.logger)
-
-                        if success and tries == 0:
-                            self.logger.info('Maven upload successful.')
-                        elif success and tries > 0:
-                            self.logger.info('Maven upload successful after %d %s.' % (tries, 'retry' if tries == 1 else 'retries'))
-                        else:
-                            self.logger.error('Maven upload failed after %d retries.' % tries)
-
-                        if success:
-                            self.sendNotice('@'+ self.primary_channel, success)
+                self.doMavenPush(now)
 
         self.test_export_thread = threading.Timer(self.next_export - time.time(), self.exportTimer)
         self.test_export_thread.start()
@@ -214,6 +156,67 @@ class MCPBot(BotBase):
 
     def getTestCSVURL(self, bot, sender, dest, cmd, args):
         self.sendMessage(dest, self.test_export_url)
+
+
+    def doMavenPush(self, now):
+        self.logger.info("Pushing nightly snapshot mappings to Forge Maven.")
+        self.sendPrimChanMessage("[TEST CSV] Pushing nightly snapshot mappings to Forge Maven.")
+        result, status = self.db.getVersions(1, psycopg2.extras.RealDictCursor)
+        if status:
+            self.logger.error(status)
+            self.sendPrimChanMessage('[TEST CSV] Database error occurred, Maven upload skipped.')
+            self.sendPrimChanOpNotice(status)
+        else:
+            self.logger.info('Running test CSV no-doc export.')
+            export_csv.do_export(self.dbhost, self.dbport, self.dbname, self.dbuser, self.dbpass, test_csv=True, export_path=self.test_export_path + '_nodoc', no_doc=True)
+
+            result[0]['date'] = now.strftime('%Y%m%d')
+            zip_name = (self.maven_snapshot_path.replace('/', '-') + '.zip') % result[0]
+            zip_name_nodoc = (self.maven_snapshot_nodoc_path.replace('/', '-') + '.zip') % result[0]
+            zipContents(self.test_export_path, zip_name)
+            zipContents(self.test_export_path + '_nodoc', zip_name_nodoc)
+
+            tries = 0
+            success = MavenHandler.upload(self.maven_repo_url, self.maven_repo_user, self.maven_repo_pass,
+                    zip_name, remote_path=self.maven_snapshot_path % result[0], logger=self.logger)
+            while tries < self.upload_retry_count and not success:
+                tries += 1
+                self.sendPrimChanOpNotice('[TEST CSV] WARNING: Upload attempt failed. Trying again in 3 minutes.')
+                time.sleep(180)
+                success = MavenHandler.upload(self.maven_repo_url, self.maven_repo_user, self.maven_repo_pass,
+                        zip_name, remote_path=self.maven_snapshot_path % result[0], logger=self.logger)
+
+            if success and tries == 0:
+                self.logger.info('Maven upload successful.')
+                self.sendPrimChanMessage('[TEST CSV] Maven upload successful.')
+            elif success and tries > 0:
+                self.logger.info('Maven upload successful after %d %s.' % (tries, 'retry' if tries == 1 else 'retries'))
+                self.sendPrimChanMessage('[TEST CSV] Maven upload successful after %d %s.' % (tries, 'retry' if tries == 1 else 'retries'))
+            else:
+                self.logger.error('Maven upload failed after %d retries.' % tries)
+                self.sendPrimChanMessage('[TEST CSV] ERROR: Maven upload failed after %d retries!' % tries)
+
+            if success:
+                self.sendPrimChanOpNotice(success)
+                tries = 0
+                success = MavenHandler.upload(self.maven_repo_url, self.maven_repo_user, self.maven_repo_pass,
+                        zip_name_nodoc, remote_path=self.maven_snapshot_nodoc_path % result[0], logger=self.logger)
+                while tries < self.upload_retry_count and not success:
+                    tries += 1
+                    self.logger.warning('Upload attempt failed. Trying again in 3 minutes.')
+                    time.sleep(180)
+                    success = MavenHandler.upload(self.maven_repo_url, self.maven_repo_user, self.maven_repo_pass,
+                            zip_name_nodoc, remote_path=self.maven_snapshot_nodoc_path % result[0], logger=self.logger)
+
+                if success and tries == 0:
+                    self.logger.info('Maven upload successful.')
+                elif success and tries > 0:
+                    self.logger.info('Maven upload successful after %d %s.' % (tries, 'retry' if tries == 1 else 'retries'))
+                else:
+                    self.logger.error('Maven upload failed after %d retries.' % tries)
+
+                if success:
+                    self.sendPrimChanOpNotice(success)
 
 
     # def sqlRequest(self, bot, sender, dest, cmd, args):
@@ -630,6 +633,8 @@ class MCPBot(BotBase):
                 self.sendNotice(sender.nick, "§BWARNING: New parameter name duplicates a class field name within scope. Use fsp if you are ABSOLUTELY sure that it won't cause issues. We will find you and crucify you if you break shit...")
             elif result['result'] == -14:
                 self.sendNotice(sender.nick, "§BWARNING: New parameter name is reserved for use by the JAD-style local field renaming process.")
+            elif result['result'] == -15:
+                self.sendNotice(sender.nick, "§BWARNING: Method parameters cannot be given class names as it may conflict with JAD-style names for local fields.")
             else:
                 self.sendNotice(sender.nick, "§BERROR: Unhandled error %d when processing a member change. Please report this to a member of the MCP team along with the command you executed." % result['result'])
 
