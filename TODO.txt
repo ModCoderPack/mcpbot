@@ -3,7 +3,7 @@ DONE - create a way to auto-generate a javadoc for methods based on param commen
 
 DONE - bspkrs - add undo/redo commands for all members
 
-- The top group (currently admin) should be defined in the config file. As of now, it is not possible to have an admin group that can't run dangerous commands like sqlrequest.
+- The top group (currently admin) should ONLY be defineable in the config file. As of now, it is not possible to have an admin group that can't run dangerous commands like sqlrequest.
 
 - better concurrency for throttling... seems like if multiple people are getting throttled messages it blocks the bot from sending messages to others
 
@@ -13,13 +13,18 @@ DONE - add nickserv auth success detection and move channel join to there (unles
 - info commands
     - DONE - unnamed members in a class
     - change history
-- automatic export of CSVs periodically
-- create wiki pages for new bot:
-    - naming conventions
+- DONE - automatic export of CSVs periodically
+- STARTED - create wiki pages for new bot:
+    - naming conventions* we really need this
     - how new commands differ from old bot
     - 
 - DONE - commands to list class members: listf listm?
 - DONE - set params should warn when there is a field with the same name within scope
+- DONE - set params should prevent names that can conflict with JAD-style naming of local fields
+- web interface (I'd like to use Python Server Pages so we can reuse some code
+    - provide a way to view staged changes
+    - possibly allow editing using some sort of bot-generated session URL
+    - this should probably be under the database repo
 
 - cache long lists of results per user and add a command to display more of the list (%next or something)
 
