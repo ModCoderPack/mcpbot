@@ -54,7 +54,7 @@ class MCPBot(BotBase):
 
         self.registerCommand('version',  self.getVersion, ['any'], 0, 0, "", "Gets info about the current version.")
         self.registerCommand('versions', self.getVersion, ['any'], 0, 0, "", "Gets info about versions that are available in the database.")
-        self.registerCommand('testcsv',  self.getTestCSVURL, ['any'], 0, 0, "", "Gets the URL for the running export of staged changes.")
+        self.registerCommand('testcsv',  self.getTestCSVURL, ['any', 'run_export'], 0, 1, "", "Gets the URL for the running export of staged changes.")
 
         self.registerCommand('gp',       self.getParam,   ['any'], 1, 2, "[[<class>.]<method>.]<name> [<version>]", "Returns method parameter information. Defaults to current version. Version can be for MCP or MC. Obf class and method names not supported.")
         self.registerCommand('gf',       self.getMember,  ['any'], 1, 2, "[<class>.]<name> [<version>]",            "Returns field information. Defaults to current version. Version can be for MCP or MC.")
@@ -155,7 +155,15 @@ class MCPBot(BotBase):
 
 
     def getTestCSVURL(self, bot, sender, dest, cmd, args):
-        self.sendMessage(dest, self.test_export_url)
+        if len(args) == 1 and args[0] == 'export' \
+                and sender.regnick.lower() in self.authUsers and 'run_export' in self.authUsers[sender.regnick.lower()]:
+            self.logger.info('Running forced test CSV export.')
+            export_csv.do_export(self.dbhost, self.dbport, self.dbname, self.dbuser, self.dbpass, test_csv=True, export_path=self.test_export_path)
+            self.sendMessage(dest, 'Test CSV files exported to %s' % self.test_export_url)
+        elif len(args) == 1 and args[0] == 'export':
+            self.sendNotice(sender, 'You do not have permission to use this function.')
+        else:
+            self.sendMessage(dest, self.test_export_url)
 
 
     def doMavenPush(self, now):
