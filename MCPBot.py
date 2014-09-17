@@ -104,7 +104,9 @@ class MCPBot(BotBase):
         self.registerCommand('fscm', self.legacyNotice, ['any'], 2, 999, "", "", False)
         self.registerCommand('fssm', self.legacyNotice, ['any'], 2, 999, "", "", False)
 
-        self.legacyCommandMap = {'gcf':  'gf',
+        self.legacyCommandMap = {'gcc':  'gc',
+                                 'gsc':  'gc',
+                                 'gcf':  'gf',
                                  'gsf':  'gf',
                                  'gcm':  'gm',
                                  'gsm':  'gm',
