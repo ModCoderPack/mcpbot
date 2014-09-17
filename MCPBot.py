@@ -34,6 +34,7 @@ class MCPBot(BotBase):
         self.maven_stable_nodoc_path = self.config.get('EXPORT', 'MAVEN_STABLE_NODOC_PATH', self.maven_stable_path.replace('mcp_stable', 'mcp_stable_nodoc'))
         self.maven_upload_time_str = self.config.get('EXPORT', 'MAVEN_UPLOAD_TIME', '3:00', 'The approximate time that the maven upload will take place daily. Will happen within TEST_EXPORT_PERIOD / 2 minutes of this time. Use H:MM format, with 24 hour clock.')
         self.upload_retry_count = self.config.geti('EXPORT', 'UPLOAD_RETRY_COUNT', '3', 'Number of times to retry the maven upload if it fails. Attempts will be made 3 minutes apart.')
+        self.last_export = None
         self.next_export = None
         self.test_export_thread = None
 
@@ -145,6 +146,7 @@ class MCPBot(BotBase):
 
         self.logger.info('Running test CSV export.')
         export_csv.do_export(self.dbhost, self.dbport, self.dbname, self.dbuser, self.dbpass, test_csv=True, export_path=self.test_export_path)
+        self.last_export = time.time()
 
         if self.maven_upload_time:
             min_upload_time = datetime.combine(now.date(), self.maven_upload_time) - timedelta(minutes=self.test_export_period/2)
@@ -161,11 +163,15 @@ class MCPBot(BotBase):
                 and sender.regnick.lower() in self.authUsers and 'run_export' in self.authUsers[sender.regnick.lower()]:
             self.logger.info('Running forced test CSV export.')
             export_csv.do_export(self.dbhost, self.dbport, self.dbname, self.dbuser, self.dbpass, test_csv=True, export_path=self.test_export_path)
+            self.last_export = time.time()
             self.sendMessage(dest, 'Test CSV files exported to %s' % self.test_export_url)
         elif len(args) == 1 and args[0] == 'export':
             self.sendNotice(sender, 'You do not have permission to use this function.')
         else:
-            self.sendMessage(dest, self.test_export_url)
+            if self.last_export:
+                self.sendMessage(dest, self.test_export_url + ' (Updated %s ago)' % getDurationStr(time.time() - self.last_export))
+            else:
+                self.sendMessage(dest, self.test_export_url + ' (Last export time unknown)')
 
 
     def doMavenPush(self, now):
@@ -659,6 +665,18 @@ def zipContents(path, targetfilename=None):
         for item in [item for item in files if os.path.isfile(path + '/' + item) and item.endswith('.csv')]:
             zfile.write(path + '/' + item, arcname=item)
 
+
+def getDurationStr(timeint):
+    if 1 <= timeint % 60 < 2: formatstr = '%S second'
+    else: formatstr = '%S seconds'
+
+    if 59 < timeint < 120: formatstr = '%M minute ' + formatstr
+    else: formatstr = '%M minutes ' + formatstr
+
+    if 3599 < timeint < 7200: formatstr = '%H hour ' + formatstr
+    else: formatstr = '%H hours ' + formatstr
+
+    return ' '.join([s.lstrip('0') if len(s) > 1 else s for s in time.strftime(formatstr, time.gmtime(timeint)).lstrip(' hours0').lstrip(' minutes0').replace('00', '0').split(' ')])
 
 def main():
 
