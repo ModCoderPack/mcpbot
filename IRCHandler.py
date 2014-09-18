@@ -67,15 +67,15 @@ class CmdGenerator(object):
 
     @classmethod
     def getNICK(cls, oldnick, nick):
-        return ":{nick} NICK {nick}".format(nick = nick) + EOL
+        return "NICK {nick}{eol}".format(nick = nick, eol = EOL)
 
     @classmethod
     def getUSER(cls, nick):
-        return ":{nick} USER {username} {hostname} {servername} :{realname}".format(nick = nick, 
-                                                                                    username=nick, 
-                                                                                    hostname="none", 
-                                                                                    servername="none", 
-                                                                                    realname=nick) + EOL
+        return "USER {username} {hostname} {servername} :{realname}".format(nick = nick,
+                                                                            username=nick,
+                                                                            hostname="none",
+                                                                            servername="none",
+                                                                            realname=nick) + EOL
 
     @classmethod
     def getPONG(cls, msg):

@@ -682,16 +682,12 @@ def main():
 
     parser = OptionParser(version='%prog ' + __version__,
                           usage="%prog [options]")
-    parser.add_option('-N', '--ns-pass', help='required: the NICKSERV password to use')
+    parser.add_option('-N', '--ns-pass', default=None, help='the NICKSERV password to use')
     parser.add_option('-W', '--wait', default='15', help='number of seconds to wait when attempting to restore the IRC connection [default: %default]')
     parser.add_option('-M', '--max-reconnects', default='10', help='maximum number of times to attempt to restore the IRC connection [default: %default]')
     parser.add_option('-R', '--reset-attempts-time', default='300', help='minimum number of seconds that must pass before resetting the number of attempted reconnects [default: %default]')
 
     options, args = parser.parse_args()
-
-    if not options.ns_pass:
-        parser.print_help()
-        exit()
 
     restart = True
     reconnect_wait = int(options.wait)
@@ -700,6 +696,7 @@ def main():
     last_start = 0
     reconnect_attempts = 0
 
+    # TODO: Move reconnect stuff to BotHandler
     while restart:
         bot = MCPBot(nspass = options.ns_pass)
 
@@ -709,28 +706,25 @@ def main():
 
         BotHandler.addBot('mcpbot', bot)
 
-        try:
-            BotHandler.startAll()
-            last_start = time.time()
-            BotHandler.loop()
-        except SystemExit as e:
-            bot = BotHandler.remBot('mcpbot')
+        BotHandler.startAll()
+        last_start = time.time()
+        BotHandler.loop()
 
-            if bot and bot.logger and not bot.isTerminating:
-                logger = bot.logger
+        bot = BotHandler.remBot('mcpbot')
 
-                if e.code == 408:
-                    logger.warning('IRC connection was lost.')
+        if bot and bot.logger and not bot.isTerminating:
+            logger = bot.logger
+            logger.warning('IRC connection was lost.')
 
-                    if time.time() - last_start > reset_attempt_limit:
-                        reconnect_attempts = 0
+            if time.time() - last_start > reset_attempt_limit:
+                reconnect_attempts = 0
 
-                    reconnect_attempts += 1
-                    restart = reconnect_attempts <= max_reconnects
-                else:
-                    raise e
-            else:
-                raise e
+            reconnect_attempts += 1
+            restart = reconnect_attempts <= max_reconnects
+        elif bot and bot.isTerminating:
+            restart = False
+
+    print('Fin')
 
 
 if __name__ == "__main__":
