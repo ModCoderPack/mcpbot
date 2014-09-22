@@ -147,7 +147,7 @@ class Database(object):
 
         if params['member'].startswith('func_') or params['member'].startswith('field_'):
             sqlrequest += 'AND srg_name = %(member)s'
-        elif is_integer(params['member']) or is_integer(params['member'].lstrip('i')):
+        elif is_integer(params['member'].lstrip('i')):
             sqlrequest += 'AND srg_index = %(member)s'
         else:
             sqlrequest += 'AND (mcp_name = %(member)s OR obf_name = %(member)s)'
