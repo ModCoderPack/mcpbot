@@ -93,7 +93,7 @@ class BotBase(object):
         self.lognormal   = self.config.get('BOT', 'LOGNORMAL', "botlog.log")
         self.logerrors   = self.config.get('BOT', 'LOGERRORS', "errors.log")
         self.help_url    = self.config.get('BOT', 'HELP_URL',  '')
-        self.primary_channel = self.config.get('BOT', 'PRIMARY_CHANNEL', '', 'Important bot messages will be sent to Ops in this channel.')
+        self.primary_channels = set(self.config.get('BOT','PRIMARY_CHANNELS', '', 'Important bot messages will be sent to Ops in these channels.').split(';') if self.config.get('BOT','PRIMARY_CHANNELS', "").strip() else [])
 
         self.allowunregistered = self.config.getb('AUTH', 'ALLOWUNREGISTERED', "true", 'Can users without a registered nick emit commands?')
         self.authtimeout       = self.config.geti('AUTH', 'TIMEOUT', "60", 'User authentication refresh delay in seconds. User auth will be considered valid for this period.')
@@ -507,8 +507,9 @@ class BotBase(object):
             self.sendRaw(CmdGenerator.getNOTICE(target, msgColor))
 
     def sendPrimChanOpNotice(self, msg):
-        if self.primary_channel and self.primary_channel <> '':
-            self.sendNotice('@' + self.primary_channel, msg)
+        if self.primary_channels and len(self.primary_channels) > 0:
+            for channel in self.primary_channels:
+                self.sendNotice('@' + channel, msg)
             
     def sendMessage(self, target, msg):
         msgColor = Color.doColors(str(msg))
@@ -518,8 +519,9 @@ class BotBase(object):
             self.sendRaw(CmdGenerator.getPRIVMSG(target, msgColor))
 
     def sendPrimChanMessage(self, msg):
-        if self.primary_channel and self.primary_channel <> '':
-            self.sendMessage(self.primary_channel, msg)
+        if self.primary_channels and len(self.primary_channels) > 0:
+            for channel in self.primary_channels:
+                self.sendMessage(channel, msg)
 
     #Some data getters
     def getUser(self, target):
