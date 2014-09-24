@@ -193,10 +193,10 @@ class MCPBot(BotBase):
 
             if success and tries == 0:
                 self.logger.info('Maven upload successful.')
-                self.sendPrimChanMessage('[TEST CSV] Maven upload successful.')
+                self.sendPrimChanMessage('[TEST CSV] Maven upload successful for %s.' % zip_name)
             elif success and tries > 0:
                 self.logger.info('Maven upload successful after %d %s.' % (tries, 'retry' if tries == 1 else 'retries'))
-                self.sendPrimChanMessage('[TEST CSV] Maven upload successful after %d %s.' % (tries, 'retry' if tries == 1 else 'retries'))
+                self.sendPrimChanMessage('[TEST CSV] Maven upload successful for %s after %d %s.' % (zip_name, tries, 'retry' if tries == 1 else 'retries'))
             else:
                 self.logger.error('Maven upload failed after %d retries.' % tries)
                 self.sendPrimChanMessage('[TEST CSV] ERROR: Maven upload failed after %d retries!' % tries)
@@ -254,10 +254,10 @@ class MCPBot(BotBase):
 
             if success and tries == 0:
                 self.logger.info('Maven upload successful.')
-                self.sendPrimChanMessage('[STABLE CSV] Maven upload successful.')
+                self.sendPrimChanMessage('[STABLE CSV] Maven upload successful for %s.' % zip_name)
             elif success and tries > 0:
                 self.logger.info('Maven upload successful after %d %s.' % (tries, 'retry' if tries == 1 else 'retries'))
-                self.sendPrimChanMessage('[STABLE CSV] Maven upload successful after %d %s.' % (tries, 'retry' if tries == 1 else 'retries'))
+                self.sendPrimChanMessage('[STABLE CSV] Maven upload successful for %s after %d %s.' % (zip_name, tries, 'retry' if tries == 1 else 'retries'))
             else:
                 self.logger.error('Maven upload failed after %d retries.' % tries)
                 self.sendPrimChanMessage('[STABLE CSV] ERROR: Maven upload failed after %d retries!' % tries)
