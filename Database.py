@@ -268,6 +268,11 @@ class Database(object):
         return self.execute(sqlrequest, {'staged_pid': staged_pid})
 
 
+    def doCommit(self, member_type, command, sender, args, srg_name):
+        sqlrequest = 'select mcp.commit_mappings(%s, %s, %s, %s, %s);'
+        return self.execute(sqlrequest, (member_type, command, sender.regnick.lower(), args, srg_name))
+
+
 def is_integer(s):
     try:
         int(s)
