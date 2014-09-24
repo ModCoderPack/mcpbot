@@ -207,16 +207,6 @@ def do_export(dbhost, dbport, dbname, dbuser, dbpass, test_csv, export_path, no_
 
     pgconn = psycopg2.connect(database=dbname, user=dbuser, password=dbpass, host=dbhost, port=dbport)
 
-    if not test_csv:
-        with closing(pgconn.cursor(cursor_factory=psycopg2.extras.DictCursor)) as cur:
-            cur.execute('''
-                select v.mcp_version_pid, v.mcp_version_code, v.mc_version_code, vc.version_control_pid, vc.promoted_ts
-                from mcp.version_vw v join mcp.version_control vc on vc.mcp_version_pid = v.mcp_version_pid
-                order by vc.promoted_ts DESC limit 1;
-            ''')
-            result = cur.fetchAll()[0]
-            export_path = os.path.join(export_path, '%(mc_version_code)s/%(version_control_pid)s' % result)
-
     if not os.path.exists(export_path):
         try:
             os.makedirs(export_path)

@@ -55,7 +55,8 @@ class MCPBot(BotBase):
 
         self.registerCommand('version',  self.getVersion, ['any'], 0, 0, "", "Gets info about the current version.")
         self.registerCommand('versions', self.getVersion, ['any'], 0, 0, "", "Gets info about versions that are available in the database.")
-        self.registerCommand('testcsv',  self.getTestCSVURL, ['any', 'run_export'], 0, 1, "", "Gets the URL for the running export of staged changes.")
+        self.registerCommand('testcsv',  self.getTestCSVURL, ['any', 'mcp_team'], 0, 1, "", "Gets the URL for the running export of staged changes.")
+        self.registerCommand('commit',   self.commitMappings,['mcp_team'], 0, 1, '[<srg_name>|method|field|param]', 'Commits staged mapping changes. If SRG name is specified only that member will be committed. If method/field/param is specified only that member type will be committed. Give no arguments to commit all staged changes.')
 
         self.registerCommand('gp',       self.getParam,   ['any'], 1, 2, "[[<class>.]<method>.]<name> [<version>]", "Returns method parameter information. Defaults to current version. Version can be for MCP or MC. Obf class and method names not supported.")
         self.registerCommand('gf',       self.getMember,  ['any'], 1, 2, "[<class>.]<name> [<version>]",            "Returns field information. Defaults to current version. Version can be for MCP or MC.")
@@ -84,9 +85,9 @@ class MCPBot(BotBase):
         self.registerCommand('sp',  self.setMember,  ['any'],        2, 999, "<srg name> <new name> [<comment>]", "Sets the MCP name and comment for the SRG method parameter specified. SRG index can also be used.")
         self.registerCommand('fsp', self.setMember,  ['maintainer'], 2, 999, "<srg name> <new name> [<comment>]", "Force sets the MCP name and comment for the SRG method parameter specified. SRG index can also be used.")
 
-        self.registerCommand('lockf',  self.setLocked,  ['lock_control'], 1, 1, "<srg name>", "Locks the given field from being edited. SRG index can also be used.")
-        self.registerCommand('lockm',  self.setLocked,  ['lock_control'], 1, 1, "<srg name>", "Locks the given method from being edited. SRG index can also be used.")
-        self.registerCommand('lockp',  self.setLocked,  ['lock_control'], 1, 1, "<srg name>", "Locks the given method parameter from being edited. SRG index can also be used.")
+        self.registerCommand('lockf',   self.setLocked,  ['lock_control'], 1, 1, "<srg name>", "Locks the given field from being edited. SRG index can also be used.")
+        self.registerCommand('lockm',   self.setLocked,  ['lock_control'], 1, 1, "<srg name>", "Locks the given method from being edited. SRG index can also be used.")
+        self.registerCommand('lockp',   self.setLocked,  ['lock_control'], 1, 1, "<srg name>", "Locks the given method parameter from being edited. SRG index can also be used.")
         self.registerCommand('unlockf', self.setLocked,  ['lock_control'], 1, 1, "<srg name>", "Unlocks the given field to allow editing. SRG index can also be used.")
         self.registerCommand('unlockm', self.setLocked,  ['lock_control'], 1, 1, "<srg name>", "Unlocks the given method to allow editing. SRG index can also be used.")
         self.registerCommand('unlockp', self.setLocked,  ['lock_control'], 1, 1, "<srg name>", "Unlocks the given method parameter to allow editing. SRG index can also be used.")
@@ -105,20 +106,8 @@ class MCPBot(BotBase):
         self.registerCommand('fscm', self.legacyNotice, ['any'], 2, 999, "", "", False)
         self.registerCommand('fssm', self.legacyNotice, ['any'], 2, 999, "", "", False)
 
-        self.legacyCommandMap = {'gcc':  'gc',
-                                 'gsc':  'gc',
-                                 'gcf':  'gf',
-                                 'gsf':  'gf',
-                                 'gcm':  'gm',
-                                 'gsm':  'gm',
-                                 'scf':  'sf',
-                                 'ssf':  'sf',
-                                 'scm':  'sm',
-                                 'ssm':  'sm',
-                                 'fscf': 'fsf',
-                                 'fssf': 'fsf',
-                                 'fscm': 'fsm',
-                                 'fssm': 'fsm'}
+        self.legacyCommandMap = {'gcc': 'gc', 'gsc': 'gc', 'gcf': 'gf', 'gsf' : 'gf',  'gcm' : 'gm',  'gsm' : 'gm',  'scf' : 'sf',
+                                 'ssf': 'sf', 'scm': 'sm', 'ssm': 'sm', 'fscf': 'fsf', 'fssf': 'fsf', 'fscm': 'fsm', 'fssm': 'fsm'}
 
 
     def onStartUp(self):
@@ -160,7 +149,7 @@ class MCPBot(BotBase):
 
     def getTestCSVURL(self, bot, sender, dest, cmd, args):
         if len(args) == 1 and args[0] == 'export' \
-                and sender.regnick.lower() in self.authUsers and 'run_export' in self.authUsers[sender.regnick.lower()]:
+                and sender.regnick.lower() in self.authUsers and 'mcp_team' in self.authUsers[sender.regnick.lower()]:
             self.logger.info('Running forced test CSV export.')
             export_csv.do_export(self.dbhost, self.dbport, self.dbname, self.dbuser, self.dbpass, test_csv=True, export_path=self.test_export_path)
             self.last_export = time.time()
@@ -223,6 +212,67 @@ class MCPBot(BotBase):
                     time.sleep(180)
                     success = MavenHandler.upload(self.maven_repo_url, self.maven_repo_user, self.maven_repo_pass,
                             zip_name_nodoc, remote_path=self.maven_snapshot_nodoc_path % result[0], logger=self.logger)
+
+                if success and tries == 0:
+                    self.logger.info('Maven upload successful.')
+                elif success and tries > 0:
+                    self.logger.info('Maven upload successful after %d %s.' % (tries, 'retry' if tries == 1 else 'retries'))
+                else:
+                    self.logger.error('Maven upload failed after %d retries.' % tries)
+
+                if success:
+                    self.sendPrimChanOpNotice(success)
+
+
+    def doStableMavenPush(self, now):
+        self.logger.info("Pushing stable mappings to Forge Maven.")
+        self.sendPrimChanMessage("[STABLE CSV] Pushing stable mappings to Forge Maven.")
+        result, status = self.db.getVersionPromotions(1, psycopg2.extras.RealDictCursor)
+        if status:
+            self.logger.error(status)
+            self.sendPrimChanMessage('[STABLE CSV] Database error occurred, Maven upload skipped.')
+            self.sendPrimChanOpNotice(status)
+        else:
+            self.logger.info('Running stable CSV no-doc export.')
+            export_csv.do_export(self.dbhost, self.dbport, self.dbname, self.dbuser, self.dbpass, test_csv=False, export_path=self.maven_stable_nodoc_path % result[0], no_doc=True)
+
+            result[0]['date'] = now.strftime('%Y%m%d')
+            zip_name = (self.maven_stable_path.replace('/', '-') + '.zip') % result[0]
+            zip_name_nodoc = (self.maven_stable_nodoc_path.replace('/', '-') + '.zip') % result[0]
+            zipContents(self.maven_stable_path % result[0], zip_name)
+            zipContents(self.maven_stable_nodoc_path % result[0], zip_name_nodoc)
+
+            tries = 0
+            success = MavenHandler.upload(self.maven_repo_url, self.maven_repo_user, self.maven_repo_pass,
+                    zip_name, remote_path=self.maven_stable_path % result[0], logger=self.logger)
+            while tries < self.upload_retry_count and not success:
+                tries += 1
+                self.sendPrimChanOpNotice('[STABLE CSV] WARNING: Upload attempt failed. Trying again in 3 minutes.')
+                time.sleep(180)
+                success = MavenHandler.upload(self.maven_repo_url, self.maven_repo_user, self.maven_repo_pass,
+                        zip_name, remote_path=self.maven_stable_path % result[0], logger=self.logger)
+
+            if success and tries == 0:
+                self.logger.info('Maven upload successful.')
+                self.sendPrimChanMessage('[STABLE CSV] Maven upload successful.')
+            elif success and tries > 0:
+                self.logger.info('Maven upload successful after %d %s.' % (tries, 'retry' if tries == 1 else 'retries'))
+                self.sendPrimChanMessage('[STABLE CSV] Maven upload successful after %d %s.' % (tries, 'retry' if tries == 1 else 'retries'))
+            else:
+                self.logger.error('Maven upload failed after %d retries.' % tries)
+                self.sendPrimChanMessage('[STABLE CSV] ERROR: Maven upload failed after %d retries!' % tries)
+
+            if success:
+                self.sendPrimChanOpNotice(success)
+                tries = 0
+                success = MavenHandler.upload(self.maven_repo_url, self.maven_repo_user, self.maven_repo_pass,
+                        zip_name_nodoc, remote_path=self.maven_stable_nodoc_path % result[0], logger=self.logger)
+                while tries < self.upload_retry_count and not success:
+                    tries += 1
+                    self.logger.warning('Upload attempt failed. Trying again in 3 minutes.')
+                    time.sleep(180)
+                    success = MavenHandler.upload(self.maven_repo_url, self.maven_repo_user, self.maven_repo_pass,
+                            zip_name_nodoc, remote_path=self.maven_stable_nodoc_path % result[0], logger=self.logger)
 
                 if success and tries == 0:
                     self.logger.info('Maven upload successful.')
@@ -368,9 +418,54 @@ class MCPBot(BotBase):
         bypass_lock = sender.regnick.lower() in self.authUsers and 'lock_control' in self.authUsers[sender.regnick.lower()]
         is_forced = cmd['command'][0] == 'f'
         if is_forced:
-            self.sendNotice(sender.nick, "§R!!! CAREFUL, YOU ARE FORCING AN UPDATE TO A NAMED %s !!!" % member_type.upper().replace('_', ' '))
+            self.sendNotice(sender.nick, "§R!!! CAREFUL, YOU ARE FORCING AN UPDATE TO A %s !!!" % member_type.upper().replace('_', ' '))
         val, status = self.db.setMember(member_type, is_forced, bypass_lock, cmd['command'], sender, args)
         self.sendSetMemberResults(member_type, sender, val, status, args[0])
+
+
+    def commitMappings(self, bot, sender, dest, cmd, args):
+        if len(args) > 0:
+            if args[0].startswith('func_'):
+                member_type = 'method'
+                srg_name = args[0]
+            elif args[0].startswith('field_'):
+                member_type = 'field'
+                srg_name = args[0]
+            elif args[0].startswith('p_'):
+                member_type = 'method_param'
+                srg_name = args[0]
+            elif args[0] == 'method' or args[0] == 'methods':
+                member_type = 'method'
+                srg_name = None
+            elif args[0] == 'field' or args[0] == 'fields':
+                member_type = 'method'
+                srg_name = None
+            elif args[0] == 'param' or args[0] == 'params':
+                member_type = 'method'
+                srg_name = None
+            else:
+                self.sendNotice(sender.nick, 'Argument does not appear to be a valid SRG name or member type.')
+                return
+        else:
+            member_type = None
+            srg_name = None
+
+        val, status = self.db.doCommit(member_type, cmd['command'], sender, args, srg_name)
+        if status:
+            self.sendNotice(sender.nick, str(type(status)) + ' : ' + str(status))
+            return
+        else:
+            self.sendNotice(sender.nick, "===§B Mappings Commit §N===")
+            self.sendNotice(sender.nick, val)
+            result, status = self.db.getVersionPromotions(1, psycopg2.extras.RealDictCursor)
+            if status:
+                self.logger.error(status)
+                self.sendPrimChanMessage('[STABLE CSV] Database error occurred, Maven upload skipped.')
+                self.sendPrimChanOpNotice(status)
+            else:
+                self.logger.info('Running stable CSV export.')
+                export_csv.do_export(self.dbhost, self.dbport, self.dbname, self.dbuser, self.dbpass, test_csv=False, export_path=self.maven_stable_path % result[0])
+                self.doStableMavenPush(datetime.now())
 
 
     # Send Results
