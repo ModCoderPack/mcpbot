@@ -76,6 +76,12 @@ class Database(object):
         return self.execute(sqlrequest, cursor_type=cursor_type)
 
 
+    def getVersionPromotions(self, limit=0, cursor_type=psycopg2.extras.DictCursor):
+        sqlrequest = "select * from mcp.promotion_vw order by promoted_ts desc "
+        if limit > 0: sqlrequest += "limit " + str(limit)
+        return self.execute(sqlrequest, cursor_type=cursor_type)
+
+
     def getParam(self, args):
         arg1 = args[0]
         if arg1[0] == ".": arg1 = arg1[1:]
