@@ -165,6 +165,7 @@ class MCPBot(BotBase):
                 self.sendMessage(dest, self.test_export_url + ' (Last export time unknown)')
 
 
+    # TODO: combine this method with the copy below it
     def doMavenPush(self, now):
         self.logger.info("Pushing nightly snapshot mappings to Forge Maven.")
         self.sendPrimChanMessage("[TEST CSV] Pushing nightly snapshot mappings to Forge Maven.")
@@ -227,7 +228,7 @@ class MCPBot(BotBase):
                 if success:
                     self.sendPrimChanOpNotice(success)
 
-
+    # TODO: combine this method with the one above it
     def doStableMavenPush(self, now):
         self.logger.info("Pushing stable mappings to Forge Maven.")
         self.sendPrimChanMessage("[STABLE CSV] Pushing stable mappings to Forge Maven.")
@@ -461,8 +462,8 @@ class MCPBot(BotBase):
             self.sendNotice(sender.nick, str(type(status)) + ' : ' + str(status))
             return
         else:
-            self.sendNotice(sender.nick, "===§B Mappings Commit §N===")
-            self.sendNotice(sender.nick, val)
+            self.sendPrimChanMessage("===§B Mappings Commit §N===")
+            self.sendPrimChanMessage(val[0][0])
             result, status = self.db.getVersionPromotions(1, psycopg2.extras.RealDictCursor)
             if status:
                 self.logger.error(status)
