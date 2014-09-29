@@ -695,6 +695,10 @@ class MCPBot(BotBase):
 
         notice = "===§B Set %s: %s §N===%s" % (member_type_disp, srg_name, os.linesep)
 
+        if status:
+            self.sendNotice(sender.nick, notice + str(type(status)) + ' : ' + str(status))
+            return
+
         for result in val:
             if result['result'] > 0:
                 change, status = self.db.getMemberChange(member_type, result['result'])
