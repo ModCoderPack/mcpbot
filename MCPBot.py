@@ -22,6 +22,10 @@ class MCPBot(BotBase):
         self.dbname = self.config.get('DATABASE', 'NAME', "")
         self.dbpass = self.config.get('DATABASE', 'PASS', "")
 
+        self.exception_str_blacklist = set(self.config.get('DATABASE', 'EXCEPTION_STR_BLACKLIST', '').split(';') if self.config.get('DATABASE', 'EXCEPTION_STR_BLACKLIST', 'CONTEXT:;PL/pgSQL function;SQL statement "select', 'If an exception line contains any of these strings it will be excluded from user feedback. Separate entries with ;').strip() else [])
+
+        if '' in self.exception_str_blacklist: self.exception_str_blacklist.remove('')
+
         self.test_export_period = self.config.geti('EXPORT', 'TEST_EXPORT_PERIOD', '30', 'How often in minutes to run the test CSV export. Use 0 to disable.')
         self.test_export_path = self.config.get('EXPORT', 'TEST_EXPORT_PATH', 'testcsv', 'Relative path to write the test CSV files to.')
         self.test_export_url = self.config.get('EXPORT', 'TEST_EXPORT_URL', 'http://mcpbot.bspk.rs/testcsv/')
@@ -541,6 +545,7 @@ class MCPBot(BotBase):
 
     def sendMemberResults(self, sender, val, status, limit=0, summary=False, is_unnamed=False):
         if status:
+
             self.sendNotice(sender.nick, "§B" + str(type(status)) + ' : ' + str(status))
             return
 
@@ -625,9 +630,6 @@ class MCPBot(BotBase):
     # Setter results
 
     def sendSetLockResults(self, member_type, sender, val, status, srg_name, is_lock):
-        if status:
-            self.sendNotice(sender.nick, str(type(status)) + ' : ' + str(status))
-            return
 
         if member_type == 'method_param':
             member_type_disp = 'Method Param'
@@ -635,26 +637,19 @@ class MCPBot(BotBase):
             member_type_disp = member_type[0].upper() + member_type[1:]
 
         if is_lock:
-            self.sendNotice(sender.nick, "===§B Lock %s: %s §N===" % (member_type_disp, srg_name))
+            notice = "===§B Lock %s: %s §N===" % (member_type_disp, srg_name)
         else:
-            self.sendNotice(sender.nick, "===§B Unlock %s: %s §N===" % (member_type_disp, srg_name))
+            notice = "===§B Unlock %s: %s §N===" % (member_type_disp, srg_name)
+
+        if status:
+            self.reportDbException(sender, notice, status)
+            return
 
         for result in val:
             if result['result'] > 0:
-                self.sendNotice(sender.nick, "§BLocked status§N : %s" % str(is_lock))
-            elif result['result'] == 0:
-                self.sendNotice(sender.nick, "§BERROR: SRG Name/Index specified is not a valid %s in the current version." % member_type_disp)
-            elif result['result'] == -1:
-                self.sendNotice(sender.nick, "§BERROR: Invalid Member Type %s specified. Please report this to a member of the MCP team." % member_type_disp)
-            elif result['result'] == -2:
-                self.sendNotice(sender.nick, "§BERROR: Ambiguous request: multiple %ss would be affected." % member_type_disp)
-            elif result['result'] == -3:
-                if is_lock:
-                    self.sendNotice(sender.nick, "§BNOTICE: This %s is already locked." % member_type_disp)
-                else:
-                    self.sendNotice(sender.nick, "§BNOTICE: This %s is already unlocked." % member_type_disp)
+                self.sendNotice(sender.nick, notice + "§BLocked status§N : %s" % str(is_lock))
             else:
-                self.sendNotice(sender.nick, "§BERROR: Unhandled error %d when locking/unlocking a member. Please report this to a member of the MCP team along with the command you executed." % result['result'])
+                self.sendNotice(sender.nick, notice + "§BERROR: Unhandled error %d when locking/unlocking a member. Please report this to a member of the MCP team along with the command you executed." % result['result'])
 
 
     def sendUndoResults(self, member_type, sender, val, status, srg_name, command):
@@ -669,14 +664,14 @@ class MCPBot(BotBase):
             notice = "===§B Redo last *UNDONE* staged change to %s: %s §N===%s" % (member_type_disp, srg_name, os.linesep)
 
         if status:
-            self.sendNotice(sender.nick, notice + str(type(status)) + ' : ' + str(status))
+            self.reportDbException(sender, notice, status)
             return
 
         for result in val:
             if result['result'] > 0:
                 change, status = self.db.getMemberChange(member_type, result['result'])
                 if status:
-                    self.sendNotice(sender.nick, notice + str(type(status)) + ' : ' + str(status))
+                    self.reportDbException(sender, notice, status)
                     return
 
                 for row in change:
@@ -696,14 +691,14 @@ class MCPBot(BotBase):
         notice = "===§B Set %s: %s §N===%s" % (member_type_disp, srg_name, os.linesep)
 
         if status:
-            self.sendNotice(sender.nick, notice + str(type(status)) + ' : ' + str(status))
+            self.reportDbException(sender, notice, status)
             return
 
         for result in val:
             if result['result'] > 0:
                 change, status = self.db.getMemberChange(member_type, result['result'])
                 if status:
-                    self.sendNotice(sender.nick, notice + str(type(status)) + ' : ' + str(status))
+                    self.reportDbException(sender, notice, status)
                     return
 
                 for row in change:
@@ -712,6 +707,33 @@ class MCPBot(BotBase):
                                                         + "§BNew desc§N : {new_mcp_desc}".format(**row))
             else:
                 self.sendNotice(sender.nick, notice + "§BERROR: Unhandled error %d when processing a member change. Please report this to a member of the MCP team along with the command you executed." % result)
+
+
+    def reportDbException(self, sender, prefix, status):
+        userMsg, removed = self.stripExceptionContext(str(status))
+        self.sendNotice(sender.nick, prefix + userMsg)
+        if removed:
+            self.logger.error(os.linesep + str(type(status)) + ' : ' + str(status))
+
+
+    def stripExceptionContext(self, strexcp):
+        if strexcp:
+            kept = ''
+            removed = ''
+            for line in [line.strip('\r') for line in strexcp.split('\n')]:
+                wasRemoved = False
+                for marker in self.exception_str_blacklist:
+                    if line.find(marker) > -1:
+                        removed += line + os.linesep
+                        wasRemoved = True
+                        break
+
+                if not wasRemoved:
+                    kept += line + os.linesep
+
+            return kept.lstrip(os.linesep), removed.lstrip(os.linesep)
+        else:
+            return strexcp, None
 
 
 ########################################################################################################################
