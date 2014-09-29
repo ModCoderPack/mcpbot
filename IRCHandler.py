@@ -2,12 +2,12 @@
 import threading
 import Logger
 import re
-import sys
+import os
 import traceback
 import time
 from   collections import OrderedDict
 
-EOL = "\r\n"
+EOL = os.linesep
 CTCPTAG = chr(1)
 
 ###########################################################################################################
@@ -90,11 +90,19 @@ class CmdGenerator(object):
 
     @classmethod
     def getNOTICE(cls, dest, msg):
-        return "NOTICE {dest} :{msg}".format(dest = dest, msg = msg) + EOL
+        ret_val = ''
+        for line in msg.split(EOL):
+            if line and line != '':
+                ret_val += "NOTICE {dest} :{msg}".format(dest = dest, msg = line) + EOL
+        return ret_val
 
     @classmethod
     def getPRIVMSG(cls, dest, msg):
-        return "PRIVMSG {dest} :{msg}".format(dest = dest, msg = msg) + EOL     
+        ret_val = ''
+        for line in msg.split(EOL):
+            if line and line != '':
+                ret_val += "PRIVMSG {dest} :{msg}".format(dest = dest, msg = line) + EOL
+        return ret_val
 
     @classmethod
     def getCTCP(cls, msg):

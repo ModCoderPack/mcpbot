@@ -7,7 +7,6 @@ import DCCSocket
 import threading
 import datetime
 import json
-import sys
 import time
 from IRCHandler import CmdHandler,CmdGenerator,Sender,Color, EOL
 from ConfigHandler import AdvConfigParser
