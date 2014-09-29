@@ -658,103 +658,56 @@ class MCPBot(BotBase):
 
 
     def sendUndoResults(self, member_type, sender, val, status, srg_name, command):
-        if status:
-            self.sendNotice(sender.nick, str(type(status)) + ' : ' + str(status))
-            return
-
         if member_type == 'method_param':
             member_type_disp = 'Method Param'
         else:
             member_type_disp = member_type[0].upper() + member_type[1:]
 
         if command == 'undo':
-            self.sendNotice(sender.nick, "===§B Undo last *STAGED* change to %s: %s §N===" % (member_type_disp, srg_name))
+            notice = "===§B Undo last *STAGED* change to %s: %s §N===\n" % (member_type_disp, srg_name)
         else:
-            self.sendNotice(sender.nick, "===§B Redo last *UNDONE* staged change to %s: %s §N===" % (member_type_disp, srg_name))
+            notice = "===§B Redo last *UNDONE* staged change to %s: %s §N===%s" % (member_type_disp, srg_name, os.linesep)
+
+        if status:
+            self.sendNotice(sender.nick, notice + str(type(status)) + ' : ' + str(status))
+            return
 
         for result in val:
             if result['result'] > 0:
                 change, status = self.db.getMemberChange(member_type, result['result'])
                 if status:
-                    self.sendNotice(sender.nick, str(type(status)) + ' : ' + str(status))
+                    self.sendNotice(sender.nick, notice + str(type(status)) + ' : ' + str(status))
                     return
 
                 for row in change:
-                    self.sendNotice(sender.nick, "§BName§N     : {old_mcp_name} §B=>§N {new_mcp_name}".format(**row))
-                    self.sendNotice(sender.nick, "§BOld desc§N : {old_mcp_desc}".format(**row))
-                    self.sendNotice(sender.nick, "§BNew desc§N : {new_mcp_desc}".format(**row))
-            elif result['result'] == 0:
-                self.sendNotice(sender.nick, "§BERROR: SRG Name/Index specified is not a valid %s in the current version." % member_type_disp)
-            elif result['result'] == -1:
-                self.sendNotice(sender.nick, "§BERROR: Invalid Member Type %s specified. Please report this to a member of the MCP team." % member_type_disp)
-            elif result['result'] == -2:
-                self.sendNotice(sender.nick, "§BERROR: Ambiguous request: multiple %ss would be affected." % member_type_disp)
-            elif result['result'] == -3:
-                self.sendNotice(sender.nick, "§BERROR: Nothing to %s." % command)
-            elif result['result'] == -4:
-                self.sendNotice(sender.nick, "§BWARNING: You do not have permission to %s others' changes." % command)
+                    self.sendNotice(sender.nick, notice + "§BName§N     : {old_mcp_name} §B=>§N {new_mcp_name}{EOL}".format(EOL = os.linesep, **row)
+                                                        + "§BOld desc§N : {old_mcp_desc}{EOL}".format(EOL = os.linesep, **row)
+                                                        + "§BNew desc§N : {new_mcp_desc}".format(**row))
             else:
-                self.sendNotice(sender.nick, "§BERROR: Unhandled error %d when %sing a member change. Please report this to a member of the MCP team along with the command you executed." % (result['result'], command))
+                self.sendNotice(sender.nick, notice + "§BERROR: Unhandled error %d when %sing a member change. Please report this to a member of the MCP team along with the command you executed." % (result['result'], command))
 
 
     def sendSetMemberResults(self, member_type, sender, val, status, srg_name):
-        if status:
-            self.sendNotice(sender.nick, str(type(status)) + ' : ' + str(status))
-            return
-
-        member_type_disp = member_type[0].upper() + member_type[1:]
-
         if member_type == 'method_param':
             member_type_disp = 'Method Param'
+        else:
+            member_type_disp = member_type[0].upper() + member_type[1:]
 
-        self.sendNotice(sender.nick, "===§B Set %s: %s §N===" % (member_type_disp, srg_name))
+        notice = "===§B Set %s: %s §N===%s" % (member_type_disp, srg_name, os.linesep)
 
         for result in val:
             if result['result'] > 0:
                 change, status = self.db.getMemberChange(member_type, result['result'])
                 if status:
-                    self.sendNotice(sender.nick, str(type(status)) + ' : ' + str(status))
+                    self.sendNotice(sender.nick, notice + str(type(status)) + ' : ' + str(status))
                     return
 
                 for row in change:
-                    self.sendNotice(sender.nick, "§BName§N     : {old_mcp_name} §B=>§N {new_mcp_name}".format(**row))
-                    self.sendNotice(sender.nick, "§BOld desc§N : {old_mcp_desc}".format(**row))
-                    self.sendNotice(sender.nick, "§BNew desc§N : {new_mcp_desc}".format(**row))
-
-            elif result['result'] == 0:
-                self.sendNotice(sender.nick, "§BERROR: SRG Name/Index specified is not a valid %s in the current version." % member_type_disp)
-            elif result['result'] == -1:
-                self.sendNotice(sender.nick, "§BERROR: Invalid Member Type %s specified. Please report this to a member of the MCP team." % member_type_disp)
-            elif result['result'] == -2:
-                self.sendNotice(sender.nick, "§BERROR: Ambiguous request: multiple %ss would be modified." % member_type_disp)
-            elif result['result'] == -3:
-                self.sendNotice(sender.nick, "§BNOTICE: The %s record for SRG Name/Index %s is locked. You do not have permission to edit locked mappings." % (member_type_disp, srg_name))
-            elif result['result'] == -4:
-                self.sendNotice(sender.nick, "§BWARNING: The MCP name has already been specified for this %s." % member_type_disp)
-            elif result['result'] == -5:
-                self.sendNotice(sender.nick, "§BNOTICE: No changes to the mapping were detected based on the arguments specified.")
-            elif result['result'] == -6:
-                self.sendNotice(sender.nick, "§BERROR: The new name specified conflicts with another %s name within its scope." % member_type_disp)
-            elif result['result'] == -7:
-                self.sendNotice(sender.nick, "§BERROR: The new name specified is not a valid Java identifier or contains invalid characters (yes, we are blocking Unicode; names must not start with a number and can contain A-Z, a-z, 0-9, _ and $).")
-            elif result['result'] == -8:
-                self.sendNotice(sender.nick, "§BERROR: The new name specified is a Java keyword or literal.")
-            elif result['result'] == -9:
-                self.sendNotice(sender.nick, "§BERROR: The new name specified is too long (limit of 32 characters).")
-            elif result['result'] == -10:
-                self.sendNotice(sender.nick, "§BERROR: Constructor names cannot be changed.")
-            elif result['result'] == -11:
-                self.sendNotice(sender.nick, "§BWARNING: Final static field names should use all uppercase letters.")
-            elif result['result'] == -12:
-                self.sendNotice(sender.nick, "§BWARNING: Do not begin method, non-final-static field, or parameter names with an uppercase letter.")
-            elif result['result'] == -13:
-                self.sendNotice(sender.nick, "§BWARNING: New parameter name duplicates a class field name within scope. Use fsp if you are ABSOLUTELY sure that it won't cause issues. We will find you and crucify you if you break shit...")
-            elif result['result'] == -14:
-                self.sendNotice(sender.nick, "§BWARNING: New parameter name is reserved for use by the JAD-style local field renaming process.")
-            elif result['result'] == -15:
-                self.sendNotice(sender.nick, "§BWARNING: Method parameters cannot be given class names as it may conflict with JAD-style names for local fields.")
+                    self.sendNotice(sender.nick, notice + "§BName§N     : {old_mcp_name} §B=>§N {new_mcp_name}{EOL}".format(EOL = os.linesep, **row)
+                                                        + "§BOld desc§N : {old_mcp_desc}{EOL}".format(EOL = os.linesep, **row)
+                                                        + "§BNew desc§N : {new_mcp_desc}".format(**row))
             else:
-                self.sendNotice(sender.nick, "§BERROR: Unhandled error %d when processing a member change. Please report this to a member of the MCP team along with the command you executed." % result['result'])
+                self.sendNotice(sender.nick, notice + "§BERROR: Unhandled error %d when processing a member change. Please report this to a member of the MCP team along with the command you executed." % result)
 
 
 ########################################################################################################################
