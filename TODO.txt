@@ -9,10 +9,10 @@ DONE - bspkrs - add undo/redo commands for all members
 
 DONE - add nickserv auth success detection and move channel join to there (unless nspass is not set)
 
-- commit workflow
+DONE - commit workflow
 - info commands
     - DONE - unnamed members in a class
-    - change history
+    IN PROGRESS - change history
 - DONE - automatic export of CSVs periodically
 - STARTED - create wiki pages for new bot:
     - naming conventions* we really need this
@@ -27,6 +27,9 @@ DONE - add nickserv auth success detection and move channel join to there (unles
     - this should probably be under the database repo
 
 - cache long lists of results per user and add a command to display more of the list (%next or something)
+
+- a class summary command (cs) that would list all methods/fields in summarized format
+
 
 
 suggestions from xaero:
