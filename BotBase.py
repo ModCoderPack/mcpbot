@@ -493,7 +493,8 @@ class BotBase(object):
 
     #IRC COMMANDS QUICK ACCESS
     def sendRaw(self, msg):
-        self.socket.sendBuffer.put_nowait(msg)
+        for line in [line.strip('\r\n') for line in msg.split(EOL) if line.strip('\r\n') != '']:
+            self.socket.sendBuffer.put_nowait(line + EOL)
         
     def join(self, chan):
         self.sendRaw(CmdGenerator.getJOIN(chan))

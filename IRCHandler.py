@@ -91,17 +91,17 @@ class CmdGenerator(object):
     @classmethod
     def getNOTICE(cls, dest, msg):
         ret_val = ''
-        for line in msg.split(EOL):
-            if line and line != '':
-                ret_val += "NOTICE {dest} :{msg}".format(dest = dest, msg = line) + EOL
+        for line in msg.split('\n'):
+            if line and line.strip('\r') != '':
+                ret_val += "NOTICE {dest} :{msg}".format(dest = dest, msg = line.strip('\r')) + EOL
         return ret_val
 
     @classmethod
     def getPRIVMSG(cls, dest, msg):
         ret_val = ''
-        for line in msg.split(EOL):
-            if line and line != '':
-                ret_val += "PRIVMSG {dest} :{msg}".format(dest = dest, msg = line) + EOL
+        for line in msg.split('\n'):
+            if line and line.strip('\r') != '':
+                ret_val += "PRIVMSG {dest} :{msg}".format(dest = dest, msg = line.strip('\r')) + EOL
         return ret_val
 
     @classmethod
