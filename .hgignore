@@ -5,3 +5,5 @@ syntax: glob
 .idea
 *.cfg
 testcsv/*
+*.csv
+*.zip
