@@ -637,9 +637,9 @@ class MCPBot(BotBase):
             member_type_disp = member_type[0].upper() + member_type[1:]
 
         if is_lock:
-            notice = "===§B Lock %s: %s §N===" % (member_type_disp, srg_name)
+            notice = "===§B Lock %s: %s §N===%s" % (member_type_disp, srg_name, os.linesep)
         else:
-            notice = "===§B Unlock %s: %s §N===" % (member_type_disp, srg_name)
+            notice = "===§B Unlock %s: %s §N===%s" % (member_type_disp, srg_name, os.linesep)
 
         if status:
             self.reportDbException(sender, notice, status)
