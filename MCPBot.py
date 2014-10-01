@@ -143,11 +143,16 @@ class MCPBot(BotBase):
         export_csv.do_export(self.dbhost, self.dbport, self.dbname, self.dbuser, self.dbpass, test_csv=True, export_path=self.test_export_path)
         self.last_export = time.time()
 
-        if self.maven_upload_time:
-            min_upload_time = datetime.combine(now.date(), self.maven_upload_time) - timedelta(minutes=self.test_export_period/2)
-            max_upload_time = datetime.combine(now.date(), self.maven_upload_time) + timedelta(minutes=self.test_export_period/2)
-            if min_upload_time <= now <= max_upload_time:
-                self.doMavenPush(now)
+        try:
+            if self.maven_upload_time:
+                min_upload_time = datetime.combine(now.date(), self.maven_upload_time) - timedelta(minutes=self.test_export_period/2)
+                max_upload_time = datetime.combine(now.date(), self.maven_upload_time) + timedelta(minutes=self.test_export_period/2)
+                if min_upload_time <= now <= max_upload_time:
+                    self.doMavenPush(now)
+        except Exception as e:
+            self.logger.error(e)
+        else:
+            self.logger.info('Nightly Maven upload completed successfully.')
 
         self.test_export_thread = threading.Timer(self.next_export - time.time(), self.exportTimer)
         self.test_export_thread.start()
@@ -659,7 +664,7 @@ class MCPBot(BotBase):
             member_type_disp = member_type[0].upper() + member_type[1:]
 
         if command == 'undo':
-            notice = "===§B Undo last *STAGED* change to %s: %s §N===\n" % (member_type_disp, srg_name)
+            notice = "===§B Undo last *STAGED* change to %s: %s §N===%s" % (member_type_disp, srg_name, os.linesep)
         else:
             notice = "===§B Redo last *UNDONE* staged change to %s: %s §N===%s" % (member_type_disp, srg_name, os.linesep)
 
@@ -747,17 +752,27 @@ def zipContents(path, targetfilename=None):
             zfile.write(path + '/' + item, arcname=item)
 
 
-def getDurationStr(timeint):
-    if 1 <= timeint % 60 < 2: formatstr = '%S second'
-    else: formatstr = '%S seconds'
-
-    if 59 < timeint < 120: formatstr = '%M minute ' + formatstr
-    else: formatstr = '%M minutes ' + formatstr
-
-    if 3599 < timeint < 7200: formatstr = '%H hour ' + formatstr
-    else: formatstr = '%H hours ' + formatstr
-
-    return ' '.join([s.lstrip('0') if len(s) > 1 else s for s in time.strftime(formatstr, time.gmtime(timeint)).lstrip(' hours0').lstrip(' minutes0').replace('00', '0').split(' ')])
+def getDurationStr(timesecs):
+    formatstr = ''
+    y = divmod(timesecs, 31536000)  # years
+    w = divmod(y[1], 604800)        # weeks
+    d = divmod(w[1], 86400)         # days
+    h = divmod(d[1], 3600)          # hours
+    m = divmod(h[1], 60)            # minutes
+    s = m[1]                        # seconds
+    if y[0] == 1: formatstr += '%d year ' % y[0]
+    elif y[0] > 1: formatstr += '%d years ' % y[0]
+    if w[0] == 1: formatstr += '%d week ' % w[0]
+    elif w[0] > 1: formatstr += '%d weeks ' % w[0]
+    if d[0] == 1: formatstr += '%d day ' % d[0]
+    elif d[0] > 1: formatstr += '%d days ' % d[0]
+    if h[0] == 1: formatstr += '%d hour ' % h[0]
+    elif h[0] > 1: formatstr += '%d hours ' % h[0]
+    if m[0] == 1: formatstr += '%d minute ' % m[0]
+    elif m[0] > 1: formatstr += '%d minutes ' % m[0]
+    if s == 1: formatstr += '%d second' % s
+    elif s > 1: formatstr += '%d seconds' % s
+    return formatstr
 
 def main():
 

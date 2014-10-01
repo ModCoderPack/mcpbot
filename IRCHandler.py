@@ -520,7 +520,6 @@ class CmdHandler(object):
             
     def threadedCommand(self, callback, cmd, bot, sender, dest, args):
         try:
-
             #We request the AUTH level of the nick
             if not sender.authEvent.wait(10):
                 bot.sendNotice(sender.nick, "Error contacting nickserv. Please retry later.")
