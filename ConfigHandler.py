@@ -55,7 +55,9 @@ class AdvConfigParser(RawConfigParser):
         return self._get(section, float, option, default, comment)
 
     def getb(self, section, option, default=None, comment=None):
-        return self._get(section, bool, option, default, comment)
+        val = self.get(section, option, default, comment)
+        return val.lower() == 'true'
+        #return self._get(section, bool, option, default, comment)
 
     def write(self, fp):
         """Write an .ini-format representation of the configuration state."""
