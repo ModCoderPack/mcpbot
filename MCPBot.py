@@ -13,8 +13,8 @@ import psycopg2.extras
 __version__ = "0.5.0"
 
 class MCPBot(BotBase):
-    def __init__(self, nspass):
-        super(MCPBot, self).__init__(nspass=nspass)
+    def __init__(self, nspass=None, backupcfg=False):
+        super(MCPBot, self).__init__(nspass=nspass, backupcfg=backupcfg)
 
         self.dbhost = self.config.get('DATABASE', 'HOST', "")
         self.dbport = self.config.geti('DATABASE', 'PORT', "0")
@@ -779,6 +779,7 @@ def main():
     parser = OptionParser(version='%prog ' + __version__,
                           usage="%prog [options]")
     parser.add_option('-N', '--ns-pass', default=None, help='the NICKSERV password to use')
+    parser.add_option('-B', '--backup-config', default=False, action='store_true', help='Creates a backup of the config file prior to running [default: %default]')
     parser.add_option('-W', '--wait', default='15', help='number of seconds to wait when attempting to restore the IRC connection [default: %default]')
     parser.add_option('-M', '--max-reconnects', default='10', help='maximum number of times to attempt to restore the IRC connection [default: %default]')
     parser.add_option('-R', '--reset-attempts-time', default='300', help='minimum number of seconds that must pass before resetting the number of attempted reconnects [default: %default]')
@@ -794,7 +795,7 @@ def main():
 
     # TODO: Move reconnect stuff to BotHandler
     while restart:
-        bot = MCPBot(nspass = options.ns_pass)
+        bot = MCPBot(nspass=options.ns_pass, backupcfg=options.backup_config)
 
         if last_start != 0 and reconnect_attempts != 0:
             bot.logger.warning('Attempting IRC reconnection in %d seconds...' % reconnect_wait)

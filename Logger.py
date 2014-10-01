@@ -1,6 +1,6 @@
-import logging
+import logging, logging.handlers
 
-def getLogger(name, lognormal='botlog.log', logerror='errors.log'):
+def getLogger(name, lognormal='botlog.log', logerror='errors.log', lognormalmaxsize=1024*1024, logerrormaxsize=1024*1024):
     logger = logging.getLogger(name)
     logger.setLevel(logging.DEBUG)
 
@@ -11,12 +11,12 @@ def getLogger(name, lognormal='botlog.log', logerror='errors.log'):
         ch.setFormatter(formatter)
         logger.addHandler(ch)
 
-        fh = logging.FileHandler(logerror)
+        fh = logging.handlers.RotatingFileHandler(logerror, backupCount=5, maxBytes=logerrormaxsize)
         fh.setLevel(logging.WARNING)
         fh.setFormatter(formatter)
         logger.addHandler(fh)
 
-        nh = logging.FileHandler(lognormal)
+        nh = logging.handlers.RotatingFileHandler(lognormal, backupCount=30, maxBytes=lognormalmaxsize)
         nh.setLevel(logging.INFO)
         nh.setFormatter(formatter)
         logger.addHandler(nh)

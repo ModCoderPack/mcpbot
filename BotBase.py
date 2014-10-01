@@ -7,6 +7,8 @@ import DCCSocket
 import threading
 import datetime
 import json
+import os
+import shutil
 import time
 from IRCHandler import CmdHandler,CmdGenerator,Sender,Color, EOL
 from ConfigHandler import AdvConfigParser
@@ -65,8 +67,13 @@ class BotHandler(object):
             bot.connect()
 
 class BotBase(object):
-    def __init__(self, configfile = None, nspass = None):
+    def __init__(self, configfile = None, nspass = None, backupcfg=False):
         self.configfile = configfile if configfile else 'bot.cfg'
+
+        if backupcfg and os.path.exists(self.configfile):
+            backupcfgname = self.configfile + '.' + datetime.datetime.now().strftime('%Y%m%d%H%M%S') + '.bak'
+            shutil.copyfile(self.configfile, backupcfgname)
+
         self.config     = AdvConfigParser()
         self.config.read(self.configfile)
 
@@ -90,7 +97,9 @@ class BotBase(object):
         self.autoInvite  = self.config.getb('BOT', 'AUTOACCEPT', "true", 'Automatically accept invites?')
         self.autoJoin    = self.config.getb('BOT', 'AUTOJOIN', "true", 'Automatically join channels in the chan list?')
         self.lognormal   = self.config.get('BOT', 'LOGNORMAL', "botlog.log")
+        self.lognormalmaxbytes = self.config.geti('BOT', 'LOGNORMALMAXBYTES', str(1024*1024*5), "The log will be rotated when its size reaches this many bytes.")
         self.logerrors   = self.config.get('BOT', 'LOGERRORS', "errors.log")
+        self.logerrorsmaxbytes = self.config.geti('BOT', 'LOGERRORSMAXBYTES', str(1024*1024), "The log will be rotated when its size reaches this many bytes.")
         self.help_url    = self.config.get('BOT', 'HELP_URL',  '')
         self.primary_channels = set(self.config.get('BOT','PRIMARY_CHANNELS', '', 'Important bot messages will be sent to Ops in these channels.').split(';') if self.config.get('BOT','PRIMARY_CHANNELS', "").strip() else [])
 
@@ -104,7 +113,8 @@ class BotBase(object):
         self.monitorperiod  = self.config.geti('EVENTMONITOR', 'MONITORPERIOD', "60", "The number of seconds between event monitoring checks.")
         self.monitortimeout = self.config.geti('EVENTMONITOR', 'MONITORTIMEOUT', "240", "The minimum number of seconds that must pass without an event before we consider the connection dead.")
 
-        self.logger = Logger.getLogger("%s-%s-%s"%(__name__, self.nick, self.host) , self.lognormal, self.logerrors)
+        self.logger = Logger.getLogger("%s-%s-%s"%(__name__, self.nick, self.host) , lognormal=self.lognormal, logerror=self.logerrors,
+                                       lognormalmaxsize=self.lognormalmaxbytes, logerrormaxsize=self.logerrorsmaxbytes)
 
         # We collect the list of groups (<group> = <authorised commands separated by ;>)
         self.groups = {}
