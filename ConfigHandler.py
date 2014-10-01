@@ -56,7 +56,7 @@ class AdvConfigParser(RawConfigParser):
 
     def getb(self, section, option, default=None, comment=None):
         val = self.get(section, option, default, comment)
-        return val.lower() == 'true'
+        return val.lower() in ['true', 'yes', 't', 'y', '1']
         #return self._get(section, bool, option, default, comment)
 
     def write(self, fp):
