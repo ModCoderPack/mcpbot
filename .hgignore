@@ -7,3 +7,4 @@ syntax: glob
 testcsv/*
 *.csv
 *.zip
+*.bak
