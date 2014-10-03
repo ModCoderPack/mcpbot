@@ -1,6 +1,6 @@
 # coding=utf-8
 from BotBase import BotBase, BotHandler
-from Database import Database
+from Database import Database, is_integer
 from optparse import OptionParser
 import time
 from datetime import timedelta, datetime, time as time_class
@@ -44,16 +44,8 @@ class MCPBot(BotBase):
         self.next_export = None
         self.test_export_thread = None
 
-        if self.maven_upload_time_str:
-            if len(self.maven_upload_time_str.split(':')) > 1:
-                upload_hour, _, upload_minute = self.maven_upload_time_str.partition(':')
-            else:
-                upload_hour = self.maven_upload_time_str
-                upload_minute = '0'
-
-            self.maven_upload_time = time_class(int(upload_hour), int(upload_minute), 0)
-        else:
-            self.maven_upload_time = None
+        self.maven_upload_time = None
+        self.processMavenTimeString(self.maven_upload_time_str)
 
         self.db = Database(self.dbhost, self.dbport, self.dbuser, self.dbname, self.dbpass, self)
 
@@ -63,6 +55,7 @@ class MCPBot(BotBase):
         self.registerCommand('versions', self.getVersion, ['any'], 0, 0, "", "Gets info about versions that are available in the database.")
         self.registerCommand('testcsv',  self.getTestCSVURL, ['any', 'mcp_team'], 0, 1, "", "Gets the URL for the running export of staged changes.")
         self.registerCommand('commit',   self.commitMappings,['mcp_team'], 0, 1, '[<srg_name>|method|field|param]', 'Commits staged mapping changes. If SRG name is specified only that member will be committed. If method/field/param is specified only that member type will be committed. Give no arguments to commit all staged changes.')
+        self.registerCommand('maventime',self.setMavenTime,['mcp_team'], 1, 1, '<HH:MM>', 'Changes the time that the Maven upload will occur using 24 hour clock format.')
 
         self.registerCommand('gp',       self.getParam,   ['any'], 1, 2, "[[<class>.]<method>.]<name> [<version>]", "Returns method parameter information. Defaults to current version. Version can be for MCP or MC. Obf class and method names not supported.")
         self.registerCommand('gf',       self.getMember,  ['any'], 1, 2, "[<class>.]<name> [<version>]",            "Returns field information. Defaults to current version. Version can be for MCP or MC.")
@@ -85,11 +78,11 @@ class MCPBot(BotBase):
         self.registerCommand('redo',     self.undoChange, ['any', 'undo_any'], 1, 1, "<srg name>",                  "Redoes the last *UNDONE* staged change to a given method/field/param. By default you can only redo your own changes.")
 
         self.registerCommand('sf',  self.setMember,  ['any'],        2, 999, "<srg name> <new name> [<comment>]", "Sets the MCP name and comment for the SRG field specified. SRG index can also be used.")
-        self.registerCommand('fsf', self.setMember,  ['maintainer'], 2, 999, "<srg name> <new name> [<comment>]", "Force sets the MCP name and comment for the SRG field specified. SRG index can also be used.")
+        self.registerCommand('fsf', self.setMember,  ['maintainer', 'mcp_team'], 2, 999, "<srg name> <new name> [<comment>]", "Force sets the MCP name and comment for the SRG field specified. SRG index can also be used.")
         self.registerCommand('sm',  self.setMember,  ['any'],        2, 999, "<srg name> <new name> [<comment>]", "Sets the MCP name and comment for the SRG method specified. SRG index can also be used.")
-        self.registerCommand('fsm', self.setMember,  ['maintainer'], 2, 999, "<srg name> <new name> [<comment>]", "Force sets the MCP name and comment for the SRG method specified. SRG index can also be used.")
+        self.registerCommand('fsm', self.setMember,  ['maintainer', 'mcp_team'], 2, 999, "<srg name> <new name> [<comment>]", "Force sets the MCP name and comment for the SRG method specified. SRG index can also be used.")
         self.registerCommand('sp',  self.setMember,  ['any'],        2, 999, "<srg name> <new name> [<comment>]", "Sets the MCP name and comment for the SRG method parameter specified. SRG index can also be used.")
-        self.registerCommand('fsp', self.setMember,  ['maintainer'], 2, 999, "<srg name> <new name> [<comment>]", "Force sets the MCP name and comment for the SRG method parameter specified. SRG index can also be used.")
+        self.registerCommand('fsp', self.setMember,  ['maintainer', 'mcp_team'], 2, 999, "<srg name> <new name> [<comment>]", "Force sets the MCP name and comment for the SRG method parameter specified. SRG index can also be used.")
 
         self.registerCommand('lockf',   self.setLocked,  ['lock_control'], 1, 1, "<srg name>", "Locks the given field from being edited. SRG index can also be used.")
         self.registerCommand('lockm',   self.setLocked,  ['lock_control'], 1, 1, "<srg name>", "Locks the given method from being edited. SRG index can also be used.")
@@ -114,6 +107,40 @@ class MCPBot(BotBase):
 
         self.legacyCommandMap = {'gcc': 'gc', 'gsc': 'gc', 'gcf': 'gf', 'gsf' : 'gf',  'gcm' : 'gm',  'gsm' : 'gm',  'scf' : 'sf',
                                  'ssf': 'sf', 'scm': 'sm', 'ssm': 'sm', 'fscf': 'fsf', 'fssf': 'fsf', 'fscm': 'fsm', 'fssm': 'fsm'}
+
+
+    def processMavenTimeString(self, timestr):
+        if timestr:
+            if len(timestr.split(':')) > 1:
+                upload_hour, _, upload_minute = timestr.partition(':')
+            else:
+                upload_hour = timestr
+                upload_minute = '0'
+
+            self.maven_upload_time = time_class(int(upload_hour), int(upload_minute), 0)
+            if self.maven_upload_time_str != timestr:
+                self.config.set('EXPORT', 'MAVEN_UPLOAD_TIME', timestr, 'The approximate time that the maven upload will take place daily. Will happen within TEST_EXPORT_PERIOD / 2 minutes of this time. Use H:MM format, with 24 hour clock.')
+                self.updateConfig()
+
+
+    def isValid24HourTimeStr(self, timestr):
+        splitted = timestr.split(':')
+        if len(splitted) > 2:
+            return False
+        if not is_integer(splitted[0]) or not (0 <= int(splitted[0]) < 24):
+            return False
+        if len(splitted) == 2 and (not is_integer(splitted[1]) or not (0 <= int(splitted[1] < 60))):
+            return False
+        return True
+
+
+    def setMavenTime(self, bot, sender, dest, cmd, args):
+        self.sendNotice(sender.nick, '===§B Maven Time Change §N===')
+        if not self.isValid24HourTimeStr(args[0]):
+            self.sendNotice(sender.nick, '%s is not a valid time string!' % args[0])
+        else:
+            self.processMavenTimeString(args[0])
+            self.sendNotice(sender.nick, 'Maven upload time has been changed to %s' % args[0])
 
 
     def onStartUp(self):
@@ -151,11 +178,10 @@ class MCPBot(BotBase):
                     self.doMavenPush(now)
         except Exception as e:
             self.logger.error(e)
-        else:
-            self.logger.info('Nightly Maven upload completed successfully.')
 
-        self.test_export_thread = threading.Timer(self.next_export - time.time(), self.exportTimer)
-        self.test_export_thread.start()
+        if self.test_export_period > 0:
+            self.test_export_thread = threading.Timer(self.next_export - time.time(), self.exportTimer)
+            self.test_export_thread.start()
 
 
     def getTestCSVURL(self, bot, sender, dest, cmd, args):
@@ -165,8 +191,16 @@ class MCPBot(BotBase):
             export_csv.do_export(self.dbhost, self.dbport, self.dbname, self.dbuser, self.dbpass, test_csv=True, export_path=self.test_export_path)
             self.last_export = time.time()
             self.sendMessage(dest, 'Test CSV files exported to %s' % self.test_export_url)
-        elif len(args) == 1 and args[0] == 'export':
-            self.sendNotice(sender, 'You do not have permission to use this function.')
+        elif len(args) == 1 and args[0] == 'reset' \
+                and sender.regnick.lower() in self.authUsers and 'mcp_team' in self.authUsers[sender.regnick.lower()]:
+            self.logger.info('Resetting test CSV export schedule.')
+            if self.test_export_thread:
+                self.test_export_thread.cancel()
+            self.next_export = None
+            self.exportTimer()
+            self.sendMessage(dest, 'Test CSV files exported to %s' % self.test_export_url)
+        elif len(args) == 1 and args[0] in ['export', 'reset']:
+            self.sendNotice(sender.nick, 'You do not have permission to use this function.')
         else:
             if self.last_export:
                 self.sendMessage(dest, self.test_export_url + ' (Updated %s ago)' % getDurationStr(time.time() - self.last_export))
@@ -185,13 +219,14 @@ class MCPBot(BotBase):
             self.sendPrimChanOpNotice(status)
         else:
             self.logger.info('Running test CSV no-doc export.')
-            export_csv.do_export(self.dbhost, self.dbport, self.dbname, self.dbuser, self.dbpass, test_csv=True, export_path=self.test_export_path + '_nodoc', no_doc=True)
+            export_csv.do_export(self.dbhost, self.dbport, self.dbname, self.dbuser, self.dbpass, test_csv=True,
+                                 export_path=os.path.normpath(os.path.join(self.test_export_path, 'nodoc')), no_doc=True)
 
             result[0]['date'] = now.strftime('%Y%m%d')
             zip_name = (self.maven_snapshot_path.replace('/', '-') + '.zip') % result[0]
             zip_name_nodoc = (self.maven_snapshot_nodoc_path.replace('/', '-') + '.zip') % result[0]
             zipContents(self.test_export_path, zip_name)
-            zipContents(self.test_export_path + '_nodoc', zip_name_nodoc)
+            zipContents(os.path.normpath(os.path.join(self.test_export_path, 'nodoc')), zip_name_nodoc)
 
             tries = 0
             success = MavenHandler.upload(self.maven_repo_url, self.maven_repo_user, self.maven_repo_pass,
@@ -237,6 +272,7 @@ class MCPBot(BotBase):
                 if success:
                     self.sendPrimChanOpNotice(success)
 
+
     # TODO: combine this method with the one above it
     def doStableMavenPush(self, now):
         self.logger.info("Pushing stable mappings to Forge Maven.")
@@ -248,7 +284,8 @@ class MCPBot(BotBase):
             self.sendPrimChanOpNotice(status)
         else:
             self.logger.info('Running stable CSV no-doc export.')
-            export_csv.do_export(self.dbhost, self.dbport, self.dbname, self.dbuser, self.dbpass, test_csv=False, export_path=self.maven_stable_nodoc_path % result[0], no_doc=True)
+            export_csv.do_export(self.dbhost, self.dbport, self.dbname, self.dbuser, self.dbpass, test_csv=False,
+                                 export_path=self.maven_stable_nodoc_path % result[0], no_doc=True)
 
             result[0]['date'] = now.strftime('%Y%m%d')
             zip_name = (self.maven_stable_path.replace('/', '-') + '.zip') % result[0]
@@ -730,6 +767,9 @@ class MCPBot(BotBase):
                 for marker in self.exception_str_blacklist:
                     if line.find(marker) > -1:
                         removed += line + os.linesep
+                        wasRemoved = True
+                        break
+                    elif line.strip() == '':
                         wasRemoved = True
                         break
 
