@@ -378,7 +378,7 @@ class MCPBot(BotBase):
         member_type = 'field'
         if cmd['command'] == 'gm': member_type = 'method'
         val, status = self.db.getMember(member_type, args)
-        self.sendMemberResults(sender, val, status)
+        self.sendMemberResults(sender, val, status, limit=10)
 
 
     def getClass(self, bot, sender, dest, cmd, args):
@@ -550,7 +550,7 @@ class MCPBot(BotBase):
             return
 
         for i, entry in enumerate(val):
-            if not summary:
+            if not summary and len(val) <= 5:
                 if entry['is_locked']: locked = 'LOCKED'
                 else: locked = 'UNLOCKED'
                 header =                            "===§B MC {mc_version_code}: {class_pkg_name}/{class_srg_name}.{method_mcp_name}.{mcp_name} §U" + locked + "§N ==="
@@ -596,7 +596,7 @@ class MCPBot(BotBase):
             return
 
         for i, entry in enumerate(val):
-            if not summary:
+            if not summary and len(val) <= 5:
                 if entry['is_locked']: locked = 'LOCKED'
                 else: locked = 'UNLOCKED'
                 header =                            "===§B MC {mc_version_code}: {class_pkg_name}/{class_srg_name}.{mcp_name} ({class_obf_name}.{obf_name}) §U" + locked + "§N ==="
@@ -622,6 +622,8 @@ class MCPBot(BotBase):
                 if i < limit or sender.dccSocket:
                     if is_unnamed:
                         self.sendNotice(sender.nick, "{srg_name} §B[§N {srg_descriptor} §B]".format(**entry))
+                    elif entry['srg_descriptor'].find('(') == 0:
+                        self.sendNotice(sender.nick, "{class_obf_name}.{obf_name} §B=>§N {class_srg_name}.{mcp_name}{srg_descriptor} §B[§N {srg_name} §B]".format(**entry))
                     else:
                         self.sendNotice(sender.nick, "{class_obf_name}.{obf_name} §B=>§N {class_srg_name}.{mcp_name} §B[§N {srg_name} §B]".format(**entry))
                 elif i == limit:
@@ -639,7 +641,7 @@ class MCPBot(BotBase):
             return
 
         for i, entry in enumerate(val):
-            if not summary:
+            if not summary and len(val) <= 5:
                 self.sendNotice(sender.nick,            "===§B MC {mc_version_code}: {srg_name} §N===".format(**entry))
                 self.sendNotice(sender.nick,            "§UNotch§N        : {obf_name}".format(**entry))
                 self.sendNotice(sender.nick,            "§UName§N         : {pkg_name}/{srg_name}".format(**entry))
