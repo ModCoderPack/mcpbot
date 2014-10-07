@@ -94,6 +94,8 @@ class BotBase(object):
 
         self.nick        = self.config.get('BOT', 'NICK', "PyBot")
         self.cmdChar     = self.config.get('BOT', 'CMDCHAR', "*")
+        self.moreCount   = self.config.geti('BOT', 'MORECMDCOUNT', '10', 'The number of queued messages to send each time a user executes the more command.')
+        self.moreRate    = self.config.geti('BOT', 'MORERATELIMIT','15', 'The number of seconds that must pass before a user can execute the more command again.')
         self.autoInvite  = self.config.getb('BOT', 'AUTOACCEPT', "true", 'Automatically accept invites?')
         self.autoJoin    = self.config.getb('BOT', 'AUTOJOIN', "true", 'Automatically join channels in the chan list?')
         self.lognormal   = self.config.get('BOT', 'LOGNORMAL', "botlog.log")
@@ -113,7 +115,7 @@ class BotBase(object):
         self.monitorperiod  = self.config.geti('EVENTMONITOR', 'MONITORPERIOD', "60", "The number of seconds between event monitoring checks.")
         self.monitortimeout = self.config.geti('EVENTMONITOR', 'MONITORTIMEOUT', "240", "The minimum number of seconds that must pass without an event before we consider the connection dead.")
 
-        self.logger = Logger.getLogger("%s-%s-%s"%(__name__, self.nick, self.host) , lognormal=self.lognormal, logerror=self.logerrors,
+        self.logger = Logger.getLogger("%s-%s-%s"%(__name__, self.nick, self.host), lognormal=self.lognormal, logerror=self.logerrors,
                                        lognormalmaxsize=self.lognormalmaxbytes, logerrormaxsize=self.logerrorsmaxbytes)
 
         # We collect the list of groups (<group> = <authorised commands separated by ;>)
@@ -148,7 +150,8 @@ class BotBase(object):
         self.dccSocket = DCCSocket.DCCSocket(self)
         self.cmdHandler = CmdHandler(self, self.socket)
 
-        self.registerCommand('dcc',       self.requestDCC, ['any'],   0, 0, "",              "Requests a DCC connection to the bot.")
+        self.registerCommand('dcc',  self.requestDCC, ['any'], 0, 0, "",        "Requests a DCC connection to the bot.")
+        self.registerCommand('more', self.sendMore,   ['any'], 0, 1, "[clear]", 'Gets the next 10 queued command results. Commands that can queue results will tell you so.')
 
         self.registerCommand('useradd',  self.useradd,   ['admin'], 2, 2, "<user> <group>","Adds user to group.")
         self.registerCommand('userrm',   self.userrm,    ['admin'], 2, 2, "<user> <group>","Removes user from group.")
@@ -388,7 +391,31 @@ class BotBase(object):
             if self.dccSocket.addPending(sender):
                 self.sendRaw(CmdGenerator.getDCCCHAT(sender.nick, host, port))
         else:
-            self.sendNotice(sender.nick, "DCC is not active on this bot.")
+            self.sendNotice(sender.nick, "§BDCC is not active on this bot.")
+
+    # more command for commands that generate a lot of output
+    def sendMore(self, bot, sender, dest, cmd, args):
+        timeSinceLastRun = int(time.time() - sender.lastMoreCmd)
+        waitTime = self.moreRate - timeSinceLastRun
+        if len(args) > 0 and args[0].lower() == 'clear':
+            sender.clearMsgQueue()
+            self.sendNotice(sender.nick, '§BUnsent message queue cleared.')
+        elif sender.hasQueuedMsgs() and timeSinceLastRun < self.moreRate:
+            self.sendNotice(sender.nick, '§BThis commmand is rate-limited. Please wait %d %s and try again.' % (waitTime, 'seconds' if waitTime > 1 else 'second'))
+        elif sender.hasQueuedMsgs():
+            sender.lastMoreCmd = time.time()
+            count = 0
+
+            while sender.hasQueuedMsgs() and count < self.moreCount:
+                self.sendNotice(sender.nick, sender.popQueuedMsg())
+                count += 1
+
+            if not sender.hasQueuedMsgs():
+                self.sendNotice(sender.nick, '§BEnd of queued messages.')
+            else:
+                self.sendNotice(sender.nick, '§B+ §N%d§B more.' % sender.getQueuedMsgCount())
+        else:
+            self.sendNotice(sender.nick, '§BNo queued messages to return.')
 
     # Raw command sender
     def sendRawCmd(self, bot, sender, dest, cmd, args):
@@ -498,8 +525,6 @@ class BotBase(object):
     def killSelf(self, bot, sender, dest, cmd, args):
         self.logger.info("Killing self.")
         self.isTerminating = True
-        self.sendNotice(sender, "Killing self.")
-        time.sleep(5) # just to give time to send the notice
 
     #IRC COMMANDS QUICK ACCESS
     def sendRaw(self, msg):

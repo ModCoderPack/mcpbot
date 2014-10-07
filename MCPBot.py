@@ -185,13 +185,13 @@ class MCPBot(BotBase):
 
 
     def getTestCSVURL(self, bot, sender, dest, cmd, args):
-        if len(args) == 1 and args[0] == 'export' \
+        if len(args) == 1 and args[0].lower() == 'export' \
                 and sender.regnick.lower() in self.authUsers and 'mcp_team' in self.authUsers[sender.regnick.lower()]:
             self.logger.info('Running forced test CSV export.')
             export_csv.do_export(self.dbhost, self.dbport, self.dbname, self.dbuser, self.dbpass, test_csv=True, export_path=self.test_export_path)
             self.last_export = time.time()
             self.sendMessage(dest, 'Test CSV files exported to %s' % self.test_export_url)
-        elif len(args) == 1 and args[0] == 'reset' \
+        elif len(args) == 1 and args[0].lower() == 'reset' \
                 and sender.regnick.lower() in self.authUsers and 'mcp_team' in self.authUsers[sender.regnick.lower()]:
             self.logger.info('Resetting test CSV export schedule.')
             if self.test_export_thread:
@@ -199,7 +199,7 @@ class MCPBot(BotBase):
             self.next_export = None
             self.exportTimer()
             self.sendMessage(dest, 'Test CSV files exported to %s' % self.test_export_url)
-        elif len(args) == 1 and args[0] in ['export', 'reset']:
+        elif len(args) == 1 and args[0].lower() in ['export', 'reset']:
             self.sendNotice(sender.nick, 'You do not have permission to use this function.')
         else:
             if self.last_export:
@@ -397,7 +397,7 @@ class MCPBot(BotBase):
         showMethods = cmd['command'][-1] == 'm'
         showParams = cmd['command'][-1] == 'p'
         showClasses = cmd['command'][-1] == 'c'
-        limit = 5 if showAll else 20
+        limit = 5 if showAll else 10
 
         if showAll or showFields:
             self.sendNotice(sender.nick, "+++§B FIELDS §N+++")
@@ -453,7 +453,6 @@ class MCPBot(BotBase):
 
 
     def undoChange(self, bot, sender, dest, cmd, args):
-        # self.sendNotice(sender.nick, "Coming Soon™")
         can_undo_any = sender.regnick.lower() in self.authUsers and 'undo_any' in self.authUsers[sender.regnick.lower()]
         is_undo = cmd['command'] == 'undo'
         if args[0].startswith('func_'): member_type = 'method'
@@ -467,7 +466,6 @@ class MCPBot(BotBase):
         member_type = 'method'
         if cmd['command'].find('sf') > -1: member_type = 'field'
         elif cmd['command'].find('sp') > -1: member_type = 'method_param'
-        # should be safe to assume the user is in authUsers since we made it to the callback ... NOPE
         bypass_lock = sender.regnick.lower() in self.authUsers and 'lock_control' in self.authUsers[sender.regnick.lower()]
         is_forced = cmd['command'][0] == 'f'
         if is_forced:
@@ -487,14 +485,14 @@ class MCPBot(BotBase):
             elif args[0].startswith('p_'):
                 member_type = 'method_param'
                 srg_name = args[0]
-            elif args[0] == 'method' or args[0] == 'methods':
+            elif args[0].lower() == 'method' or args[0].lower() == 'methods':
                 member_type = 'method'
                 srg_name = None
-            elif args[0] == 'field' or args[0] == 'fields':
-                member_type = 'method'
+            elif args[0].lower() == 'field' or args[0].lower() == 'fields':
+                member_type = 'field'
                 srg_name = None
-            elif args[0] == 'param' or args[0] == 'params':
-                member_type = 'method'
+            elif args[0].lower() == 'param' or args[0].lower() == 'params':
+                member_type = 'method_param'
                 srg_name = None
             else:
                 self.sendNotice(sender.nick, 'Argument does not appear to be a valid SRG name or member type.')
@@ -549,8 +547,11 @@ class MCPBot(BotBase):
             self.sendNotice(sender.nick, "§BNo results found.")
             return
 
+        toQueue = []
+        summary = summary or len(val) > 5
+
         for i, entry in enumerate(val):
-            if not summary and len(val) <= 5:
+            if not summary:
                 if entry['is_locked']: locked = 'LOCKED'
                 else: locked = 'UNLOCKED'
                 header =                            "===§B MC {mc_version_code}: {class_pkg_name}/{class_srg_name}.{method_mcp_name}.{mcp_name} §U" + locked + "§N ==="
@@ -575,19 +576,26 @@ class MCPBot(BotBase):
                 if not i == len(val) - 1:
                     self.sendNotice(sender.nick, " ".format(**entry))
             else:
+                if is_unnamed:
+                    msg = "{method_mcp_name}.{mcp_name} §B[§N {srg_descriptor} §B]".format(**entry)
+                else:
+                    msg = "{class_srg_name}.{method_srg_name}.{srg_name} §B[§N {srg_descriptor} §B] =>§N {class_srg_name}.{method_mcp_name}.{mcp_name} §B[§N {java_type_code} §B]".format(**entry)
+
                 if i < limit or sender.dccSocket:
-                    if is_unnamed:
-                        self.sendNotice(sender.nick, "{method_mcp_name}.{mcp_name} §B[§N {srg_descriptor} §B]".format(**entry))
-                    else:
-                        self.sendNotice(sender.nick, "{class_srg_name}.{method_srg_name}.{srg_name} §B[§N {srg_descriptor} §B] =>§N {class_srg_name}.{method_mcp_name}.{mcp_name} §B[§N {java_type_code} §B]".format(**entry))
-                elif i == limit:
-                    self.sendNotice(sender.nick, "§B+ §N%(count)d§B more. Please use the %(cmd_char)sdcc command to see the full list." % {'count': len(val) - i, 'cmd_char': self.cmdChar})
-                    return
+                    self.sendNotice(sender.nick, msg)
+                else:
+                    toQueue.append(msg)
+
+        if len(toQueue) > 0:
+            self.sendNotice(sender.nick, "§B+ §N%(count)d§B more. Please use the %(cmd_char)sdcc command to see the full list or %(cmd_char)smore to see %(more)d queued entries." %
+                            {'count': len(toQueue), 'cmd_char': self.cmdChar, 'more': self.moreCount})
+            sender.clearMsgQueue()
+            for msg in toQueue:
+                sender.addToMsgQueue(msg)
 
 
     def sendMemberResults(self, sender, val, status, limit=0, summary=False, is_unnamed=False):
         if status:
-
             self.sendNotice(sender.nick, "§B" + str(type(status)) + ' : ' + str(status))
             return
 
@@ -595,8 +603,11 @@ class MCPBot(BotBase):
             self.sendNotice(sender.nick, "§BNo results found.")
             return
 
+        toQueue = []
+        summary = summary or len(val) > 5
+
         for i, entry in enumerate(val):
-            if not summary and len(val) <= 5:
+            if not summary:
                 if entry['is_locked']: locked = 'LOCKED'
                 else: locked = 'UNLOCKED'
                 header =                            "===§B MC {mc_version_code}: {class_pkg_name}/{class_srg_name}.{mcp_name} ({class_obf_name}.{obf_name}) §U" + locked + "§N ==="
@@ -619,16 +630,24 @@ class MCPBot(BotBase):
                 if not i == len(val) - 1:
                     self.sendNotice(sender.nick, " ".format(**entry))
             else:
+                if is_unnamed:
+                    msg = "{srg_name} §B[§N {srg_descriptor} §B]".format(**entry)
+                elif entry['srg_descriptor'].find('(') == 0:
+                    msg = "{class_obf_name}.{obf_name} §B=>§N {class_srg_name}.{mcp_name}{srg_descriptor} §B[§N {srg_name} §B]".format(**entry)
+                else:
+                    msg = "{class_obf_name}.{obf_name} §B=>§N {class_srg_name}.{mcp_name} §B[§N {srg_name} §B]".format(**entry)
+
                 if i < limit or sender.dccSocket:
-                    if is_unnamed:
-                        self.sendNotice(sender.nick, "{srg_name} §B[§N {srg_descriptor} §B]".format(**entry))
-                    elif entry['srg_descriptor'].find('(') == 0:
-                        self.sendNotice(sender.nick, "{class_obf_name}.{obf_name} §B=>§N {class_srg_name}.{mcp_name}{srg_descriptor} §B[§N {srg_name} §B]".format(**entry))
-                    else:
-                        self.sendNotice(sender.nick, "{class_obf_name}.{obf_name} §B=>§N {class_srg_name}.{mcp_name} §B[§N {srg_name} §B]".format(**entry))
-                elif i == limit:
-                    self.sendNotice(sender.nick, "§B+ §N%(count)d§B more. Please use the %(cmd_char)sdcc command to see the full list." % {'count': len(val) - i, 'cmd_char': self.cmdChar})
-                    return
+                    self.sendNotice(sender.nick, msg)
+                else:
+                    toQueue.append(msg)
+
+        if len(toQueue) > 0:
+            self.sendNotice(sender.nick, "§B+ §N%(count)d§B more. Please use the %(cmd_char)sdcc command to see the full list or %(cmd_char)smore to see %(more)d queued entries." %
+                            {'count': len(toQueue), 'cmd_char': self.cmdChar, 'more': self.moreCount})
+            sender.clearMsgQueue()
+            for msg in toQueue:
+                sender.addToMsgQueue(msg)
 
 
     def sendClassResults(self, sender, val, status, limit=0, summary=False):
@@ -640,8 +659,11 @@ class MCPBot(BotBase):
             self.sendNotice(sender.nick, "§BNo results found.")
             return
 
+        toQueue = []
+        summary = summary or len(val) > 3
+
         for i, entry in enumerate(val):
-            if not summary and len(val) <= 5:
+            if not summary:
                 self.sendNotice(sender.nick,            "===§B MC {mc_version_code}: {srg_name} §N===".format(**entry))
                 self.sendNotice(sender.nick,            "§UNotch§N        : {obf_name}".format(**entry))
                 self.sendNotice(sender.nick,            "§UName§N         : {pkg_name}/{srg_name}".format(**entry))
@@ -664,11 +686,19 @@ class MCPBot(BotBase):
                     self.sendNotice(sender.nick, " ".format(**entry))
 
             else:
+                msg = "{obf_name} §B=>§N {pkg_name}/{srg_name}".format(**entry)
+
                 if i < limit or sender.dccSocket:
-                    self.sendNotice(sender.nick, "{obf_name} §B=>§N {pkg_name}/{srg_name}".format(**entry))
-                elif i == limit:
-                    self.sendNotice(sender.nick, "§B+ §N%(count)d§B more. Please use the %(cmd_char)sdcc command to see the full list." % {'count': len(val) - i, 'cmd_char': self.cmdChar})
-                    return
+                    self.sendNotice(sender.nick, msg)
+                else:
+                    toQueue.append(msg)
+
+        if len(toQueue) > 0:
+            self.sendNotice(sender.nick, "§B+ §N%(count)d§B more. Please use the %(cmd_char)sdcc command to see the full list or %(cmd_char)smore to see %(more)d queued entries." %
+                            {'count': len(toQueue), 'cmd_char': self.cmdChar, 'more': self.moreCount})
+            sender.clearMsgQueue()
+            for msg in toQueue:
+                sender.addToMsgQueue(msg)
 
 
     # Setter results

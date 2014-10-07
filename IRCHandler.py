@@ -27,6 +27,9 @@ class Sender(object):
         self.ctcpData  = {}
         self.ctcpEvent = {}
 
+        self.__msgQueue__ = []
+        self.lastMoreCmd = time.time() - 30
+
         if not '!' in sender:
             self.nick = sender[1:]
         else:
@@ -56,6 +59,27 @@ class Sender(object):
         self.auth = level
         self.authEvent.set()
         self.lastAuth = time.time()
+
+    def addToMsgQueue(self, msg):
+        if self.__msgQueue__:
+            self.__msgQueue__.append(msg)
+        else:
+            self.__msgQueue__ = [msg]
+
+    def hasQueuedMsgs(self):
+        return self.__msgQueue__ and len(self.__msgQueue__) > 0
+
+    def getQueuedMsgCount(self):
+        return len(self.__msgQueue__) if self.__msgQueue__ else 0
+
+    def popQueuedMsg(self):
+        if self.hasQueuedMsgs():
+            return self.__msgQueue__.pop(0)
+        else:
+            return None
+
+    def clearMsgQueue(self):
+        self.__msgQueue__ = []
 
 ###########################################################################################################
 
@@ -228,12 +252,12 @@ class CmdHandler(object):
         if not groups:
             groups = ['any']
 
-        self.commands[command] = {'command':command, 'callback':callback, 'groups':groups, 'minarg':minarg, 'maxarg':maxarg, 'descargs':descargs, 'desccmd':desccmd, 'showhelp':showhelp}
+        self.commands[command.lower()] = {'command':command.lower(), 'callback':callback, 'groups':groups, 'minarg':minarg, 'maxarg':maxarg, 'descargs':descargs, 'desccmd':desccmd, 'showhelp':showhelp}
         for group in groups:
             if not group in self.bot.groups:
                 #self.bot.groups[group]= set()
                 self.bot.groups[group] = {'commands':set()}
-            self.bot.groups[group]['commands'].add(command)
+            self.bot.groups[group]['commands'].add(command.lower())
 
         self.bot.updateConfig()
 
@@ -402,12 +426,10 @@ class CmdHandler(object):
     def onPRIVMSG(self, sender, params):
         dest = params[0]             #Chan or private dest
         msg  = ' '.join(params[1:])  #We stitch the chat msg back together
-        msg  = msg[1:]               #We remove the leading :
+        msg  = msg.lstrip(':')       #We remove the leading :
 
-        if len(msg) > 0 and msg[0] == self.bot.cmdChar:
-            self.onCOMMAND(sender, dest, msg[1:])   #We remove the cmd symbol before passing the cmd to the bot
-        elif dest == self.bot.nick:
-            self.onCOMMAND(sender, dest, msg)
+        if len(msg) > 0 and (msg[0] == self.bot.cmdChar or dest == self.bot.nick):
+            self.onCOMMAND(sender, dest, msg.lstrip(self.bot.cmdChar)) #We remove the cmd symbol before passing the cmd to the bot
         elif len(msg) > 0 and msg[0] == CTCPTAG and msg[-1] == CTCPTAG:
             self.onCTCP(sender, dest, msg[1:-1].split())
         else:
@@ -477,10 +499,10 @@ class CmdHandler(object):
         if command.strip() == "":
             return
         
-        if not command.split()[0] in self.commands.keys():
+        if not command.split()[0].lower() in self.commands.keys():
             return
 
-        cmd  = self.commands[command.split()[0]]
+        cmd  = self.commands[command.split()[0].lower()]
         args = command.split()[1:] if len(command.split()) > 1 else []
         callback = cmd['callback']
 
