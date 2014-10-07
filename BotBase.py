@@ -151,7 +151,7 @@ class BotBase(object):
         self.cmdHandler = CmdHandler(self, self.socket)
 
         self.registerCommand('dcc',  self.requestDCC, ['any'], 0, 0, "",        "Requests a DCC connection to the bot.")
-        self.registerCommand('more', self.sendMore,   ['any'], 0, 1, "[clear]", 'Gets the next 10 queued command results. Commands that can queue results will tell you so.')
+        self.registerCommand('more', self.sendMore,   ['any'], 0, 1, "[clear]", 'Gets the next %d queued command results. Commands that can queue results will tell you so.' % self.moreCount)
 
         self.registerCommand('useradd',  self.useradd,   ['admin'], 2, 2, "<user> <group>","Adds user to group.")
         self.registerCommand('userrm',   self.userrm,    ['admin'], 2, 2, "<user> <group>","Removes user from group.")
