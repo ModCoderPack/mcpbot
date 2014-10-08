@@ -1,3 +1,4 @@
+import os
 import requests
 import hashlib
 
@@ -16,15 +17,10 @@ class MavenHandler:
 
 
     @classmethod
-    def upload(cls, maven_url, maven_user, maven_pass, artifact_name, local_path=None, remote_path=None, logger=None, do_hashsums=True):
-        if local_path:
-            if local_path[-1] != '/': local_path += '/'
-        else:
-            local_path = ''
-
+    def upload(cls, maven_url, maven_user, maven_pass, artifact_name, local_path='', remote_path='', logger=None, do_hashsums=True):
         maven_url = MavenHandler.build_url(maven_url, remote_path)
 
-        with open(local_path + artifact_name, 'rb') as data:
+        with open(os.path.normpath(os.path.join(local_path, artifact_name)), 'rb') as data:
             if logger: logger.info('Sending PUT request for artifact %s to %s' % (artifact_name, maven_url))
             status = MavenHandler.do_put(maven_url + artifact_name, (maven_user, maven_pass), data)
             if status != 200:
@@ -41,7 +37,7 @@ class MavenHandler:
                 if logger: logger.info('Sending PUT request for artifact %s to %s' % (artifact_name + '.sha1', maven_url))
                 status = MavenHandler.do_put(maven_url + artifact_name + '.sha1', (maven_user, maven_pass), MavenHandler.hashfile(data, hashlib.sha1()))
                 if status != 200:
-                    if logger: logger.error('Artifact upload for %s failed with HTTP status code %d' % (artifact_name + '.md5', status))
+                    if logger: logger.error('Artifact upload for %s failed with HTTP status code %d' % (artifact_name + '.sha1', status))
                     return None
 
 
