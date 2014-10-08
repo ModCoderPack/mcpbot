@@ -8,3 +8,4 @@ testcsv/*
 *.csv
 *.zip
 *.bak
+export/
