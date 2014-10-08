@@ -10,7 +10,7 @@ from MavenHandler import MavenHandler
 import zipfile, os
 import psycopg2.extras
 
-__version__ = "0.5.0"
+__version__ = "0.6.0"
 
 class MCPBot(BotBase):
     def __init__(self, nspass=None, backupcfg=False):
@@ -26,10 +26,12 @@ class MCPBot(BotBase):
 
         if '' in self.exception_str_blacklist: self.exception_str_blacklist.remove('')
 
+        self.base_export_path = self.config.get('EXPORT', 'BASE_EXPORT_PATH', '.', 'Base OS path where all export files will live.')
         self.test_export_period = self.config.geti('EXPORT', 'TEST_EXPORT_PERIOD', '30', 'How often in minutes to run the test CSV export. Use 0 to disable.')
-        self.test_export_path = self.config.get('EXPORT', 'TEST_EXPORT_PATH', 'testcsv', 'Relative path to write the test CSV files to.')
+        self.test_export_path = self.config.get('EXPORT', 'TEST_EXPORT_PATH', 'testcsv', 'Path under BASE_EXPORT_PATH to write the test CSV files to.')
+        self.stable_export_path = self.config.get('EXPORT', 'STABLE_EXPORT_PATH', 'stablecsv', 'Path under BASE_EXPORT_PATH to write the stable CSV files to.')
         self.test_export_url = self.config.get('EXPORT', 'TEST_EXPORT_URL', 'http://mcpbot.bspk.rs/testcsv/')
-        self.maven_repo_url = self.config.get('EXPORT', 'MAVEN_REPO_URL', 'http://files.minecraftforge.net/maven/manage/upload/de/ocean-labs/mcp/', )
+        self.maven_repo_url = self.config.get('EXPORT', 'MAVEN_REPO_URL', 'http://files.minecraftforge.net/maven/manage/upload/de/oceanlabs/mcp/')
         self.maven_repo_user = self.config.get('EXPORT', 'MAVEN_REPO_USER', 'mcp')
         self.maven_repo_pass = self.config.get('EXPORT', 'MAVEN_REPO_PASS', '')
         self.maven_snapshot_path = self.config.get('EXPORT', 'MAVEN_SNAPSHOT_PATH', 'mcp_snapshot/%(date)s-%(mc_version_code)s')
@@ -167,7 +169,8 @@ class MCPBot(BotBase):
         now = datetime.now()
 
         self.logger.info('Running test CSV export.')
-        export_csv.do_export(self.dbhost, self.dbport, self.dbname, self.dbuser, self.dbpass, test_csv=True, export_path=self.test_export_path)
+        export_csv.do_export(self.dbhost, self.dbport, self.dbname, self.dbuser, self.dbpass, test_csv=True,
+                             export_path=os.path.normpath(os.path.join(self.base_export_path, self.test_export_path)))
         self.last_export = time.time()
 
         try:
@@ -175,7 +178,7 @@ class MCPBot(BotBase):
                 min_upload_time = datetime.combine(now.date(), self.maven_upload_time) - timedelta(minutes=self.test_export_period/2)
                 max_upload_time = datetime.combine(now.date(), self.maven_upload_time) + timedelta(minutes=self.test_export_period/2)
                 if min_upload_time <= now <= max_upload_time:
-                    self.doMavenPush(now)
+                    self.doMavenPush(isSnapshot=True)
         except Exception as e:
             self.logger.error(e)
 
@@ -208,124 +211,85 @@ class MCPBot(BotBase):
                 self.sendMessage(dest, self.test_export_url + ' (Last export time unknown)')
 
 
-    # TODO: combine this method with the copy below it
-    def doMavenPush(self, now):
-        self.logger.info("Pushing nightly snapshot mappings to Forge Maven.")
-        self.sendPrimChanMessage("[TEST CSV] Pushing nightly snapshot mappings to Forge Maven.")
-        result, status = self.db.getVersions(1, psycopg2.extras.RealDictCursor)
-        if status:
-            self.logger.error(status)
-            self.sendPrimChanMessage('[TEST CSV] Database error occurred, Maven upload skipped.')
-            self.sendPrimChanOpNotice(status)
+    def doMavenPush(self, isSnapshot=True, now=datetime.now()):
+        basePath = self.base_export_path
+        if isSnapshot:
+            typeStr = '[TEST CSV]'
+            csvPath = self.test_export_path
+            chanStr = self.maven_snapshot_channel
+            stdZipStr = self.maven_snapshot_path
+            nodocZipStr = self.maven_snapshot_nodoc_path
         else:
-            self.logger.info('Running test CSV no-doc export.')
-            export_csv.do_export(self.dbhost, self.dbport, self.dbname, self.dbuser, self.dbpass, test_csv=True,
-                                 export_path=os.path.normpath(os.path.join(self.test_export_path, 'nodoc')), no_doc=True)
+            typeStr = '[STABLE CSV]'
+            csvPath = self.stable_export_path
+            chanStr = self.maven_stable_channel
+            stdZipStr = self.maven_stable_path
+            nodocZipStr = self.maven_stable_nodoc_path
 
-            result[0]['date'] = now.strftime('%Y%m%d')
-            zip_name = (self.maven_snapshot_path.replace('/', '-') + '.zip') % result[0]
-            zip_name_nodoc = (self.maven_snapshot_nodoc_path.replace('/', '-') + '.zip') % result[0]
-            zipContents(self.test_export_path, zip_name)
-            zipContents(os.path.normpath(os.path.join(self.test_export_path, 'nodoc')), zip_name_nodoc)
+        self.logger.info("%s Pushing mappings to Forge Maven." % typeStr)
 
-            tries = 0
-            success = MavenHandler.upload(self.maven_repo_url, self.maven_repo_user, self.maven_repo_pass,
-                    zip_name, remote_path=self.maven_snapshot_path % result[0], logger=self.logger)
-            while tries < self.upload_retry_count and not success:
-                tries += 1
-                self.sendPrimChanOpNotice('[TEST CSV] WARNING: Upload attempt failed. Trying again in 3 minutes.')
-                time.sleep(180)
-                success = MavenHandler.upload(self.maven_repo_url, self.maven_repo_user, self.maven_repo_pass,
-                        zip_name, remote_path=self.maven_snapshot_path % result[0], logger=self.logger)
-
-            if success and tries == 0:
-                self.logger.info('Maven upload successful.')
-                self.sendPrimChanMessage('[TEST CSV] Maven upload successful for %s (mappings = "%s" in build.gradle).' %
-                                         (zip_name, self.maven_snapshot_channel % result[0]))
-            elif success and tries > 0:
-                self.logger.info('Maven upload successful after %d %s.' % (tries, 'retry' if tries == 1 else 'retries'))
-                self.sendPrimChanMessage('[TEST CSV] Maven upload successful for %s (mappings = "%s" in build.gradle) after %d %s.' %
-                                         (zip_name,  self.maven_snapshot_channel % result[0], tries, 'retry' if tries == 1 else 'retries'))
-            else:
-                self.logger.error('Maven upload failed after %d retries.' % tries)
-                self.sendPrimChanMessage('[TEST CSV] ERROR: Maven upload failed after %d retries!' % tries)
-
-            if success:
-                self.sendPrimChanOpNotice(success)
-                tries = 0
-                success = MavenHandler.upload(self.maven_repo_url, self.maven_repo_user, self.maven_repo_pass,
-                        zip_name_nodoc, remote_path=self.maven_snapshot_nodoc_path % result[0], logger=self.logger)
-                while tries < self.upload_retry_count and not success:
-                    tries += 1
-                    self.logger.warning('Upload attempt failed. Trying again in 3 minutes.')
-                    time.sleep(180)
-                    success = MavenHandler.upload(self.maven_repo_url, self.maven_repo_user, self.maven_repo_pass,
-                            zip_name_nodoc, remote_path=self.maven_snapshot_nodoc_path % result[0], logger=self.logger)
-
-                if success and tries == 0:
-                    self.logger.info('Maven upload successful.')
-                elif success and tries > 0:
-                    self.logger.info('Maven upload successful after %d %s.' % (tries, 'retry' if tries == 1 else 'retries'))
-                else:
-                    self.logger.error('Maven upload failed after %d retries.' % tries)
-
-                if success:
-                    self.sendPrimChanOpNotice(success)
-
-
-    # TODO: combine this method with the one above it
-    def doStableMavenPush(self, now):
-        self.logger.info("Pushing stable mappings to Forge Maven.")
-        self.sendPrimChanMessage("[STABLE CSV] Pushing stable mappings to Forge Maven.")
         result, status = self.db.getVersionPromotions(1, psycopg2.extras.RealDictCursor)
         if status:
             self.logger.error(status)
-            self.sendPrimChanMessage('[STABLE CSV] Database error occurred, Maven upload skipped.')
+            self.sendPrimChanMessage('%s Database error occurred getting version info, Maven upload skipped.' % typeStr)
             self.sendPrimChanOpNotice(status)
         else:
-            self.logger.info('Running stable CSV no-doc export.')
-            export_csv.do_export(self.dbhost, self.dbport, self.dbname, self.dbuser, self.dbpass, test_csv=False,
-                                 export_path=self.maven_stable_nodoc_path % result[0], no_doc=True)
-
             result[0]['date'] = now.strftime('%Y%m%d')
-            zip_name = (self.maven_stable_path.replace('/', '-') + '.zip') % result[0]
-            zip_name_nodoc = (self.maven_stable_nodoc_path.replace('/', '-') + '.zip') % result[0]
-            zipContents(self.maven_stable_path % result[0], zip_name)
-            zipContents(self.maven_stable_nodoc_path % result[0], zip_name_nodoc)
+
+            stdCSVPath = os.path.normpath(os.path.join(basePath, csvPath))
+            stdZipDir = stdZipStr % result[0]
+            stdZipName = (stdZipDir.replace('/', '-') + '.zip')
+            stdZipDirPath = os.path.normpath(os.path.join(basePath, stdZipDir))
+
+            nodocCSVPath = os.path.normpath(os.path.join(stdCSVPath, 'nodoc'))
+            nodocZipDir = nodocZipStr % result[0]
+            nodocZipName = (nodocZipDir.replace('/', '-') + '.zip')
+            nodocZipDirPath = os.path.normpath(os.path.join(basePath, nodocZipDir))
+
+            chanStr = chanStr % result[0]
+
+            self.logger.info('%s Running CSV no-doc export.' % typeStr)
+            export_csv.do_export(self.dbhost, self.dbport, self.dbname, self.dbuser, self.dbpass, test_csv=isSnapshot,
+                                 export_path=nodocCSVPath, no_doc=True)
+
+            zipCSVContents(stdCSVPath, stdZipDirPath, stdZipName)
+            zipCSVContents(nodocCSVPath, nodocZipDirPath, nodocZipName)
+
+            self.sendPrimChanMessage("%s Pushing %s mappings to Forge Maven." % (typeStr, chanStr))
 
             tries = 0
             success = MavenHandler.upload(self.maven_repo_url, self.maven_repo_user, self.maven_repo_pass,
-                    zip_name, remote_path=self.maven_stable_path % result[0], logger=self.logger)
+                    stdZipName, local_path=stdZipDirPath, remote_path=stdZipDir, logger=self.logger)
             while tries < self.upload_retry_count and not success:
                 tries += 1
-                self.sendPrimChanOpNotice('[STABLE CSV] WARNING: Upload attempt failed. Trying again in 3 minutes.')
+                self.sendPrimChanOpNotice('%s WARNING: Upload attempt failed. Trying again in 3 minutes.' % typeStr)
                 time.sleep(180)
                 success = MavenHandler.upload(self.maven_repo_url, self.maven_repo_user, self.maven_repo_pass,
-                        zip_name, remote_path=self.maven_stable_path % result[0], logger=self.logger)
+                        stdZipName, local_path=stdZipDirPath, remote_path=stdZipDir, logger=self.logger)
 
             if success and tries == 0:
                 self.logger.info('Maven upload successful.')
-                self.sendPrimChanMessage('[STABLE CSV] Maven upload successful for %s (mappings = "%s" in build.gradle).' %
-                                         (zip_name, self.maven_stable_channel % result[0]))
+                self.sendPrimChanMessage('%s Maven upload successful for %s (mappings = "%s" in build.gradle).' %
+                                         (typeStr, stdZipName, chanStr))
             elif success and tries > 0:
                 self.logger.info('Maven upload successful after %d %s.' % (tries, 'retry' if tries == 1 else 'retries'))
-                self.sendPrimChanMessage('[STABLE CSV] Maven upload successful for %s (mappings = "%s" in build.gradle) after %d %s.' %
-                                         (zip_name, self.maven_stable_channel % result[0], tries, 'retry' if tries == 1 else 'retries'))
+                self.sendPrimChanMessage('%s Maven upload successful for %s (mappings = "%s" in build.gradle) after %d %s.' %
+                                         (typeStr, stdZipName, chanStr, tries, 'retry' if tries == 1 else 'retries'))
             else:
                 self.logger.error('Maven upload failed after %d retries.' % tries)
-                self.sendPrimChanMessage('[STABLE CSV] ERROR: Maven upload failed after %d retries!' % tries)
+                self.sendPrimChanMessage('%s ERROR: Maven upload failed after %d retries!' % (typeStr, tries))
 
             if success:
                 self.sendPrimChanOpNotice(success)
                 tries = 0
                 success = MavenHandler.upload(self.maven_repo_url, self.maven_repo_user, self.maven_repo_pass,
-                        zip_name_nodoc, remote_path=self.maven_stable_nodoc_path % result[0], logger=self.logger)
+                        nodocZipName, local_path=nodocZipDirPath, remote_path=nodocZipDir, logger=self.logger)
                 while tries < self.upload_retry_count and not success:
                     tries += 1
                     self.logger.warning('Upload attempt failed. Trying again in 3 minutes.')
                     time.sleep(180)
                     success = MavenHandler.upload(self.maven_repo_url, self.maven_repo_user, self.maven_repo_pass,
-                            zip_name_nodoc, remote_path=self.maven_stable_nodoc_path % result[0], logger=self.logger)
+                            nodocZipName, local_path=nodocZipDirPath, remote_path=nodocZipDir, logger=self.logger)
 
                 if success and tries == 0:
                     self.logger.info('Maven upload successful.')
@@ -515,8 +479,9 @@ class MCPBot(BotBase):
                 self.sendPrimChanOpNotice(status)
             else:
                 self.logger.info('Running stable CSV export.')
-                export_csv.do_export(self.dbhost, self.dbport, self.dbname, self.dbuser, self.dbpass, test_csv=False, export_path=self.maven_stable_path % result[0])
-                self.doStableMavenPush(datetime.now())
+                export_csv.do_export(self.dbhost, self.dbport, self.dbname, self.dbuser, self.dbpass, test_csv=False,
+                                     export_path=os.path.normpath(os.path.join(self.base_export_path, self.stable_export_path)))
+                self.doMavenPush(isSnapshot=False)
 
 
     # Send Results
@@ -816,12 +781,17 @@ class MCPBot(BotBase):
 ########################################################################################################################
 
 
-def zipContents(path, targetfilename=None):
-    if not targetfilename: targetfilename = path.replace('/', '_') + '.zip'
-    with zipfile.ZipFile(targetfilename, 'w', compression=zipfile.ZIP_DEFLATED) as zfile:
-        files = os.listdir(path)
-        for item in [item for item in files if os.path.isfile(path + '/' + item) and item.endswith('.csv')]:
-            zfile.write(path + '/' + item, arcname=item)
+def zipCSVContents(srcPath, targetPath, targetfilename):
+    if not os.path.exists(targetPath):
+        try:
+            os.makedirs(targetPath)
+        except OSError:
+            if not os.path.isdir(targetPath):
+                raise
+
+    with zipfile.ZipFile(os.path.normpath(os.path.join(targetPath, targetfilename)), 'w', compression=zipfile.ZIP_DEFLATED) as zfile:
+        for item in [item for item in os.listdir(srcPath) if os.path.isfile(os.path.join(srcPath, item)) and item.endswith('.csv')]:
+            zfile.write(os.path.join(srcPath, item), arcname=item)
 
 
 def getDurationStr(timesecs):
