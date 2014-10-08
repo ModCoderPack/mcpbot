@@ -29,13 +29,19 @@ class MavenHandler:
 
             if do_hashsums:
                 if logger: logger.info('Sending PUT request for artifact %s to %s' % (artifact_name + '.md5', maven_url))
-                status = MavenHandler.do_put(maven_url + artifact_name + '.md5', (maven_user, maven_pass), MavenHandler.hashfile(data, hashlib.md5()))
+                filehash = MavenHandler.hashfile(data, hashlib.md5())
+                with open(os.path.normpath(os.path.join(local_path, artifact_name + '.md5')), 'w') as hashfile:
+                    hashfile.write(filehash)
+                status = MavenHandler.do_put(maven_url + artifact_name + '.md5', (maven_user, maven_pass), filehash)
                 if status != 200:
                     if logger: logger.error('Artifact upload for %s failed with HTTP status code %d' % (artifact_name + '.md5', status))
                     return None
 
                 if logger: logger.info('Sending PUT request for artifact %s to %s' % (artifact_name + '.sha1', maven_url))
-                status = MavenHandler.do_put(maven_url + artifact_name + '.sha1', (maven_user, maven_pass), MavenHandler.hashfile(data, hashlib.sha1()))
+                filehash = MavenHandler.hashfile(data, hashlib.sha1())
+                with open(os.path.normpath(os.path.join(local_path, artifact_name + '.sha1')), 'w') as hashfile:
+                    hashfile.write(filehash)
+                status = MavenHandler.do_put(maven_url + artifact_name + '.sha1', (maven_user, maven_pass), filehash)
                 if status != 200:
                     if logger: logger.error('Artifact upload for %s failed with HTTP status code %d' % (artifact_name + '.sha1', status))
                     return None
