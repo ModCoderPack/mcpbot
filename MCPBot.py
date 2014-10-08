@@ -191,7 +191,8 @@ class MCPBot(BotBase):
         if len(args) == 1 and args[0].lower() == 'export' \
                 and sender.regnick.lower() in self.authUsers and 'mcp_team' in self.authUsers[sender.regnick.lower()]:
             self.logger.info('Running forced test CSV export.')
-            export_csv.do_export(self.dbhost, self.dbport, self.dbname, self.dbuser, self.dbpass, test_csv=True, export_path=self.test_export_path)
+            export_csv.do_export(self.dbhost, self.dbport, self.dbname, self.dbuser, self.dbpass, test_csv=True,
+                                 export_path=os.path.normpath(os.path.join(self.base_export_path, self.test_export_path)))
             self.last_export = time.time()
             self.sendMessage(dest, 'Test CSV files exported to %s' % self.test_export_url)
         elif len(args) == 1 and args[0].lower() == 'reset' \
