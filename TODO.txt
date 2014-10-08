@@ -13,6 +13,9 @@ DONE - commit workflow
 - info commands
     - DONE - unnamed members in a class
     IN PROGRESS - change history
+        IN PROGRESS - staged field view
+        - staged method view
+        - staged param view
 - DONE - automatic export of CSVs periodically
 - STARTED - create wiki pages for new bot:
     - naming conventions* we really need this
@@ -21,12 +24,11 @@ DONE - commit workflow
 - DONE - commands to list class members: listf listm?
 - DONE - set params should warn when there is a field with the same name within scope
 - DONE - set params should prevent names that can conflict with JAD-style naming of local fields
-- web interface (I'd like to use Python Server Pages so we can reuse some code
+IN PROGRESS - web interface (started on a Django project)
     - provide a way to view staged changes
     - possibly allow editing using some sort of bot-generated session URL
-    - this should probably be under the database repo
 
-- cache long lists of results per user and add a command to display more of the list (%next or something)
+DONE - cache long lists of results per user and add a command to display more of the list (!more)
 
 - a class summary command (cs) that would list all methods/fields in summarized format
 
