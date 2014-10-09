@@ -301,6 +301,7 @@ class MCPBot(BotBase):
 
                 if success:
                     self.sendPrimChanOpNotice(success)
+                    self.sendPrimChanMessage('Snapshot (daily) and Stable exports can be found here: %s' % self.test_export_url)
 
 
     # def sqlRequest(self, bot, sender, dest, cmd, args):
