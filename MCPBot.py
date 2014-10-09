@@ -190,6 +190,9 @@ class MCPBot(BotBase):
 
 
     def getTestCSVURL(self, bot, sender, dest, cmd, args):
+        if dest == self.nick:
+            dest = sender.nick
+
         if len(args) == 1 and args[0].lower() == 'export' \
                 and sender.regnick.lower() in self.authUsers and 'mcp_team' in self.authUsers[sender.regnick.lower()]:
             self.logger.info('Running forced test CSV export.')
