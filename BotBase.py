@@ -104,6 +104,7 @@ class BotBase(object):
         self.logerrorsmaxbytes = self.config.geti('BOT', 'LOGERRORSMAXBYTES', str(1024*1024), "The log will be rotated when its size reaches this many bytes.")
         self.help_url    = self.config.get('BOT', 'HELP_URL',  '')
         self.primary_channels = set(self.config.get('BOT','PRIMARY_CHANNELS', '', 'Important bot messages will be sent to Ops in these channels.').split(';') if self.config.get('BOT','PRIMARY_CHANNELS', "").strip() else [])
+        self.about_msg   = self.config.get('BOT', 'ABOUT_MSG', '', 'A message with info about the bot (owners, authors, more info, etc).')
 
         self.allowunregistered = self.config.getb('AUTH', 'ALLOWUNREGISTERED', "true", 'Can users without a registered nick emit commands?')
         self.authtimeout       = self.config.geti('AUTH', 'TIMEOUT', "60", 'User authentication refresh delay in seconds. User auth will be considered valid for this period.')
@@ -173,6 +174,8 @@ class BotBase(object):
         self.registerCommand('shutdown', self.killSelf, ['admin'], 0, 0, "", "Kills the bot.")
 
         self.registerCommand('help',      self.helpcmd,    ['any'],   0, 1, "[<command>|*]", "Lists available commands or help about a specific command.")
+        if self.about_msg and self.about_msg != '':
+            self.registerCommand('about', self.aboutcmd, ['any'], 0, 0, '', 'About this bot.')
 
     # User handling commands
     def useradd(self, bot, sender, dest, cmd, args):
@@ -361,7 +364,8 @@ class BotBase(object):
             if len(allowedcmds) > 0:
                 bot.sendNotice(sender.nick, "§BCommands you have access to use §N(type §B%shelp <command>§N for help on specific commands):" % self.cmdChar)
                 bot.sendNotice(sender.nick, ", ".join(allowedcmds))
-                bot.sendNotice(sender.nick, 'More info can be found at %s' % self.help_url)
+                if self.help_url and self.help_url != '':
+                    bot.sendNotice(sender.nick, 'More info can be found at %s' % self.help_url)
 
 
         else:
@@ -383,6 +387,9 @@ class BotBase(object):
                     bot.sendNotice(sender.nick, "§B%s %s§N : %s" % (cmdval['command'], cmdval['descargs'], cmdval['desccmd']))
             else:
                 bot.sendNotice(sender.nick, "§B*** Invalid command specified ***")
+
+    def aboutcmd(self, bot, sender, dest, cmd, args):
+        self.sendNotice(sender.nick, self.about_msg)
 
     # DCC Request command, in by default
     def requestDCC(self, bot, sender, dest, cmd, args):
