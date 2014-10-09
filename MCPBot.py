@@ -56,6 +56,7 @@ class MCPBot(BotBase):
         self.registerCommand('version',  self.getVersion, ['any'], 0, 0, "", "Gets info about the current version.")
         self.registerCommand('versions', self.getVersion, ['any'], 0, 0, "", "Gets info about versions that are available in the database.")
         self.registerCommand('testcsv',  self.getTestCSVURL, ['any', 'mcp_team'], 0, 1, "", "Gets the URL for the running export of staged changes.")
+        self.registerCommand('exports',  self.getExportsURL, ['any'], 0, 0, '', 'Gets the URL where all mapping exports can be found.')
         self.registerCommand('commit',   self.commitMappings,['mcp_team'], 0, 1, '[<srg_name>|method|field|param]', 'Commits staged mapping changes. If SRG name is specified only that member will be committed. If method/field/param is specified only that member type will be committed. Give no arguments to commit all staged changes.')
         self.registerCommand('maventime',self.setMavenTime,['mcp_team'], 1, 1, '<HH:MM>', 'Changes the time that the Maven upload will occur using 24 hour clock format.')
 
@@ -111,6 +112,22 @@ class MCPBot(BotBase):
                                  'ssf': 'sf', 'scm': 'sm', 'ssm': 'sm', 'fscf': 'fsf', 'fssf': 'fsf', 'fscm': 'fsm', 'fssm': 'fsm'}
 
 
+    def onStartUp(self):
+        super(MCPBot, self).onStartUp()
+        self.db.connect()
+        if self.test_export_period > 0:
+            self.exportTimer()
+
+
+    def onShuttingDown(self):
+        if self.isRunning:
+            self.db.disconnect()
+            if self.test_export_thread:
+                self.test_export_thread.cancel()
+
+            super(MCPBot, self).onShuttingDown()
+
+
     def processMavenTimeString(self, timestr):
         if timestr:
             if len(timestr.split(':')) > 1:
@@ -121,6 +138,7 @@ class MCPBot(BotBase):
 
             self.maven_upload_time = time_class(int(upload_hour), int(upload_minute), 0)
             if self.maven_upload_time_str != timestr:
+                self.maven_upload_time_str = timestr
                 self.config.set('EXPORT', 'MAVEN_UPLOAD_TIME', timestr, 'The approximate time that the maven upload will take place daily. Will happen within TEST_EXPORT_PERIOD / 2 minutes of this time. Use H:MM format, with 24 hour clock.')
                 self.updateConfig()
 
@@ -143,22 +161,6 @@ class MCPBot(BotBase):
         else:
             self.processMavenTimeString(args[0])
             self.sendNotice(sender.nick, 'Maven upload time has been changed to %s' % args[0])
-
-
-    def onStartUp(self):
-        super(MCPBot, self).onStartUp()
-        self.db.connect()
-        if self.test_export_period > 0:
-            self.exportTimer()
-
-
-    def onShuttingDown(self):
-        if self.isRunning:
-            self.db.disconnect()
-            if self.test_export_thread:
-                self.test_export_thread.cancel()
-
-            super(MCPBot, self).onShuttingDown()
 
 
     def exportTimer(self):
@@ -210,6 +212,13 @@ class MCPBot(BotBase):
                 self.sendMessage(dest, self.test_export_url + ' (Updated %s ago)' % getDurationStr(time.time() - self.last_export))
             else:
                 self.sendMessage(dest, self.test_export_url + ' (Last export time unknown)')
+
+
+    def getExportsURL(self, bot, sender, dest, cmd, args):
+        if dest == self.nick:
+            dest = sender.nick
+
+        self.sendMessage(dest, 'Semi-live (every %d min), Snapshot (daily ~%s EST), and Stable (committed) MCPBot mapping exports can be found here: %s' % (self.test_export_period, self.maven_upload_time_str, self.test_export_url))
 
 
     def doMavenPush(self, isSnapshot=True, now=datetime.now()):
@@ -301,7 +310,7 @@ class MCPBot(BotBase):
 
                 if success:
                     self.sendPrimChanOpNotice(success)
-                    self.sendPrimChanMessage('Snapshot (daily) and Stable exports can be found here: %s' % self.test_export_url)
+                    self.sendPrimChanMessage('Semi-live (every %d min), Snapshot (daily ~%s EST), and Stable (committed) MCPBot mapping exports can be found here: %s' % (self.test_export_period, self.maven_upload_time_str, self.test_export_url))
 
 
     # def sqlRequest(self, bot, sender, dest, cmd, args):
