@@ -3,9 +3,9 @@
 <head lang="en">
     <!-- Latest compiled and minified CSS & JS -->
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link rel="stylesheet" href="/mcpbot_static/mcpbot.css" media="screen">
-    <link rel="stylesheet" href="/mcpbot_static/bootstrap.css" media="screen">
     <link href="//maxcdn.bootstrapcdn.com/bootswatch/3.2.0/spacelab/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/mcpbot_static/mcpbot.css" media="screen">
+    <!--<link rel="stylesheet" href="/mcpbot_static/bootstrap.css" media="screen">-->
     <!--<link href="//maxcdn.bootstrapcdn.com/bootswatch/3.2.0/superhero/bootstrap.min.css" rel="stylesheet">-->
     <meta charset="UTF-8">
     <!-- HTML5 Shim and Respond.js IE8 support of HTML5 elements and media queries -->
@@ -14,6 +14,7 @@
     <script src="https://oss.maxcdn.com/libs/html5shiv/3.7.0/html5shiv.js"></script>
     <script src="https://oss.maxcdn.com/libs/respond.js/1.4.2/respond.min.js"></script>
     <![endif]-->
+    <script src="/mcpbot_static/prettybsaai.js"></script>
     <title>MCPBot - <!--#echo var="request_uri" --></title>
 </head>
 <body>
@@ -52,7 +53,6 @@
             </div>
         </div>
     </div>
-    <div class="bs-docs-section">
-        <div class="row">
-            <div class="col-lg-10">
-                <h2>Index of <!--#echo var="request_uri" --></h2>
+    <div class="row">
+        <div id="applycss" class="col-lg-10">
+            <h2>Index of <!--#echo var="request_uri" --></h2>
