@@ -180,7 +180,7 @@ class MCPBot(BotBase):
                 min_upload_time = datetime.combine(now.date(), self.maven_upload_time) - timedelta(minutes=self.test_export_period/2)
                 max_upload_time = datetime.combine(now.date(), self.maven_upload_time) + timedelta(minutes=self.test_export_period/2)
                 if min_upload_time <= now <= max_upload_time:
-                    self.doMavenPush(isSnapshot=True)
+                    self.doMavenPush(isSnapshot=True, now=now)
         except Exception as e:
             self.logger.error(e)
 
@@ -224,7 +224,7 @@ class MCPBot(BotBase):
         self.sendMessage(dest, 'Semi-live (every %d min), Snapshot (daily ~%s EST), and Stable (committed) MCPBot mapping exports can be found here: %s' % (self.test_export_period, self.maven_upload_time_str, self.test_export_url))
 
 
-    def doMavenPush(self, isSnapshot=True, now=datetime.now()):
+    def doMavenPush(self, isSnapshot, now):
         basePath = self.base_export_path
         if isSnapshot:
             typeStr = '[TEST CSV]'
@@ -495,7 +495,7 @@ class MCPBot(BotBase):
                 self.logger.info('Running stable CSV export.')
                 export_csv.do_export(self.dbhost, self.dbport, self.dbname, self.dbuser, self.dbpass, test_csv=False,
                                      export_path=os.path.normpath(os.path.join(self.base_export_path, self.stable_export_path)))
-                self.doMavenPush(isSnapshot=False)
+                self.doMavenPush(isSnapshot=False, now=datetime.now())
 
 
     # Send Results
