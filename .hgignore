@@ -9,3 +9,4 @@ testcsv/*
 *.zip
 *.bak
 export/
+*.log.*
