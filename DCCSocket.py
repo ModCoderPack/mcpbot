@@ -117,11 +117,12 @@ class DCCHandler(asyncore.dispatcher):
             self.bot.users[self.sender.nick].dccSocket = None
         self.close()
 
-    def handle_error(self):
-        self.logger.info("Connection with %s errored"%self.sender)
-        if self.sender.nick in self.bot.users:
-            self.bot.users[self.sender.nick].dccSocket = None
-        self.close()
+    # def handle_error(self):
+    #     self.logger.info("Connection with %s errored"%self.sender)
+    #     super.handle_error()
+    #     if self.sender.nick in self.bot.users:
+    #         self.bot.users[self.sender.nick].dccSocket = None
+    #     self.close()
 
     def readable(self):
         if isinstance(self.socket, ssl.SSLSocket):
