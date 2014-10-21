@@ -137,11 +137,8 @@ class CmdGenerator(object):
         return "WHOIS {nick}".format(nick = nick) + EOL
 
     @classmethod
-    def getDCCCHAT(cls, dest, addr, port, use_ssl):
-        if use_ssl:
-            ctcpmsg = CmdGenerator.getCTCP("DCC SCHAT chat {addr} {port}".format(addr=CmdGenerator.conv_ip_std_long(addr), port=port))
-        else:
-            ctcpmsg = CmdGenerator.getCTCP("DCC CHAT chat {addr} {port}".format(addr=CmdGenerator.conv_ip_std_long(addr), port=port))
+    def getDCCCHAT(cls, dest, addr, port):
+        ctcpmsg = CmdGenerator.getCTCP("DCC CHAT chat {addr} {port}".format(addr=CmdGenerator.conv_ip_std_long(addr), port=port))
         privmsg = CmdGenerator.getPRIVMSG(dest, ctcpmsg)
         return privmsg
 

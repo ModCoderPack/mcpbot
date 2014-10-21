@@ -397,7 +397,7 @@ class BotBase(object):
         if self.dccActive:
             host, port = self.dccSocket.getAddr()
             if self.dccSocket.addPending(sender):
-                self.sendRaw(CmdGenerator.getDCCCHAT(sender.nick, host, port, self.use_ssl))
+                self.sendRaw(CmdGenerator.getDCCCHAT(sender.nick, host, port))
         else:
             self.sendNotice(sender.nick, "§BDCC is not active on this bot.")
 
