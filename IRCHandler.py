@@ -137,8 +137,11 @@ class CmdGenerator(object):
         return "WHOIS {nick}".format(nick = nick) + EOL
 
     @classmethod
-    def getDCCCHAT(cls, dest, addr, port):
-        ctcpmsg = CmdGenerator.getCTCP("DCC CHAT chat {addr} {port}".format(addr=CmdGenerator.conv_ip_std_long(addr), port=port))
+    def getDCCCHAT(cls, dest, addr, port, use_ssl):
+        if use_ssl:
+            ctcpmsg = CmdGenerator.getCTCP("DCC SCHAT chat {addr} {port}".format(addr=CmdGenerator.conv_ip_std_long(addr), port=port))
+        else:
+            ctcpmsg = CmdGenerator.getCTCP("DCC CHAT chat {addr} {port}".format(addr=CmdGenerator.conv_ip_std_long(addr), port=port))
         privmsg = CmdGenerator.getPRIVMSG(dest, ctcpmsg)
         return privmsg
 
@@ -147,9 +150,9 @@ class CmdGenerator(object):
         try:
             ip = long(longip)
         except ValueError:
-            return '0.0.0.0'
+            return longip
         if ip >= 2 ** 32:
-            return '0.0.0.0'
+            return longip
         address = [str(ip >> shift & 0xFF) for shift in [24, 16, 8, 0]]
         return '.'.join(address)
 
@@ -163,9 +166,9 @@ class CmdGenerator(object):
             try:
                 ip_part = int(part)
             except ValueError:
-                return 0
+                return stdip
             if ip_part >= 2 ** 8:
-                return 0
+                return stdip
             longip += ip_part << shift
         return longip
 
