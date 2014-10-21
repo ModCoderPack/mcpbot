@@ -1,4 +1,4 @@
-import asyncore, socket
+import asyncore, socket, ssl, errno, select
 import Logger
 import Queue
 import sys
@@ -23,11 +23,34 @@ class AsyncSocket(asyncore.dispatcher):
 
         self.logger.info("%s:%s"%(host, port))
 
+        self.use_ssl = bot.use_ssl
+        if self.use_ssl:
+            self.send = self._ssl_send
+            self.recv = self._ssl_recv
+
+        self.ssl = None
+
     def doConnect(self):
         self.connect((self.host, self.port))
 
     def handle_connect(self):
+        """ Initializes SSL support after the connection has been made. """
         self.logger.info("Connecting Socket...")
+        if self.use_ssl:
+            self.ssl = ssl.wrap_socket(self.socket, do_handshake_on_connect=False)
+            self.set_socket(self.ssl)
+            # Non-blocking handshake
+            while True:
+                try:
+                    self.ssl.do_handshake()
+                    break
+                except ssl.SSLError as err:
+                    if err.args[0] == ssl.SSL_ERROR_WANT_READ:
+                        select.select([self.ssl], [], [], 5.0)
+                    elif err.args[0] == ssl.SSL_ERROR_WANT_WRITE:
+                        select.select([], [self.ssl], [], 5.0)
+                    else:
+                        raise
 
     def handle_close(self):
         self.logger.info("Closing Socket")
@@ -74,3 +97,33 @@ class AsyncSocket(asyncore.dispatcher):
 
         if self.bot.isTerminating:
             sys.exit(187)
+
+    def _ssl_send(self, data):
+        """ Replacement for self.send() during SSL connections. """
+        try:
+            result = self.write(data)
+            return result
+        except ssl.SSLError, why:
+            if why[0] in (asyncore.EWOULDBLOCK, errno.ESRCH):
+                return 0
+            else:
+                raise ssl.SSLError, why
+
+    def _ssl_recv(self, buffer_size):
+        """ Replacement for self.recv() during SSL connections. """
+        try:
+            data = self.read(buffer_size)
+            if not data:
+                self.handle_close()
+                return ''
+            return data
+        except ssl.SSLError, why:
+            if why[0] in (asyncore.ECONNRESET, asyncore.ENOTCONN,
+                          asyncore.ESHUTDOWN):
+                self.handle_close()
+                return ''
+            elif why[0] == errno.ENOENT:
+                # Required in order to keep it non-blocking
+                return ''
+            else:
+                raise

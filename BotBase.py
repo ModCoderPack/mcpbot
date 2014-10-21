@@ -84,6 +84,7 @@ class BotBase(object):
         self.channels   = set(self.config.get('SERVER','CHANNELS', "").split(';') if self.config.get('SERVER','CHANNELS', "").strip() else [])
         self.floodLimit = self.config.getf('SERVER', 'FLOODLIMIT', "0.75", 'Min delay between two line sending.')
         self.servpass   = self.config.get('SERVER', 'PASSWORD', "", 'Server password')
+        self.use_ssl     = self.config.getb('SERVER', 'USESSL', 'False', 'Whether to use SSL for the IRC connection.')
 
         self.nickserv   = self.config.get('NICKSERV', 'NICKSERV', "NickServ", 'Nick of the nick server used for auth purposes')
         self.nickAuth   = self.config.get('NICKSERV', 'NICKAUTH', "PRIVMSG {nickserv} :acc {nick}", 'Command to use to determine the ACC level of a user')

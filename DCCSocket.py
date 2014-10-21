@@ -1,8 +1,7 @@
-import asyncore, socket
+import asyncore, socket, ssl, errno, select
 import Logger
 import time
 import Queue
-import urllib
 from IRCHandler import Sender
 from contextlib import closing
 
@@ -19,12 +18,68 @@ class DCCHandler(asyncore.dispatcher):
         self.sendBuffer = Queue.Queue()
         self.logger  = Logger.getLogger(__name__+".DCCHandler_"+sender.nick, bot.lognormal, bot.logerrors)
 
+        self.use_ssl = bot.use_ssl
+        if self.use_ssl:
+            self.send = self._ssl_send
+            self.recv = self._ssl_recv
+
+        self.ssl = None
+
     def __del__(self):
         self.logger.info("Connection with %s timedout"%self.sender)
         if self.sender.nick in self.bot.users:
             self.bot.users[self.sender.nick].dccSocket = None
         self.close()
         #super(DCCHandler, self).__del__()
+
+    def _ssl_send(self, data):
+        """ Replacement for self.send() during SSL connections. """
+        try:
+            result = self.write(data)
+            return result
+        except ssl.SSLError, why:
+            if why[0] in (asyncore.EWOULDBLOCK, errno.ESRCH):
+                return 0
+            else:
+                raise ssl.SSLError, why
+
+    def _ssl_recv(self, buffer_size):
+        """ Replacement for self.recv() during SSL connections. """
+        try:
+            data = self.read(buffer_size)
+            if not data:
+                self.handle_close()
+                return ''
+            return data
+        except ssl.SSLError, why:
+            if why[0] in (asyncore.ECONNRESET, asyncore.ENOTCONN,
+                          asyncore.ESHUTDOWN):
+                self.handle_close()
+                return ''
+            elif why[0] == errno.ENOENT:
+                # Required in order to keep it non-blocking
+                return ''
+            else:
+                raise
+
+    def handle_connect(self):
+        """ Initializes SSL support after the connection has been made. """
+        self.logger.info("Connecting DCC Handler Socket...")
+        if self.use_ssl:
+            self.ssl = ssl.wrap_socket(self.socket, do_handshake_on_connect=False)
+            self.set_socket(self.ssl)
+            # Non-blocking handshake
+            while True:
+                try:
+                    self.ssl.do_handshake()
+                    break
+                except ssl.SSLError as err:
+                    if err.args[0] == ssl.SSL_ERROR_WANT_READ:
+                        select.select([self.ssl], [], [], 5.0)
+                    elif err.args[0] == ssl.SSL_ERROR_WANT_WRITE:
+                        select.select([], [self.ssl], [], 5.0)
+                    else:
+                        raise
 
     def sendMsg(self, msg):
         self.sendBuffer.put_nowait(msg + EOL)
@@ -68,6 +123,13 @@ class DCCHandler(asyncore.dispatcher):
             self.bot.users[self.sender.nick].dccSocket = None
         self.close()
 
+    def readable(self):
+        if isinstance(self.socket, ssl.SSLSocket):
+            # dispatch any bytes left in the SSL buffer
+            while self.socket.pending() > 0:
+                self.handle_read_event()
+        return True
+
 class DCCSocket(asyncore.dispatcher):
 
     def __init__(self, bot):
@@ -85,6 +147,62 @@ class DCCSocket(asyncore.dispatcher):
         self.open    = {}
 
         self.indexAnon = 0
+
+        self.use_ssl = bot.use_ssl
+        if self.use_ssl:
+            self.send = self._ssl_send
+            self.recv = self._ssl_recv
+
+        self.ssl = None
+
+    def _ssl_send(self, data):
+        """ Replacement for self.send() during SSL connections. """
+        try:
+            result = self.write(data)
+            return result
+        except ssl.SSLError, why:
+            if why[0] in (asyncore.EWOULDBLOCK, errno.ESRCH):
+                return 0
+            else:
+                raise ssl.SSLError, why
+
+    def _ssl_recv(self, buffer_size):
+        """ Replacement for self.recv() during SSL connections. """
+        try:
+            data = self.read(buffer_size)
+            if not data:
+                self.handle_close()
+                return ''
+            return data
+        except ssl.SSLError, why:
+            if why[0] in (asyncore.ECONNRESET, asyncore.ENOTCONN,
+                          asyncore.ESHUTDOWN):
+                self.handle_close()
+                return ''
+            elif why[0] == errno.ENOENT:
+                # Required in order to keep it non-blocking
+                return ''
+            else:
+                raise
+
+    def handle_connect(self):
+        """ Initializes SSL support after the connection has been made. """
+        self.logger.info("Connecting DCC Socket...")
+        if self.use_ssl:
+            self.ssl = ssl.wrap_socket(self.socket, do_handshake_on_connect=False)
+            self.set_socket(self.ssl)
+            # Non-blocking handshake
+            while True:
+                try:
+                    self.ssl.do_handshake()
+                    break
+                except ssl.SSLError as err:
+                    if err.args[0] == ssl.SSL_ERROR_WANT_READ:
+                        select.select([self.ssl], [], [], 5.0)
+                    elif err.args[0] == ssl.SSL_ERROR_WANT_WRITE:
+                        select.select([], [self.ssl], [], 5.0)
+                    else:
+                        raise
 
     def handle_accept(self):
         pair = self.accept()
@@ -130,11 +248,6 @@ class DCCSocket(asyncore.dispatcher):
         with closing(socket.socket(socket.AF_INET, socket.SOCK_DGRAM)) as s:
             s.connect(('8.8.8.8', 80))
             return s.getsockname()[0], self.socket.getsockname()[1]
-        #return urllib.urlopen('http://icanhazip.com/').readlines()[0].strip(), self.socket.getsockname()[1]
-        #return socket.gethostbyname(self.bot.hostname), self.socket.getsockname()[1]
-    #     return self.socket.getsockname()[0], self.socket.getsockname()[1]
-    #
-    # python -c "import socket; s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM); s.connect(('8.8.8.8', 80)); print(s.getsockname()[0]); s.close()"
 
     def addPending(self, sender):
         try:
@@ -148,3 +261,10 @@ class DCCSocket(asyncore.dispatcher):
             else:
                 self.bot.sendNotice(sender.nick, "Error while initialiasing DCC connection.")
             return False
+
+    def readable(self):
+        if isinstance(self.socket, ssl.SSLSocket):
+            # dispatch any bytes left in the SSL buffer
+            while self.socket.pending() > 0:
+                self.handle_read_event()
+        return True
