@@ -149,7 +149,8 @@ class BotBase(object):
         self.isRunning = True
 
         self.socket = AsyncSocket.AsyncSocket(self, self.host, self.port, self.floodLimit)
-        self.dccSocket = DCCSocket.DCCSocket(self)
+        self.dccSocketv4 = DCCSocket.DCCSocket(self, False)
+        self.dccSocketv6 = DCCSocket.DCCSocket(self, True)
         self.cmdHandler = CmdHandler(self, self.socket)
 
         self.registerCommand('dcc',  self.requestDCC, ['any'], 0, 0, "",        "Requests a DCC connection to the bot.")
@@ -395,9 +396,14 @@ class BotBase(object):
     # DCC Request command, in by default
     def requestDCC(self, bot, sender, dest, cmd, args):
         if self.dccActive:
-            host, port = self.dccSocket.getAddr()
-            if self.dccSocket.addPending(sender):
-                self.sendRaw(CmdGenerator.getDCCCHAT(sender.nick, host, port))
+            if DCCSocket.DCCSocket.isHostv6(sender):
+                host, port = self.dccSocketv6.getAddr()
+                if self.dccSocketv6.addPending(sender):
+                    self.sendRaw(CmdGenerator.getDCCCHAT(sender.nick, host, port))
+            else:
+                host, port = self.dccSocketv4.getAddr()
+                if self.dccSocketv4.addPending(sender):
+                    self.sendRaw(CmdGenerator.getDCCCHAT(sender.nick, host, port))
         else:
             self.sendNotice(sender.nick, "§BDCC is not active on this bot.")
 
@@ -527,7 +533,8 @@ class BotBase(object):
                     user.dccSocket.handle_close()
 
             self.isRunning = False
-            self.dccSocket.handle_close()
+            self.dccSocketv4.handle_close()
+            self.dccSocketv6.handle_close()
             self.socket.handle_close()
 
     def killSelf(self, bot, sender, dest, cmd, args):

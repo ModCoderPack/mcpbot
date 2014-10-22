@@ -16,10 +16,10 @@ class DCCHandler(asyncore.dispatcher):
         self.sender = sender
         self.recvBuffer = ""
         self.sendBuffer = Queue.Queue()
-        self.logger  = Logger.getLogger(__name__+".DCCHandler_"+sender.nick, bot.lognormal, bot.logerrors)
+        self.logger  = Logger.getLogger(__name__ + ".DCCHandler_" + sender.nick, bot.lognormal, bot.logerrors)
 
     def __del__(self):
-        self.logger.info("Connection with %s timedout"%self.sender)
+        self.logger.info("Connection with %s timedout" % self.sender)
         if self.sender.nick in self.bot.users:
             self.bot.users[self.sender.nick].dccSocket = None
         self.close()
@@ -44,7 +44,7 @@ class DCCHandler(asyncore.dispatcher):
         #We curate the line and pass it to the command interpreter.
         for line in lines:
             #self.logger.debug("Raw  >" + line)
-            self.bot.cmdHandler.parseCmd(":%s PRIVMSG %s :%s%s"%(self.sender.toString(), self.bot.nick, self.bot.cmdChar, line))
+            self.bot.cmdHandler.parseCmd(":%s PRIVMSG %s :%s%s" % (self.sender.toString(), self.bot.nick, self.bot.cmdChar, line))
 
     def handle_write(self):
         if not self.sendBuffer.empty():
@@ -56,7 +56,7 @@ class DCCHandler(asyncore.dispatcher):
             time.sleep(0.001)       
 
     def handle_close(self):
-        self.logger.info("Connection with %s closed"%self.sender)
+        self.logger.info("Connection with %s closed" % self.sender)
         if self.sender.nick in self.bot.users:
             self.bot.users[self.sender.nick].dccSocket = None
         self.close()
@@ -70,16 +70,17 @@ class DCCHandler(asyncore.dispatcher):
 
 class DCCSocket(asyncore.dispatcher):
 
-    def __init__(self, bot):
+    def __init__(self, bot, is_ipv6):
         self.bot = bot
         asyncore.dispatcher.__init__(self)
         self.create_socket(socket.AF_INET & socket.AF_INET6, socket.SOCK_STREAM)
         self.set_reuse_addr()
         self.bind(('', 0))
         self.listen(5)
+        self.is_ipv6 = is_ipv6
 
-        self.logger  = Logger.getLogger("%s-%s-%s"%(__name__, self.bot.nick, self.bot.host)+".DCCSocket", bot.lognormal, bot.logerrors)        
-        self.logger.info("Listening on %s:%s"%self.getAddr())
+        self.logger  = Logger.getLogger("%s-%s-%s" % (__name__, self.bot.nick, self.bot.host) + ".DCCSocket", bot.lognormal, bot.logerrors)
+        self.logger.info("Listening on %s:%s" % self.getAddr())
 
         self.pending = {}
         self.open    = {}
@@ -159,11 +160,11 @@ class DCCSocket(asyncore.dispatcher):
                 welcomeMsg.append("Have a nice day!")
 
             if not targip in self.pending and not self.bot.dccAllowAnon:
-                self.logger.error("Address %s not found in the pending connection list!"%targip)
+                self.logger.error("Address %s not found in the pending connection list!" % targip)
                 return
 
             if not targip in self.pending and self.bot.dccAllowAnon:
-                sender = Sender("AnonUser_%04d!~AnonUser_%04d@dev.null"%(self.indexAnon, self.indexAnon))
+                sender = Sender("AnonUser_%04d!~AnonUser_%04d@dev.null" % (self.indexAnon, self.indexAnon))
                 self.bot.users[sender.nick] = sender
                 self.pending[targip] = sender
                 self.indexAnon += 1
@@ -183,22 +184,42 @@ class DCCSocket(asyncore.dispatcher):
                 self.bot.sendMessage(sender.nick, msg)
 
     def getAddr(self):
-        with closing(socket.socket(socket.AF_INET, socket.SOCK_DGRAM)) as s:
-            s.connect(('8.8.8.8', 80))
+        with closing(socket.socket(socket.AF_INET & socket.AF_INET6, socket.SOCK_DGRAM)) as s:
+            if self.is_ipv6:
+                s.connect(('2001:4860:4860::8888', 80))
+            else:
+                s.connect(('8.8.8.8', 80))
+
             return s.getsockname()[0], self.socket.getsockname()[1]
+
+    @classmethod
+    def isHostv6(cls, sender):
+        addr = socket.getaddrinfo(sender.host, None)[0][4][0]
+        if addr.find(':') != -1:
+            return True
+        else:
+            return False
 
     def addPending(self, sender):
         try:
-            self.logger.info("Adding %s - %s to the pending list"%(socket.gethostbyname(sender.host), sender))
-            self.pending[socket.gethostbyname(sender.host)] = sender
+            self.logger.info("Adding %s - %s to the pending list" % (socket.getaddrinfo(sender.host, None)[0][4][0], sender))
+            self.pending[(socket.getaddrinfo(sender.host, None)[0][4][0], sender)] = sender
             return True
         except Exception as e:
+            self.bot.sendNotice(sender.nick, "Error while initialiasing DCC connection.")
             print str(e)
-            if "Address family for hostname not supported" in str(e):
-                self.bot.sendNotice(sender.nick, "Support for IPv6 pending.")                
-            else:
-                self.bot.sendNotice(sender.nick, "Error while initialiasing DCC connection.")
             return False
+        # try:
+        #     self.logger.info("Adding %s - %s to the pending list"%(socket.gethostbyname(sender.host), sender))
+        #     self.pending[socket.gethostbyname(sender.host)] = sender
+        #     return True
+        # except Exception as e:
+        #     print str(e)
+        #     if "Address family for hostname not supported" in str(e):
+        #         self.bot.sendNotice(sender.nick, "Support for IPv6 pending.")
+        #     else:
+        #         self.bot.sendNotice(sender.nick, "Error while initialiasing DCC connection.")
+        #     return False
 
     def readable(self):
         if isinstance(self.socket, ssl.SSLSocket):
