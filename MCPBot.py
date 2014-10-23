@@ -10,7 +10,7 @@ from MavenHandler import MavenHandler
 import zipfile, os
 import psycopg2.extras
 
-__version__ = "0.6.0"
+__version__ = "0.7.0"
 
 class MCPBot(BotBase):
     def __init__(self, nspass=None, backupcfg=False):
