@@ -2,7 +2,7 @@
 
 import Logger
 import AsyncSocket
-import asyncore
+import asyncore, socket
 import DCCSocket
 import threading
 import datetime
@@ -150,7 +150,12 @@ class BotBase(object):
 
         self.socket = AsyncSocket.AsyncSocket(self, self.host, self.port, self.floodLimit)
         self.dccSocketv4 = DCCSocket.DCCSocket(self, False)
-        self.dccSocketv6 = DCCSocket.DCCSocket(self, True)
+        if socket.has_ipv6:
+            try:
+                self.dccSocketv6 = DCCSocket.DCCSocket(self, True)
+            except socket.error, e:
+                if e.message.find('A socket operation was attempted to an unreachable network') != -1:
+                    self.dccSocketv6 = None
         self.cmdHandler = CmdHandler(self, self.socket)
 
         self.registerCommand('dcc',  self.requestDCC, ['any'], 0, 0, "",        "Requests a DCC connection to the bot.")
@@ -396,14 +401,17 @@ class BotBase(object):
     # DCC Request command, in by default
     def requestDCC(self, bot, sender, dest, cmd, args):
         if self.dccActive:
-            if DCCSocket.DCCSocket.isHostv6(sender):
+            flag = DCCSocket.DCCSocket.isHostv6(sender)
+            if flag and self.dccSocketv6:
                 host, port = self.dccSocketv6.getAddr()
                 if self.dccSocketv6.addPending(sender):
                     self.sendRaw(CmdGenerator.getDCCCHAT(sender.nick, host, port))
-            else:
+            elif not flag:
                 host, port = self.dccSocketv4.getAddr()
                 if self.dccSocketv4.addPending(sender):
                     self.sendRaw(CmdGenerator.getDCCCHAT(sender.nick, host, port))
+            else:
+                self.sendNotice(sender.nick, "§BIPv6 is not supported by this bot.")
         else:
             self.sendNotice(sender.nick, "§BDCC is not active on this bot.")
 
@@ -534,7 +542,8 @@ class BotBase(object):
 
             self.isRunning = False
             self.dccSocketv4.handle_close()
-            self.dccSocketv6.handle_close()
+            if self.dccSocketv6:
+                self.dccSocketv6.handle_close()
             self.socket.handle_close()
 
     def killSelf(self, bot, sender, dest, cmd, args):

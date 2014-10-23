@@ -53,7 +53,7 @@ class DCCHandler(asyncore.dispatcher):
             self.send(msg)
             self.sendBuffer.task_done()
         else:
-            time.sleep(0.001)       
+            time.sleep(0.001)
 
     def handle_close(self):
         self.logger.info("Connection with %s closed" % self.sender)
@@ -154,7 +154,7 @@ class DCCSocket(asyncore.dispatcher):
             welcomeMsg = []
 
             if targip in self.pending:
-                sender = self.pending[targip]                
+                sender = self.pending[targip]
                 welcomeMsg.append("DCC Session activated")
                 welcomeMsg.append("You can use 'help' to see the available commands.")
                 welcomeMsg.append("Have a nice day!")
@@ -170,7 +170,7 @@ class DCCSocket(asyncore.dispatcher):
                 self.indexAnon += 1
                 welcomeMsg.append("DCC Session activated")
                 welcomeMsg.append("You have been dropped to read-only because your IP couldn't be tied to a nick")
-                welcomeMsg.append("This might be due to a problem with your bouncer if you are using one")                
+                welcomeMsg.append("This might be due to a problem with your bouncer if you are using one")
                 welcomeMsg.append("You can use 'help' to see the available commands.")
                 welcomeMsg.append("Have a nice day !")
 
@@ -184,7 +184,7 @@ class DCCSocket(asyncore.dispatcher):
                 self.bot.sendMessage(sender.nick, msg)
 
     def getAddr(self):
-        with closing(socket.socket(socket.AF_INET & socket.AF_INET6, socket.SOCK_DGRAM)) as s:
+        with closing(socket.socket(socket.AF_INET6 if self.is_ipv6 else socket.AF_INET, socket.SOCK_DGRAM)) as s:
             if self.is_ipv6:
                 s.connect(('2001:4860:4860::8888', 80, 0, 0))
             else:
