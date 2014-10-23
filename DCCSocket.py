@@ -203,7 +203,7 @@ class DCCSocket(asyncore.dispatcher):
     def addPending(self, sender):
         try:
             self.logger.info("Adding %s - %s to the pending list" % (socket.getaddrinfo(sender.host, None)[0][4][0], sender))
-            self.pending[(socket.getaddrinfo(sender.host, None)[0][4][0], sender)] = sender
+            self.pending[socket.getaddrinfo(sender.host, None)[0][4][0]] = sender
             return True
         except Exception as e:
             self.bot.sendNotice(sender.nick, "Error while initialiasing DCC connection.")
