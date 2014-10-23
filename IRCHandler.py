@@ -156,7 +156,7 @@ class CmdGenerator(object):
     @classmethod
     def conv_ip_std_long(cls, stdip):
         address = stdip.split('.')
-        if len(address) != 4:
+        if len(address) != 4 and stdip.find(':') != -1:
             return 0
         longip = 0
         for part, shift in zip(address, [24, 16, 8, 0]):
