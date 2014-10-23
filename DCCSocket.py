@@ -186,7 +186,7 @@ class DCCSocket(asyncore.dispatcher):
     def getAddr(self):
         with closing(socket.socket(socket.AF_INET & socket.AF_INET6, socket.SOCK_DGRAM)) as s:
             if self.is_ipv6:
-                s.connect(('2001:4860:4860::8888', 80))
+                s.connect(('2001:4860:4860::8888', 80, 0, 0))
             else:
                 s.connect(('8.8.8.8', 80))
 
