@@ -32,6 +32,13 @@ DONE - cache long lists of results per user and add a command to display more of
 
 - a class summary command (cs) that would list all methods/fields in summarized format
 
+- find something by date
+<LexManos>  !gf enableEverythingIsScrewedUpMode 20140930 20141130
+<Cazzar> search by mapping I asssume?
+* Rankine has quit (Read error: Connection reset by peer)
+* Quetzi is now known as Quetzi|off
+<LexManos> ya, search for the new name of something that changed mapping between the two specified snapshots
+
 
 
 suggestions from xaero:
