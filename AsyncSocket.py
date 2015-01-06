@@ -55,9 +55,6 @@ class AsyncSocket(asyncore.dispatcher):
     def handle_close(self):
         self.logger.info("Closing Socket")
         self.close()
-        # if not self.bot.isTerminating:
-        #     self.logger.info('Throwing sys.exit(408)')
-        #     sys.exit(408)
 
     def handle_read(self):
         self.recvBuffer = self.recvBuffer + self.recv(8192)

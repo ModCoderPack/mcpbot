@@ -197,9 +197,8 @@ def getDurationStr(timeint):
     return time.strftime(formatstr, time.gmtime(timeint))
 
 class CmdHandler(object):
-    def __init__(self, bot, socket):
+    def __init__(self, bot):
         self.bot     = bot
-        self.socket  = socket
         self.sender  = ""
         self.cmd     = ""
         self.params  = []
@@ -508,22 +507,22 @@ class CmdHandler(object):
 
         if len(args) < cmd['minarg'] or len(args) > cmd['maxarg']:
             if cmd['descargs']:
-                self.bot.sendNotice(sender.nick, "Wrong syntax : %s"%cmd['descargs'])
+                self.bot.sendNotice(sender.nick, "Wrong syntax : %s" % cmd['descargs'])
                 return
             else:
-                self.bot.sendNotice(sender.nick, "Wrong number of arguments : min = %s, max = %s"%(cmd['minarg'], cmd['maxarg']))
+                self.bot.sendNotice(sender.nick, "Wrong number of arguments : min = %s, max = %s" % (cmd['minarg'], cmd['maxarg']))
                 return                
 
         #We already know this sender
         if sender.nick in self.bot.users and sender == self.bot.users[sender.nick]:
-            self.logger.info("Found user %s in current users"%sender.nick)
+            self.logger.info("Found user %s in current users" % sender.nick)
             
             if -1 < self.bot.authtimeout < time.time() - self.bot.users[sender.nick].lastAuth:
                 self.bot.users[sender.nick].unauthenticate()
             
             # If current auth is not 3, we retry to authenticate the account but resending the request and resetting the flags
             if self.bot.users[sender.nick].auth != 3:
-                self.logger.info("Reauthenticating user %s"%sender.nick)
+                self.logger.info("Reauthenticating user %s" % sender.nick)
                 self.bot.users[sender.nick].unauthenticate()
                 self.bot.sendRaw(self.bot.nickAuth.format(nickserv=self.bot.nickserv, nick=sender.nick) + EOL)
                 self.bot.sendRaw(CmdGenerator.getWHOIS(sender.nick))
@@ -532,7 +531,7 @@ class CmdHandler(object):
             cmdThread.start()
 
         else:
-            self.logger.info("Adding and authenticating user %s"%sender.nick)
+            self.logger.info("Adding and authenticating user %s" % sender.nick)
             self.bot.users[sender.nick] = sender
             self.bot.sendRaw(self.bot.nickAuth.format(nickserv=self.bot.nickserv, nick=sender.nick) + EOL)
             self.bot.sendRaw(CmdGenerator.getWHOIS(sender.nick))

@@ -13,61 +13,67 @@ import time
 from IRCHandler import CmdHandler,CmdGenerator,Sender,Color, EOL
 from ConfigHandler import AdvConfigParser
 
-# TODO: Refactor the bothandler to be per-bot and have it handle reconnect.
-# TODO: There should be a new class BotManager that maintains a list of BotHandlers that are running.
+
 class BotHandler(object):
-    botList = {}
 
-    @classmethod
-    def addBot(cls, botname, bot):
-        if not botname in cls.botList or not cls.botList[botname]:
-            cls.botList[botname] = bot
+    def __init__(self, bot, reconnect_wait=15, reset_attempt_secs=300, max_reconnects=10):
+        self.bot = bot
+        self.reconnect_wait = reconnect_wait
+        self.reset_attempt_secs = reset_attempt_secs
+        self.max_reconnects = max_reconnects
 
-    @classmethod
-    def remBot(cls, botname):
-        if botname in cls.botList and cls.botList[botname]:
-            retval = cls.botList[botname]
-            cls.botList.__delitem__(botname)
-            retval.onShuttingDown()
-            return retval
-        return None
+    def start(self):
+        self.bot.onStartUp()
+        self.bot.connect()
+        return self
 
-    @classmethod
-    def runAll(cls):
-        cls.startAll()
-        cls.loop()
+    def stop(self):
+        self.bot.onShuttingDown()
+        return self
 
-    @classmethod
-    def setAllKilled(cls):
-        for bot in cls.botList.values():
-            bot.isTerminating = True
+    def setKilled(self):
+        self.bot.isTerminating = True
+        return self
 
-    @classmethod
-    def stopAll(cls):
-        for bot in cls.botList.values():
-            bot.onShuttingDown()
+    def run(self):
+        restart = True
+        last_start = 0
+        reconnect_attempts = 0
 
-    @classmethod
-    def loop(cls):
-        try:
-            asyncore.loop()
-        except KeyboardInterrupt as e:
-            print("Keyboard Interrupt: Shutting down.")
-            cls.setAllKilled()
-            cls.stopAll()
-        except:
-            print('Other Exception: Shutting down.')
-            cls.stopAll()
-            raise
+        while restart:
+            if last_start != 0 and reconnect_attempts != 0:
+                self.bot.logger.warning('Attempting IRC reconnection in %d seconds...' % self.reconnect_wait)
+                time.sleep(self.reconnect_wait)
 
-    @classmethod
-    def startAll(cls):
-        for bot in cls.botList.values():
-            bot.onStartUp()
-            bot.connect()
+            last_start = time.time()
+
+            if not self.bot.isRunning:
+                self.bot.resetSockets()
+                self.start()
+
+            try:
+                asyncore.loop()
+            except KeyboardInterrupt as e:
+                print("Keyboard Interrupt: Shutting down.")
+                self.stop()
+                restart = False
+            except:
+                print('Other Exception: Shutting down.')
+                self.stop()
+                raise
+
+            if not self.bot.isTerminating:
+                self.bot.logger.warning('IRC connection was lost.')
+
+                if time.time() - last_start > self.reset_attempt_secs:
+                    reconnect_attempts = 0
+
+                reconnect_attempts += 1
+                restart = reconnect_attempts <= self.max_reconnects
+
 
 class BotBase(object):
-    def __init__(self, configfile = None, nspass = None, backupcfg=False):
+    def __init__(self, configfile=None, nspass=None, backupcfg=False):
         self.configfile = configfile if configfile else 'bot.cfg'
 
         if backupcfg and os.path.exists(self.configfile):
@@ -146,20 +152,17 @@ class BotBase(object):
         self.isIdentified = False   #Turn to true when nick/ident commands are sent
         self.isReady      = False   #Turn to true after RPL_ENDOFMOTD. Every join/nick etc commands should be sent once this is True.
         self.isTerminating     = False   #This is set to true by the stop command to bypass restarting
-        self.isRunning = True
+        self.isRunning = False
 
-        self.socket = AsyncSocket.AsyncSocket(self, self.host, self.port, self.floodLimit)
-        self.dccSocketv4 = DCCSocket.DCCSocket(self, False)
-        if socket.has_ipv6:
-            try:
-                self.dccSocketv6 = DCCSocket.DCCSocket(self, True)
-            except socket.error, e:
-                if e.message.find('A socket operation was attempted to an unreachable network') != -1:
-                    self.dccSocketv6 = None
-        self.cmdHandler = CmdHandler(self, self.socket)
+        self.socket = None
+        self.dccSocketv4 = None
+        self.dccSocketv6 = None
+        self.resetSockets()
+        self.cmdHandler = CmdHandler(self)
 
-        self.registerCommand('dcc',  self.requestDCC, ['any'], 0, 0, "",        "Requests a DCC connection to the bot.")
-        self.registerCommand('more', self.sendMore,   ['any'], 0, 1, "[clear]", 'Gets the next %d queued command results. Commands that can queue results will tell you so.' % self.moreCount)
+        self.registerCommand('dcc',  self.requestDCC, ['any'], 0, 0, "",            "Requests a DCC connection to the bot.")
+        #self.registerCommand('pub',  self.pubCmd,     ['any'], 1, 999, "<command>", "Executes a command and sends the results to the destination channel.")
+        self.registerCommand('more', self.sendMore,   ['any'], 0, 1, "[clear]",     'Gets the next %d queued command results. Commands that can queue results will tell you so.' % self.moreCount)
 
         self.registerCommand('useradd',  self.useradd,   ['admin'], 2, 2, "<user> <group>","Adds user to group.")
         self.registerCommand('userrm',   self.userrm,    ['admin'], 2, 2, "<user> <group>","Removes user from group.")
@@ -170,7 +173,6 @@ class BotBase(object):
         self.registerCommand('grouprm',   self.grouprm,    ['admin'], 2, 2, "<group> <cmd>", "Remove command from group.")
         self.registerCommand('groupget',  self.groupget,   ['admin'], 0, 0, "",              "Returns a list of groups and commands.")
         self.registerCommand('groupmeta', self.groupmeta,  ['admin'], 3, 999, "<group> <key> <value>", "Add a value to a group key")
-
 
         self.registerCommand('banadd', self.banadd, ['admin'], 2, 2, "<user|host> <cmd>", "Bans the user from using the specified command.")
         self.registerCommand('banrm',  self.banrm,  ['admin'], 2, 2, "<user|host> <cmd>", "Remove a ban on an user.")
@@ -183,6 +185,62 @@ class BotBase(object):
         self.registerCommand('help',      self.helpcmd,    ['any'],   0, 1, "[<command>|*]", "Lists available commands or help about a specific command.")
         if self.about_msg and self.about_msg != '':
             self.registerCommand('about', self.aboutcmd, ['any'], 0, 0, '', 'About this bot.')
+
+    def resetSockets(self):
+        self.socket = AsyncSocket.AsyncSocket(self, self.host, self.port, self.floodLimit)
+        self.dccSocketv4 = DCCSocket.DCCSocket(self, False)
+        if socket.has_ipv6:
+            try:
+                self.dccSocketv6 = DCCSocket.DCCSocket(self, True)
+            except socket.error, e:
+                if e.message.find('A socket operation was attempted to an unreachable network') != -1:
+                    self.dccSocketv6 = None
+
+    def run(self):
+        if self.host == "":
+            self.logger.error("Please set an IRC server in the config file.")
+            return
+
+        self.onStartUp()
+        self.connect()
+        try:
+            asyncore.loop()
+        except KeyboardInterrupt as e:
+            self.logger.info("Shutting down.")
+            if not self.isTerminating:
+                self.isTerminating = True
+                self.onShuttingDown()
+        except:
+            self.onShuttingDown()
+            raise
+
+    def connect(self):
+        self.isRunning = True
+        self.socket.doConnect()
+
+    def onStartUp(self):
+        pass
+
+    def onShuttingDown(self):
+        if self.isRunning:
+            self.logger.info('Shutting down bot')
+            if self.cmdHandler.monitor_thread:
+                self.cmdHandler.monitor_thread.cancel()
+            for user in self.users.values():
+                if user.dccSocket:
+                    user.dccSocket.handle_close()
+
+            self.isRunning = False
+            self.isReady = False
+            self.isIdentified = False
+            self.dccSocketv4.handle_close()
+            if self.dccSocketv6:
+                self.dccSocketv6.handle_close()
+            self.socket.handle_close()
+
+    def killSelf(self, bot, sender, dest, cmd, args):
+        self.logger.info("Killing self.")
+        self.isTerminating = True
 
     # User handling commands
     def useradd(self, bot, sender, dest, cmd, args):
@@ -348,7 +406,7 @@ class BotBase(object):
             maxcmdlen    = len(max(self.cmdHandler.commands.keys(), key=len))
             maxargslen   = len(max([i['descargs'] for i in self.cmdHandler.commands.values()], key=len))
 
-            formatstr = "§B%%%ds %%%ds§N : %%s"%(maxcmdlen * -1, maxargslen * -1)
+            formatstr = "§B%%%ds %%%ds§N : %%s" %(maxcmdlen * -1, maxargslen * -1)
             showall = len(args) > 0 and args[0] == '*'
             allowedcmds = []
 
@@ -506,49 +564,6 @@ class BotBase(object):
                 self.config.set('BANLIST',user, ';'.join(bans))
 
             self.config.write(fp)
-
-    def run(self):
-        if self.host == "":
-            self.logger.error("Please set an IRC server in the config file.")
-            return
-
-        self.onStartUp()
-        self.connect()
-        try:
-            asyncore.loop()
-        except KeyboardInterrupt as e:
-            self.logger.info("Shutting down.")
-            if not self.isTerminating:
-                self.isTerminating = True
-                self.onShuttingDown()
-        except:
-            self.onShuttingDown()
-            raise
-
-    def connect(self):
-        self.socket.doConnect()
-
-    def onStartUp(self):
-        pass
-
-    def onShuttingDown(self):
-        if self.isRunning:
-            self.logger.info('Shutting down bot')
-            if self.cmdHandler.monitor_thread:
-                self.cmdHandler.monitor_thread.cancel()
-            for user in self.users.values():
-                if user.dccSocket:
-                    user.dccSocket.handle_close()
-
-            self.isRunning = False
-            self.dccSocketv4.handle_close()
-            if self.dccSocketv6:
-                self.dccSocketv6.handle_close()
-            self.socket.handle_close()
-
-    def killSelf(self, bot, sender, dest, cmd, args):
-        self.logger.info("Killing self.")
-        self.isTerminating = True
 
     #IRC COMMANDS QUICK ACCESS
     def sendRaw(self, msg):
