@@ -55,6 +55,7 @@ class BotHandler(object):
                 asyncore.loop()
             except KeyboardInterrupt as e:
                 print("Keyboard Interrupt: Shutting down.")
+                self.setKilled()
                 self.stop()
                 restart = False
             except:
