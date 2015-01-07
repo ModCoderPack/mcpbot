@@ -503,14 +503,14 @@ class CmdHandler(object):
         if not command.split()[0].lower() in self.commands.keys():
             return
 
+        cmd  = self.commands[command.split()[0].lower()]
+        args = command.split()[1:] if len(command.split()) > 1 else []
+        callback = cmd['callback']
+
         # All commands that support public output should just use the dest param as the output target
         # This allows commands to support public output when a command is prefixed with two command chars, eg "!!gm"
         if cmd_char_cnt <= 1 or not cmd['allowpub']:
             dest = sender.nick
-
-        cmd  = self.commands[command.split()[0].lower()]
-        args = command.split()[1:] if len(command.split()) > 1 else []
-        callback = cmd['callback']
 
         if len(args) < cmd['minarg'] or len(args) > cmd['maxarg']:
             if cmd['descargs']:
