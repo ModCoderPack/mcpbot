@@ -58,8 +58,12 @@ class BotHandler(object):
                 self.setKilled()
                 self.stop()
                 restart = False
+            except SystemExit:
+                self.bot.logger.error('SystemExit: Shutting down.')
+                self.stop()
+                raise
             except:
-                print('Other Exception: Shutting down.')
+                self.bot.logger.error('Other Exception: Shutting down.')
                 self.stop()
                 raise
 
@@ -250,7 +254,7 @@ class BotBase(object):
         if not group in self.groups:
             bot.sendNotice(sender.nick, "Group %s does not exist"%args[1])
             return
-        
+
         if not user in self.authUsers:
             self.authUsers[user] = set()
 
@@ -286,7 +290,7 @@ class BotBase(object):
             return
 
         msg = "%s : %s"%(args[0], ", ".join(self.authUsers[user]))
-        bot.sendNotice(sender.nick, msg)        
+        bot.sendNotice(sender.nick, msg)
 
     def userall(self, bot, sender, dest, cmd, args):
         groups = {}
@@ -295,10 +299,10 @@ class BotBase(object):
                 if not group in groups:
                     groups[group] = set()
                 groups[group].add(user)
-        
+
         maxlen    = len(max(groups.keys(), key=len))
         formatstr = "%%%ds : %%s"%(maxlen * -1)
-        
+
         for k,v in groups.items():
             bot.sendNotice(sender.nick, formatstr%(k,list(v)))
 
@@ -360,7 +364,7 @@ class BotBase(object):
 
     def grouprm(self, bot, sender, dest, cmd, args):
         group  = args[0].lower()
-        cmd    = args[1].lower()        
+        cmd    = args[1].lower()
 
         if not group in self.groups:
             bot.sendNotice(sender.nick, "Group %s does not exist"%group)
@@ -569,7 +573,7 @@ class BotBase(object):
     def sendRaw(self, msg):
         for line in [line.strip('\r\n') for line in msg.split(EOL) if line.strip('\r\n') != '']:
             self.socket.sendBuffer.put_nowait(line + EOL)
-        
+
     def join(self, chan):
         self.sendRaw(CmdGenerator.getJOIN(chan))
 
@@ -578,7 +582,7 @@ class BotBase(object):
             self.sendMessage(target, msg)
         else:
             self.sendNotice(target, msg)
-        
+
     def sendNotice(self, target, msg):
         msgColor = Color.doColors(str(msg))
         if target in self.users and self.users[target].dccSocket:
@@ -590,7 +594,7 @@ class BotBase(object):
         if self.primary_channels and len(self.primary_channels) > 0:
             for channel in self.primary_channels:
                 self.sendNotice('@' + channel, msg)
-            
+
     def sendMessage(self, target, msg):
         msgColor = Color.doColors(str(msg))
         if target in self.users and self.users[target].dccSocket:
@@ -615,7 +619,7 @@ class BotBase(object):
 
         if not self.usersInfo[target].whoisEvent.wait(10):
             return
-            
+
         return self.usersInfo[target]
 
     def getTime(self, target):
@@ -625,23 +629,23 @@ class BotBase(object):
 
         if not self.usersInfo[target].ctcpEvent['TIME'].wait(10):
             return
-        
+
         timePatterns = ["%a %b %d %H:%M:%S", "%a %b %d %H:%M:%S %Y"]
-        retval = None        
-        
+        retval = None
+
         for pattern in timePatterns:
             try:
                 retval = datetime.datetime.strptime(self.usersInfo[target].ctcpData['TIME'], pattern)
                 break
             except Exception:
                 pass
-        
+
         if not retval:
             self.logger.error("Error while parsing time %s"%self.usersInfo[target].ctcpData['TIME'])
-        
+
         retval = datetime.datetime(2014, retval.month, retval.day, retval.hour, retval.minute, retval.second)
         self.usersInfo[target].ctcpData['TIME'] = retval
-        
+
         return self.usersInfo[target].ctcpData['TIME']
 
     #EVENT REGISTRATION METHODS (ONE PER RECOGNISE IRC COMMAND)
@@ -656,9 +660,9 @@ class BotBase(object):
     def registerEventPrivMsg(self, callback):
         self.cmdHandler.registerEvent('Privmsg', callback)
     def registerEventNotice(self, callback):
-        self.cmdHandler.registerEvent('Notice', callback)        
+        self.cmdHandler.registerEvent('Notice', callback)
     def registerEventJoin(self, callback):
-        self.cmdHandler.registerEvent('Join', callback)        
+        self.cmdHandler.registerEvent('Join', callback)
     def registerEventPart(self, callback):
         self.cmdHandler.registerEvent('Part', callback)
     def registerEventMode(self, callback):
@@ -668,6 +672,6 @@ class BotBase(object):
     def registerEventKill(self, callback):
         self.cmdHandler.registerEvent('Kill', callback)
     def registerEventNick(self, callback):
-        self.cmdHandler.registerEvent('Nick', callback)        
+        self.cmdHandler.registerEvent('Nick', callback)
     def registerEventGeneric(self, event, callback):
         self.cmdHandler.registerEvent(event, callback)
