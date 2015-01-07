@@ -449,7 +449,7 @@ class MCPBot(BotBase):
         if is_forced:
             self.sendOutput(dest, "§R!!! CAREFUL, YOU ARE FORCING AN UPDATE TO A %s !!!" % member_type.upper().replace('_', ' '))
         val, status = self.db.setMember(member_type, is_forced, bypass_lock, cmd['command'], sender, args)
-        self.sendSetMemberResults(member_type, dest, sender, val, status, args[0])
+        self.sendSetMemberResults(member_type, sender, dest, val, status, args[0])
 
 
     def commitMappings(self, bot, sender, dest, cmd, args):
