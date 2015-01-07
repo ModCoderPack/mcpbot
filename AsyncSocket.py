@@ -92,9 +92,6 @@ class AsyncSocket(asyncore.dispatcher):
             self.sendBuffer.put_nowait(CmdGenerator.getUSER(self.bot.nick))
             self.bot.isIdentified = True
 
-        if self.bot.isTerminating:
-            sys.exit(187)
-
     def _ssl_send(self, data):
         """ Replacement for self.send() during SSL connections. """
         try:
