@@ -92,7 +92,7 @@ class Database(object):
         if len(args) > 1:
             versplit = args[1].split('.')
             if len(versplit) == 2:
-                sqlrequest += "where mcp_version_code like %(version)s "
+                sqlrequest += "where (mcp_version_code like %(version)s or mc_version_code like %(version)s) "
             else:
                 sqlrequest += "where mc_version_code like %(version)s "
             params['version'] = args[1]
@@ -137,7 +137,7 @@ class Database(object):
         if len(args) > 1:
             versplit = args[1].split('.')
             if len(versplit) == 2:
-                sqlrequest += "where mcp_version_code like %(version)s "
+                sqlrequest += "where (mcp_version_code like %(version)s or mc_version_code like %(version)s) "
             else:
                 sqlrequest += "where mc_version_code like %(version)s "
             params['version'] = args[1]
@@ -167,7 +167,7 @@ class Database(object):
         if len(args) > 1:
             versplit = args[1].split('.')
             if len(versplit) == 2:
-                sqlrequest += "where mcp_version_code like %(version)s "
+                sqlrequest += "where (mcp_version_code like %(version)s or mc_version_code like %(version)s) "
             else:
                 sqlrequest += "where mc_version_code like %(version)s "
         else:
