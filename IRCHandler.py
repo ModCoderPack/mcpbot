@@ -247,11 +247,12 @@ class CmdHandler(object):
             self.monitor_thread = threading.Timer(self.next_event_check - time.time(), self.monitorEvents)
             self.monitor_thread.start()
 
-    def registerCommand(self, command, callback, groups, minarg, maxarg, descargs = None, desccmd = None, showhelp = True):
+    def registerCommand(self, command, callback, groups, minarg, maxarg, descargs = None, desccmd=None, showhelp=True, allowpub=False):
         if not groups:
             groups = ['any']
 
-        self.commands[command.lower()] = {'command':command.lower(), 'callback':callback, 'groups':groups, 'minarg':minarg, 'maxarg':maxarg, 'descargs':descargs, 'desccmd':desccmd, 'showhelp':showhelp}
+        self.commands[command.lower()] = {'command':command.lower(), 'callback':callback, 'groups':groups, 'minarg':minarg, 'maxarg':maxarg,
+                                          'descargs':descargs, 'desccmd':desccmd, 'showhelp':showhelp, 'allowpub': allowpub}
         for group in groups:
             if not group in self.bot.groups:
                 #self.bot.groups[group]= set()
@@ -428,7 +429,8 @@ class CmdHandler(object):
         msg  = msg.lstrip(':')       #We remove the leading :
 
         if len(msg) > 0 and (msg[0] == self.bot.cmdChar or dest == self.bot.nick):
-            self.onCOMMAND(sender, dest, msg.lstrip(self.bot.cmdChar)) #We remove the cmd symbol before passing the cmd to the bot
+            stripped = msg.lstrip(self.bot.cmdChar)
+            self.onCOMMAND(sender, dest, stripped, len(msg) - len(stripped)) #We remove the cmd symbol before passing the cmd to the bot
         elif len(msg) > 0 and msg[0] == CTCPTAG and msg[-1] == CTCPTAG:
             self.onCTCP(sender, dest, msg[1:-1].split())
         else:
@@ -493,7 +495,7 @@ class CmdHandler(object):
 
     #######################################################
     # User defined commands
-    def onCOMMAND(self, sender, dest, command):
+    def onCOMMAND(self, sender, dest, command, cmd_char_cnt=0):
         self.logger.info("COMMAND> %s"%command)
         if command.strip() == "":
             return
@@ -501,17 +503,22 @@ class CmdHandler(object):
         if not command.split()[0].lower() in self.commands.keys():
             return
 
+        # All commands that support public output should just use the dest param as the output target
+        # This allows commands to support public output when a command is prefixed with two command chars, eg "!!gm"
+        if cmd_char_cnt <= 1 or not cmd['allowpub']:
+            dest = sender.nick
+
         cmd  = self.commands[command.split()[0].lower()]
         args = command.split()[1:] if len(command.split()) > 1 else []
         callback = cmd['callback']
 
         if len(args) < cmd['minarg'] or len(args) > cmd['maxarg']:
             if cmd['descargs']:
-                self.bot.sendNotice(sender.nick, "Wrong syntax : %s" % cmd['descargs'])
+                self.bot.sendOutput(dest, "Wrong syntax : %s" % cmd['descargs'])
                 return
             else:
-                self.bot.sendNotice(sender.nick, "Wrong number of arguments : min = %s, max = %s" % (cmd['minarg'], cmd['maxarg']))
-                return                
+                self.bot.sendOutput(dest, "Wrong number of arguments : min = %s, max = %s" % (cmd['minarg'], cmd['maxarg']))
+                return
 
         #We already know this sender
         if sender.nick in self.bot.users and sender == self.bot.users[sender.nick]:
@@ -538,7 +545,7 @@ class CmdHandler(object):
             
             cmdThread = threading.Thread(target=self.threadedCommand, name=sender.toString(), args=(callback, cmd, self.bot, self.bot.users[sender.nick], dest, args))
             cmdThread.start()
-            
+
     def threadedCommand(self, callback, cmd, bot, sender, dest, args):
         try:
             #We request the AUTH level of the nick

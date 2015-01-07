@@ -161,30 +161,29 @@ class BotBase(object):
         self.cmdHandler = CmdHandler(self)
 
         self.registerCommand('dcc',  self.requestDCC, ['any'], 0, 0, "",            "Requests a DCC connection to the bot.")
-        #self.registerCommand('pub',  self.pubCmd,     ['any'], 1, 999, "<command>", "Executes a command and sends the results to the destination channel.")
-        self.registerCommand('more', self.sendMore,   ['any'], 0, 1, "[clear]",     'Gets the next %d queued command results. Commands that can queue results will tell you so.' % self.moreCount)
+        self.registerCommand('more', self.sendMore,   ['any'], 0, 1, "[clear]",     'Gets the next %d queued command results. Commands that can queue results will tell you so.' % self.moreCount, allowpub=True)
 
         self.registerCommand('useradd',  self.useradd,   ['admin'], 2, 2, "<user> <group>","Adds user to group.")
         self.registerCommand('userrm',   self.userrm,    ['admin'], 2, 2, "<user> <group>","Removes user from group.")
         self.registerCommand('userget',  self.userget,   ['admin'], 1, 1, "<user>",        "Returns list of groups for this user.")
         self.registerCommand('userall',  self.userall,   ['admin'], 0, 0, "",              "Returns a list of groups and users.")
-        
+
         self.registerCommand('groupadd',  self.groupadd,   ['admin'], 2, 2, "<group> <cmd>", "Adds command to group.")
         self.registerCommand('grouprm',   self.grouprm,    ['admin'], 2, 2, "<group> <cmd>", "Remove command from group.")
         self.registerCommand('groupget',  self.groupget,   ['admin'], 0, 0, "",              "Returns a list of groups and commands.")
         self.registerCommand('groupmeta', self.groupmeta,  ['admin'], 3, 999, "<group> <key> <value>", "Add a value to a group key")
 
         self.registerCommand('banadd', self.banadd, ['admin'], 2, 2, "<user|host> <cmd>", "Bans the user from using the specified command.")
-        self.registerCommand('banrm',  self.banrm,  ['admin'], 2, 2, "<user|host> <cmd>", "Remove a ban on an user.")
+        self.registerCommand('banrm',  self.banrm,  ['admin'], 2, 2, "<user|host> <cmd>", "Remove a ban on a user.")
         self.registerCommand('banget', self.banget, ['admin'], 1, 1, "<user|host>",       "Returns the ban list for the given user.")
         self.registerCommand('banall', self.banall, ['admin'], 0, 0, "",                  "Returns a complete dump of the ban table.")
 
         self.registerCommand('sendraw',   self.sendRawCmd, ['admin'], 0, 999, "<irccmd>",    "Send a raw IRC cmd.")
         self.registerCommand('shutdown', self.killSelf, ['admin'], 0, 0, "", "Kills the bot.")
 
-        self.registerCommand('help',      self.helpcmd,    ['any'],   0, 1, "[<command>|*]", "Lists available commands or help about a specific command.")
+        self.registerCommand('help',      self.helpcmd,    ['any'],   0, 1, "[<command>|*]", "Lists available commands or help about a specific command.", allowpub=True)
         if self.about_msg and self.about_msg != '':
-            self.registerCommand('about', self.aboutcmd, ['any'], 0, 0, '', 'About this bot.')
+            self.registerCommand('about', self.aboutcmd, ['any'], 0, 0, '', 'About this bot.', allowpub=True)
 
     def resetSockets(self):
         self.socket = AsyncSocket.AsyncSocket(self, self.host, self.port, self.floodLimit)
@@ -415,19 +414,19 @@ class BotBase(object):
                     continue
                 if 'any' in cmdval['groups']:
                     if showall:
-                        bot.sendNotice(sender.nick, formatstr%(cmd, cmdval['descargs'], cmdval['desccmd']))
+                        bot.sendOutput(dest, formatstr%(cmd, cmdval['descargs'], cmdval['desccmd']))
                     else:
                         allowedcmds.append(cmd)
                 elif sender.regnick.lower() in self.authUsers:
                     groups = self.authUsers[sender.regnick.lower()]
                     if 'admin' in groups or len(groups.intersection(set(cmdval['groups']))) > 0:
                         if showall:
-                            bot.sendNotice(sender.nick, formatstr%(cmd, cmdval['descargs'], cmdval['desccmd']))
+                            bot.sendOutput(dest, formatstr%(cmd, cmdval['descargs'], cmdval['desccmd']))
                         else:
                             allowedcmds.append(cmd)
 
             if len(allowedcmds) > 0:
-                bot.sendNotice(sender.nick, "§BCommands you have access to use §N(type §B%shelp <command>§N for help on specific commands):" % self.cmdChar)
+                bot.sendNotice(sender.nick, "§BCommands you have access to use §N(type §B%shelp <command>§N for help on specific commands; prefix commands with %s%s for public output):" % (self.cmdChar, self.cmdChar, self.cmdChar))
                 bot.sendNotice(sender.nick, ", ".join(allowedcmds))
                 if self.help_url and self.help_url != '':
                     bot.sendNotice(sender.nick, 'More info can be found at %s' % self.help_url)
@@ -449,12 +448,12 @@ class BotBase(object):
                     bot.sendNotice(sender.nick, "§BNo help is available for this command.")
 
                 if showhelp:
-                    bot.sendNotice(sender.nick, "§B%s %s§N : %s" % (cmdval['command'], cmdval['descargs'], cmdval['desccmd']))
+                    bot.sendOutput(dest, "§B%s %s§N : %s" % (cmdval['command'], cmdval['descargs'], cmdval['desccmd']))
             else:
                 bot.sendNotice(sender.nick, "§B*** Invalid command specified ***")
 
     def aboutcmd(self, bot, sender, dest, cmd, args):
-        self.sendNotice(sender.nick, self.about_msg)
+        self.sendOutput(dest, self.about_msg)
 
     # DCC Request command, in by default
     def requestDCC(self, bot, sender, dest, cmd, args):
@@ -487,13 +486,13 @@ class BotBase(object):
             count = 0
 
             while sender.hasQueuedMsgs() and count < self.moreCount:
-                self.sendNotice(sender.nick, sender.popQueuedMsg())
+                self.sendOutput(dest, sender.popQueuedMsg())
                 count += 1
 
             if not sender.hasQueuedMsgs():
-                self.sendNotice(sender.nick, '§BEnd of queued messages.')
+                self.sendOutput(dest, '§BEnd of queued messages.')
             else:
-                self.sendNotice(sender.nick, '§B+ §N%d§B more.' % sender.getQueuedMsgCount())
+                self.sendOutput(dest, '§B+ §N%d§B more.' % sender.getQueuedMsgCount())
         else:
             self.sendNotice(sender.nick, '§BNo queued messages to return.')
 
@@ -572,6 +571,12 @@ class BotBase(object):
         
     def join(self, chan):
         self.sendRaw(CmdGenerator.getJOIN(chan))
+
+    def sendOutput(self, target, msg):
+        if target[0] == '#':
+            self.sendMessage(target, msg)
+        else:
+            self.sendNotice(target, msg)
         
     def sendNotice(self, target, msg):
         msgColor = Color.doColors(str(msg))
@@ -595,6 +600,11 @@ class BotBase(object):
     def sendPrimChanMessage(self, msg):
         if self.primary_channels and len(self.primary_channels) > 0:
             for channel in self.primary_channels:
+                self.sendMessage(channel, msg)
+
+    def sendAllChanMessage(self, msg):
+        if self.channels and len(self.channels) > 0:
+            for channel in self.channels:
                 self.sendMessage(channel, msg)
 
     #Some data getters
@@ -634,8 +644,8 @@ class BotBase(object):
         return self.usersInfo[target].ctcpData['TIME']
 
     #EVENT REGISTRATION METHODS (ONE PER RECOGNISE IRC COMMAND)
-    def registerCommand(self, command, callback, groups, minarg, maxarg, descargs = "", desccmd = "", showhelp = True):
-        self.cmdHandler.registerCommand(command, callback, groups, minarg, maxarg, descargs, desccmd, showhelp)
+    def registerCommand(self, command, callback, groups, minarg, maxarg, descargs = "", desccmd = "", showhelp = True, allowpub=False):
+        self.cmdHandler.registerCommand(command, callback, groups, minarg, maxarg, descargs, desccmd, showhelp, allowpub)
     def registerEventPing(self, callback):
         self.cmdHandler.registerEvent('Ping', callback)
     def registerEventKick(self, callback):
