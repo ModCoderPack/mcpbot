@@ -1,5 +1,4 @@
-import psycopg2
-import psycopg2.extras
+import psycopg2, psycopg2.extras, re
 from psycopg2 import DatabaseError, InterfaceError
 import Logger
 from contextlib import closing
@@ -191,19 +190,60 @@ class Database(object):
         else:
             sqlrequest += "WHERE is_current "
 
-        if args[0].lstrip('^').startswith('func_') or args[0].lstrip('^').startswith('field_') or args[0].lstrip('^').startswith('p_'):
-            sqlrequest += "AND srg_name ~ %(match)s "
+        clazz = None
+        method = None
+        prefix = args[0][0] if args[0][0] == '^' else ''
+        suffix = args[0][-1] if args[0][-1] == '$' else ''
+
+        splitted = args[0].lstrip('^').rstrip('$').split(r'\.')
+        if len(splitted) == 1:
+            splitted = args[0].lstrip('^').rstrip('$').split(r'||')
+            if len(splitted) == 1:
+                splitted = args[0].lstrip('^').rstrip('$').split(r'@')
+                if len(splitted) == 1:
+                    splitted = args[0].lstrip('^').rstrip('$').split(r':')
+
+        if table in ['method', 'field']:
+            if len(splitted) > 1:
+                clazz = prefix + splitted[0] + suffix
+                name = prefix + splitted[1] + suffix
+            else:
+                name = args[0]
+        elif table == 'method_param':
+            if len(splitted) > 2:
+                clazz = prefix + splitted[0] + suffix
+                method = prefix + splitted[1] + suffix
+                name = prefix + splitted[2] + suffix
+            elif len(splitted) > 1:
+                method = prefix + splitted[0] + suffix
+                name = prefix + splitted[1] + suffix
+            else:
+                name = args[0]
+        else:
+            name = args[0]
+
+        if clazz:
+            sqlrequest += "AND class_srg_name ~* %(class)s "
+
+        if method:
+            if method.lstrip('^').startswith('func_'):
+                sqlrequest += "AND method_srg_name ~ %(method)s "
+            else:
+                sqlrequest += "AND (method_mcp_name ~* %(method)s OR method_srg_index ~ %(method)s) "
+
+        if name.lstrip('^').startswith('func_') or name.lstrip('^').startswith('field_') or name.lstrip('^').startswith('p_'):
+            sqlrequest += "AND srg_name ~ %(name)s "
         elif is_integer(args[0]):
-            sqlrequest += "AND srg_index ~ %(match)s "
+            sqlrequest += "AND srg_index ~ %(name)s "
         else:
             arg0split = args[0].lstrip('^').rstrip('$').split('_')
             if table == 'method_param' and len(arg0split) == 2 and is_integer(arg0split[0]) and is_integer(arg0split[1]):
-                sqlrequest += "AND srg_index ~ %(match)s "
+                sqlrequest += "AND srg_index ~ %(name)s "
             else:
                 if table == 'class':
-                    sqlrequest += 'AND srg_name ~* %(match)s '
+                    sqlrequest += 'AND srg_name ~ %(name)s '
                 else:
-                    sqlrequest += "AND (mcp_name ~* %(match)s OR srg_name ~ %(match)s OR srg_index ~ %(match)s) "
+                    sqlrequest += "AND (mcp_name ~* %(name)s OR srg_name ~ %(name)s OR srg_index ~ %(name)s) "
 
         if table != 'class':
             sqlrequest += "ORDER BY class_srg_name"
@@ -214,8 +254,8 @@ class Database(object):
         else:
             sqlrequest += "ORDER BY pkg_name, srg_name"
 
-        if len(args) > 1: return self.execute(sqlrequest, {'match': args[0], 'version': args[1]})
-        else: return self.execute(sqlrequest, {'match': args[0]})
+        if len(args) > 1: return self.execute(sqlrequest, {'class': clazz, 'method': method, 'name': name, 'version': args[1]})
+        else: return self.execute(sqlrequest, {'class': clazz, 'method': method, 'name': name})
 
 
     def getUnnamed(self, table, args):
