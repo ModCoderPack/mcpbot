@@ -550,8 +550,10 @@ class MCPBot(BotBase):
                 else:
                     self.sendOutput(dest,   "§UDescriptor§N : {method_obf_descriptor}".format(**entry))
                 self.sendOutput(dest,       "§UComment§N    : {comment}".format(**entry))
-                self.sendOutput(dest,       "§ULast Change§N: {last_modified_ts}".format(**entry))
-
+                if entry['irc_nick']:
+                    self.sendOutput(dest,   "§ULast Change§N: {last_modified_ts} ({irc_nick})".format(**entry))
+                else:
+                    self.sendOutput(dest,   "§ULast Change§N: {last_modified_ts}".format(**entry))
 
                 if not i == len(val) - 1:
                     self.sendOutput(dest,   " ".format(**entry))
@@ -606,7 +608,10 @@ class MCPBot(BotBase):
                 if 'srg_params' in entry and entry['srg_params']:
                     self.sendOutput(dest,    "§USRG Params§N : {srg_params}".format(**entry))
                     self.sendOutput(dest,    "§UMCP Params§N : {mcp_params}".format(**entry))
-                self.sendOutput(dest,        "§ULast Change§N: {last_modified_ts}".format(**entry))
+                if entry['irc_nick']:
+                    self.sendOutput(dest,   "§ULast Change§N: {last_modified_ts} ({irc_nick})".format(**entry))
+                else:
+                    self.sendOutput(dest,   "§ULast Change§N: {last_modified_ts}".format(**entry))
 
                 if not i == len(val) - 1:
                     self.sendOutput(dest, " ".format(**entry))
