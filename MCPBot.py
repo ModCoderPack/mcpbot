@@ -8,7 +8,7 @@ from datetime import timedelta, datetime, time as time_class
 import threading
 import export_csv
 from MavenHandler import MavenHandler
-import zipfile, os
+import zipfile, os, re
 import psycopg2.extras
 
 __version__ = "0.8.0"
@@ -31,7 +31,8 @@ class MCPBot(BotBase):
         self.test_export_period = self.config.geti('EXPORT', 'TEST_EXPORT_PERIOD', '30', 'How often in minutes to run the test CSV export. Use 0 to disable.')
         self.test_export_path = self.config.get('EXPORT', 'TEST_EXPORT_PATH', 'testcsv', 'Path under BASE_EXPORT_PATH to write the test CSV files to.')
         self.stable_export_path = self.config.get('EXPORT', 'STABLE_EXPORT_PATH', 'stablecsv', 'Path under BASE_EXPORT_PATH to write the stable CSV files to.')
-        self.test_export_url = self.config.get('EXPORT', 'TEST_EXPORT_URL', 'http://mcpbot.bspk.rs/testcsv/')
+        self.test_export_url = self.config.get('EXPORT', 'TEST_EXPORT_URL', 'http://export.mcpbot.bspk.rs')
+        self.exports_json_url = self.config.get('EXPORT', 'EXPORTS_JSON_URL', 'http://export.mcpbot.bspk.rs/versions.json?limit=1')
         self.maven_repo_url = self.config.get('EXPORT', 'MAVEN_REPO_URL', 'http://files.minecraftforge.net/maven/manage/upload/de/oceanlabs/mcp/')
         self.maven_repo_user = self.config.get('EXPORT', 'MAVEN_REPO_USER', 'mcp')
         self.maven_repo_pass = self.config.get('EXPORT', 'MAVEN_REPO_PASS', '')
@@ -58,6 +59,7 @@ class MCPBot(BotBase):
         self.registerCommand('versions', self.getVersion, ['any'], 0, 0, "", "Gets info about versions that are available in the database.", allowpub=True)
         self.registerCommand('testcsv',  self.getTestCSVURL, ['any', 'mcp_team'], 0, 1, "", "Gets the URL for the running export of staged changes.", allowpub=True)
         self.registerCommand('exports',  self.getExportsURL, ['any'], 0, 0, '', 'Gets the URL where all mapping exports can be found.', allowpub=True)
+        self.registerCommand('latest',   self.getLatestMappingVersion, ['any'], 0, 2, '[snapshot|stable] [<mcversion>]', 'Gets a list of the latest mapping versions.', allowpub=True)
         self.registerCommand('commit',   self.commitMappings,['mcp_team'], 0, 1, '[<srg_name>|method|field|param]', 'Commits staged mapping changes. If SRG name is specified only that member will be committed. If method/field/param is specified only that member type will be committed. Give no arguments to commit all staged changes.')
         self.registerCommand('maventime',self.setMavenTime,['mcp_team'], 1, 1, '<HH:MM>', 'Changes the time that the Maven upload will occur using 24 hour clock format.')
 
@@ -146,7 +148,7 @@ class MCPBot(BotBase):
 
     def setMavenTime(self, bot, sender, dest, cmd, args):
         self.sendNotice(sender.nick, '===§B Maven Time Change §N===')
-        if not self.isValid24HourTimeStr(args[0]):
+        if not isValid24HourTimeStr(args[0]):
             self.sendNotice(sender.nick, '%s is not a valid time string!' % args[0])
         else:
             self.processMavenTimeString(args[0])
@@ -334,29 +336,35 @@ class MCPBot(BotBase):
         limit = 1
         if cmd['command'][-1:] == 's': limit = 0
         val, status = self.db.getVersions(limit)
-        self.sendVersionResults(sender, dest, val, status)
+        self.sendVersionResults(sender, dest, val, status, limit=self.moreCount if not sender.dccSocket else self.moreCountDcc)
 
 
     def getLatestMappingVersion(self, bot, sender, dest, cmd, args):
+        mappingType = None
+        version = None
         if len(args) > 0:
-            if args[0] in ['stable', 'snapshot']:
-                mappingType = args[0]
-                version = None
+            if args[0].lower() in ['stable', 'snapshot']:
+                mappingType = args[0].lower()
             else:
-                mappingType = None
                 version = args[0]
 
             if len(args) > 1:
                 if mappingType:
                     version = args[1]
-                else:
-                    mappingType = args[1]
-        else:
-            mappingType = None
-            version = None
+                elif args[1].lower() in ['stable', 'snapshot']:
+                    mappingType = args[1].lower()
 
-        #TODO
+        jsonUrl = self.exports_json_url
 
+        # if not version:
+        #     val, status = self.db.getVersions(1)
+        #     version = "{mc_version_code}".format(**val[0])
+
+        if version:
+            jsonUrl += '&version=' + version
+
+        data = JsonHelper.get_remote_json(jsonUrl)
+        self.sendMappingResults(sender, dest, data, mappingType, limit=self.moreCount if not sender.dccSocket else self.moreCountDcc)
 
 
 
@@ -522,10 +530,12 @@ class MCPBot(BotBase):
 
     # Send Results
 
-    def sendVersionResults(self, sender, dest, val, status):
+    def sendVersionResults(self, sender, dest, val, status, limit):
         if status:
             self.sendNotice(sender.nick, str(type(status)) + ' : ' + str(status))
             return
+
+        toQueue = []
 
         if len(val) > 1:
             self.sendOutput(dest, "===§B Available Versions §N===")
@@ -536,7 +546,51 @@ class MCPBot(BotBase):
         self.sendOutput(dest, '{:^19}'.format('§UMCP Version§N') + '{:^19}'.format('§UMC Version§N') + '{:^19}'.format('§URelease Type§N'))
 
         for i, entry in enumerate(val):
-            self.sendOutput(dest, "{mcp_version_code:^13}".format(**entry) + "{mc_version_code:^13}".format(**entry) + "{mc_version_type_code:^13}".format(**entry))
+            msg = "{mcp_version_code:^13}".format(**entry) + "{mc_version_code:^13}".format(**entry) + "{mc_version_type_code:^13}".format(**entry)
+
+            if i < limit:
+                self.sendOutput(dest, msg)
+            else:
+                toQueue.append(msg)
+
+        if len(toQueue) > 0:
+            self.sendOutput(dest, "§B+ §N%(count)d§B more. Please use %(cmd_char)smore to see %(more)d queued entries." %
+                            {'count': len(toQueue), 'cmd_char': self.cmdChar, 'more': min(self.moreCount if not sender.dccSocket else self.moreCountDcc, len(toQueue))})
+            sender.clearMsgQueue()
+            for msg in toQueue:
+                sender.addToMsgQueue(msg)
+
+
+    def sendMappingResults(self, sender, dest, data, mappingType, limit):
+        toQueue = []
+
+        if not mappingType:
+            mappingTypes = ['snapshot', 'stable']
+        else:
+            mappingTypes = [mappingType]
+
+        self.sendOutput(dest, "===§B Latest Mappings §N===")
+
+        # these padding values are 6 higher than the actual data padding values since we have to account for the IRC formatting codes
+        self.sendOutput(dest, '{:^19}'.format('§UMC Version§N') + '{:^29}'.format('§UForge Gradle Channel§N'))
+
+        i = 0
+        for mcversion in sorted_nicely(data.keys(), reverse=True):
+            for mType in mappingTypes:
+                for mapVersion in data[mcversion][mType]:
+                    msg = "{:^13}".format(mcversion) + "{:^23}".format(mType + '_' + str(mapVersion))
+                    if i < limit:
+                        self.sendOutput(dest, msg)
+                    else:
+                        toQueue.append(msg)
+                    i += 1
+
+        if len(toQueue) > 0:
+            self.sendOutput(dest, "§B+ §N%(count)d§B more. Please use %(cmd_char)smore to see %(more)d queued entries." %
+                            {'count': len(toQueue), 'cmd_char': self.cmdChar, 'more': min(self.moreCount if not sender.dccSocket else self.moreCountDcc, len(toQueue))})
+            sender.clearMsgQueue()
+            for msg in toQueue:
+                sender.addToMsgQueue(msg)
 
 
     def sendParamResults(self, sender, dest, val, status, limit=0, summary=False, is_unnamed=False):
@@ -591,7 +645,7 @@ class MCPBot(BotBase):
                     toQueue.append(msg)
 
         if len(toQueue) > 0:
-            self.sendOutput(dest, "§B+ §N%(count)d§B more. Please use the %(cmd_char)smore to see %(more)d queued entries." %
+            self.sendOutput(dest, "§B+ §N%(count)d§B more. Please use %(cmd_char)smore to see %(more)d queued entries." %
                             {'count': len(toQueue), 'cmd_char': self.cmdChar, 'more': min(self.moreCount if not sender.dccSocket else self.moreCountDcc, len(toQueue))})
             sender.clearMsgQueue()
             for msg in toQueue:
@@ -651,7 +705,7 @@ class MCPBot(BotBase):
                     toQueue.append(msg)
 
         if len(toQueue) > 0:
-            self.sendOutput(dest, "§B+ §N%(count)d§B more. Please use the %(cmd_char)smore to see %(more)d queued entries." %
+            self.sendOutput(dest, "§B+ §N%(count)d§B more. Please use %(cmd_char)smore to see %(more)d queued entries." %
                             {'count': len(toQueue), 'cmd_char': self.cmdChar, 'more': min(self.moreCount if not sender.dccSocket else self.moreCountDcc, len(toQueue))})
             sender.clearMsgQueue()
             for msg in toQueue:
@@ -711,7 +765,7 @@ class MCPBot(BotBase):
                     toQueue.append(msg)
 
         if len(toQueue) > 0:
-            self.sendOutput(dest, "§B+ §N%(count)d§B more. Please use the %(cmd_char)smore to see %(more)d queued entries." %
+            self.sendOutput(dest, "§B+ §N%(count)d§B more. Please use %(cmd_char)smore to see %(more)d queued entries." %
                             {'count': len(toQueue), 'cmd_char': self.cmdChar, 'more': min(self.moreCount if not sender.dccSocket else self.moreCountDcc, len(toQueue))})
             sender.clearMsgQueue()
             for msg in toQueue:
@@ -762,7 +816,7 @@ class MCPBot(BotBase):
                     toQueue.append(msg)
 
         if len(toQueue) > 0:
-            self.sendOutput(dest, "§B+ §N%(count)d§B more. Please use the %(cmd_char)smore to see %(more)d queued entries." %
+            self.sendOutput(dest, "§B+ §N%(count)d§B more. Please use %(cmd_char)smore to see %(more)d queued entries." %
                             {'count': len(toQueue), 'cmd_char': self.cmdChar, 'more': min(self.moreCount if not sender.dccSocket else self.moreCountDcc, len(toQueue))})
             sender.clearMsgQueue()
             for msg in toQueue:
@@ -929,6 +983,16 @@ def isValid24HourTimeStr(self, timestr):
     if len(splitted) == 2 and (not is_integer(splitted[1]) or not (0 <= int(splitted[1] < 60))):
         return False
     return True
+
+
+def sorted_nicely( l, reverse=False ):
+    """ Sort the given iterable in the way that humans expect."""
+    convert = lambda text: int(text) if text.isdigit() else text
+    alphanum_key = lambda key: [ convert(c) for c in re.split('([0-9]+)', key) ]
+    ret = sorted(l, key = alphanum_key)
+    if reverse:
+        ret.reverse()
+    return ret
 
 
 def main():

@@ -6,7 +6,7 @@ def get_remote_json(url):
     :type url: str
     :rtype: dict
     """
-    req = urllib2.Request(url)
+    req = urllib2.Request(url, headers={'User-Agent' : "Magic Browser"})
     r = urllib2.urlopen(req)
     ret = json.loads(r.read())
     return ret
