@@ -107,6 +107,7 @@ class BotBase(object):
         self.nick        = self.config.get('BOT', 'NICK', "PyBot")
         self.cmdChar     = self.config.get('BOT', 'CMDCHAR', "*")
         self.moreCount   = self.config.geti('BOT', 'MORECMDCOUNT', '10', 'The number of queued messages to send each time a user executes the more command.')
+        self.moreCountDcc= self.config.geti('BOT', 'MORECMDCOUNTDCC', '100', 'The number of queued messages to send each time a user executes the more command in a DCC session.')
         self.moreRate    = self.config.geti('BOT', 'MORERATELIMIT','15', 'The number of seconds that must pass before a user can execute the more command again.')
         self.autoInvite  = self.config.getb('BOT', 'AUTOACCEPT', "true", 'Automatically accept invites?')
         self.autoJoin    = self.config.getb('BOT', 'AUTOJOIN', "true", 'Automatically join channels in the chan list?')
@@ -484,13 +485,14 @@ class BotBase(object):
         if len(args) > 0 and args[0].lower() == 'clear':
             sender.clearMsgQueue()
             self.sendNotice(sender.nick, '§BUnsent message queue cleared.')
-        elif sender.hasQueuedMsgs() and timeSinceLastRun < self.moreRate:
+        elif (not sender.dccSocket) and sender.hasQueuedMsgs() and timeSinceLastRun < self.moreRate:
             self.sendNotice(sender.nick, '§BThis commmand is rate-limited. Please wait %d %s and try again.' % (waitTime, 'seconds' if waitTime > 1 else 'second'))
         elif sender.hasQueuedMsgs():
             sender.lastMoreCmd = time.time()
             count = 0
+            max = self.moreCount if not sender.dccSocket else self.moreCountDcc
 
-            while sender.hasQueuedMsgs() and count < self.moreCount:
+            while sender.hasQueuedMsgs() and count < max:
                 self.sendOutput(dest, sender.popQueuedMsg())
                 count += 1
 

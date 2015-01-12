@@ -356,7 +356,7 @@ class MCPBot(BotBase):
         member_type = 'field'
         if cmd['command'] == 'gm': member_type = 'method'
         val, status = self.db.getMember(member_type, args)
-        self.sendMemberResults(sender, dest, val, status, limit=10)
+        self.sendMemberResults(sender, dest, val, status, limit=self.moreCount if not sender.dccSocket else self.moreCountDcc)
 
 
     def getClass(self, bot, sender, dest, cmd, args):
@@ -375,7 +375,7 @@ class MCPBot(BotBase):
         showMethods = cmd['command'][-1] == 'm'
         showParams = cmd['command'][-1] == 'p'
         showClasses = cmd['command'][-1] == 'c'
-        limit = 5 if showAll else 10
+        limit = (self.moreCount / 2 if showAll else self.moreCount) if not sender.dccSocket else (self.moreCountDcc / 2 if showAll else self.moreCountDcc)
 
         if showAll or showFields:
             self.sendOutput(dest, "+++§B FIELDS §N+++")
@@ -405,18 +405,19 @@ class MCPBot(BotBase):
 
 
     def listMembers(self, bot, sender, dest, cmd, args):
+        limit = self.moreCount if not sender.dccSocket else self.moreCountDcc
         if cmd['command'][-1] == 'f':
             self.sendOutput(dest, "+++§B UNNAMED %sS FOR %s §N+++" % ('FIELD', args[0]))
             val, status = self.db.getUnnamed('field', args)
-            self.sendMemberResults(sender, dest, val, status, 10, summary=True, is_unnamed=True)
+            self.sendMemberResults(sender, dest, val, status, limit, summary=True, is_unnamed=True)
         elif cmd['command'][-1] == 'm':
             self.sendOutput(dest, "+++§B UNNAMED %sS FOR %s §N+++" % ('METHOD', args[0]))
             val, status = self.db.getUnnamed('method', args)
-            self.sendMemberResults(sender, dest, val, status, 10, summary=True, is_unnamed=True)
+            self.sendMemberResults(sender, dest, val, status, limit, summary=True, is_unnamed=True)
         else:
             self.sendOutput(dest, "+++§B UNNAMED %sS FOR %s §N+++" % ('METHOD PARAM', args[0]))
             val, status = self.db.getUnnamed('method_param', args)
-            self.sendParamResults(sender, dest, val, status, 10, summary=True, is_unnamed=True)
+            self.sendParamResults(sender, dest, val, status, limit, summary=True, is_unnamed=True)
 
 
     # Setters
@@ -563,14 +564,14 @@ class MCPBot(BotBase):
                 else:
                     msg = "{class_srg_name}.{method_srg_name}.{srg_name} §B[§N {srg_descriptor} §B] =>§N {class_srg_name}.{method_mcp_name}.{mcp_name} §B[§N {java_type_code} §B]".format(**entry)
 
-                if i < limit or sender.dccSocket:
+                if i < limit:
                     self.sendOutput(dest, msg)
                 else:
                     toQueue.append(msg)
 
         if len(toQueue) > 0:
-            self.sendOutput(dest, "§B+ §N%(count)d§B more. Please use the %(cmd_char)sdcc command to see the full list or %(cmd_char)smore to see %(more)d queued entries." %
-                            {'count': len(toQueue), 'cmd_char': self.cmdChar, 'more': self.moreCount})
+            self.sendOutput(dest, "§B+ §N%(count)d§B more. Please use the %(cmd_char)smore to see %(more)d queued entries." %
+                            {'count': len(toQueue), 'cmd_char': self.cmdChar, 'more': min(self.moreCount if not sender.dccSocket else self.moreCountDcc, len(toQueue))})
             sender.clearMsgQueue()
             for msg in toQueue:
                 sender.addToMsgQueue(msg)
@@ -623,14 +624,74 @@ class MCPBot(BotBase):
                 else:
                     msg = "{class_obf_name}.{obf_name} §B=>§N {class_srg_name}.{mcp_name} §B[§N {srg_name} §B]".format(**entry)
 
-                if i < limit or sender.dccSocket:
+                if i < limit:
                     self.sendOutput(dest, msg)
                 else:
                     toQueue.append(msg)
 
         if len(toQueue) > 0:
-            self.sendOutput(dest, "§B+ §N%(count)d§B more. Please use the %(cmd_char)sdcc command to see the full list or %(cmd_char)smore to see %(more)d queued entries." %
-                            {'count': len(toQueue), 'cmd_char': self.cmdChar, 'more': self.moreCount})
+            self.sendOutput(dest, "§B+ §N%(count)d§B more. Please use the %(cmd_char)smore to see %(more)d queued entries." %
+                            {'count': len(toQueue), 'cmd_char': self.cmdChar, 'more': min(self.moreCount if not sender.dccSocket else self.moreCountDcc, len(toQueue))})
+            sender.clearMsgQueue()
+            for msg in toQueue:
+                sender.addToMsgQueue(msg)
+
+    #TODO:
+    def sendHistoryResults(self, sender, dest, val, status, limit=0, summary=False, is_unnamed=False):
+        if status:
+            self.sendNotice(sender.nick, "§B" + str(type(status)) + ' : ' + str(status))
+            return
+
+        if len(val) == 0:
+            self.sendOutput(dest, "§BNo results found.")
+            return
+
+        toQueue = []
+        summary = summary or len(val) > 5
+
+        for i, entry in enumerate(val):
+            if not summary:
+                if entry['is_locked']: locked = 'LOCKED'
+                else: locked = 'UNLOCKED'
+                header =                            "===§B MC {mc_version_code}: {class_pkg_name}/{class_srg_name}.{mcp_name} ({class_obf_name}.{obf_name}) §U" + locked + "§N ==="
+                self.sendOutput(dest,        header.format(**entry))
+                if 'srg_member_base_class' in entry and entry['srg_member_base_class'] != entry['class_srg_name']:
+                    self.sendOutput(dest,    "§UBase Class§N : {obf_member_base_class} §B=>§N {srg_member_base_class}".format(**entry))
+                if entry['srg_name'] != entry['mcp_name']:
+                    self.sendOutput(dest,    "§UName§N       : {obf_name} §B=>§N {srg_name} §B=>§N {mcp_name}".format(**entry))
+                else:
+                    self.sendOutput(dest,    "§UName§N       : {obf_name} §B=>§N {srg_name}".format(**entry))
+                if entry['obf_descriptor'] != entry['srg_descriptor']:
+                    self.sendOutput(dest,    "§UDescriptor§N : {obf_descriptor} §B=>§N {srg_descriptor}".format(**entry))
+                else:
+                    self.sendOutput(dest,    "§UDescriptor§N : {obf_descriptor}".format(**entry))
+                self.sendOutput(dest,        "§UComment§N    : {comment}".format(**entry))
+                if 'srg_params' in entry and entry['srg_params']:
+                    self.sendOutput(dest,    "§USRG Params§N : {srg_params}".format(**entry))
+                    self.sendOutput(dest,    "§UMCP Params§N : {mcp_params}".format(**entry))
+                if entry['irc_nick']:
+                    self.sendOutput(dest,   "§ULast Change§N: {last_modified_ts} ({irc_nick})".format(**entry))
+                else:
+                    self.sendOutput(dest,   "§ULast Change§N: {last_modified_ts}".format(**entry))
+
+                if not i == len(val) - 1:
+                    self.sendOutput(dest, " ".format(**entry))
+            else:
+                if is_unnamed:
+                    msg = "{srg_name} §B[§N {srg_descriptor} §B]".format(**entry)
+                elif entry['srg_descriptor'].find('(') == 0:
+                    msg = "{class_obf_name}.{obf_name} §B=>§N {class_srg_name}.{mcp_name}{srg_descriptor} §B[§N {srg_name} §B]".format(**entry)
+                else:
+                    msg = "{class_obf_name}.{obf_name} §B=>§N {class_srg_name}.{mcp_name} §B[§N {srg_name} §B]".format(**entry)
+
+                if i < limit:
+                    self.sendOutput(dest, msg)
+                else:
+                    toQueue.append(msg)
+
+        if len(toQueue) > 0:
+            self.sendOutput(dest, "§B+ §N%(count)d§B more. Please use the %(cmd_char)smore to see %(more)d queued entries." %
+                            {'count': len(toQueue), 'cmd_char': self.cmdChar, 'more': min(self.moreCount if not sender.dccSocket else self.moreCountDcc, len(toQueue))})
             sender.clearMsgQueue()
             for msg in toQueue:
                 sender.addToMsgQueue(msg)
@@ -674,14 +735,14 @@ class MCPBot(BotBase):
             else:
                 msg = "{obf_name} §B=>§N {pkg_name}/{srg_name}".format(**entry)
 
-                if i < limit or sender.dccSocket:
+                if i < limit:
                     self.sendOutput(dest, msg)
                 else:
                     toQueue.append(msg)
 
         if len(toQueue) > 0:
-            self.sendOutput(dest, "§B+ §N%(count)d§B more. Please use the %(cmd_char)sdcc command to see the full list or %(cmd_char)smore to see %(more)d queued entries." %
-                            {'count': len(toQueue), 'cmd_char': self.cmdChar, 'more': self.moreCount})
+            self.sendOutput(dest, "§B+ §N%(count)d§B more. Please use the %(cmd_char)smore to see %(more)d queued entries." %
+                            {'count': len(toQueue), 'cmd_char': self.cmdChar, 'more': min(self.moreCount if not sender.dccSocket else self.moreCountDcc, len(toQueue))})
             sender.clearMsgQueue()
             for msg in toQueue:
                 sender.addToMsgQueue(msg)
