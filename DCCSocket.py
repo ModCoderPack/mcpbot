@@ -44,7 +44,7 @@ class DCCHandler(asyncore.dispatcher):
         #We curate the line and pass it to the command interpreter.
         for line in lines:
             #self.logger.debug("Raw  >" + line)
-            self.bot.cmdHandler.parseCmd(":%s PRIVMSG %s :%s%s" % (self.sender.toString(), self.bot.nick, self.bot.cmdChar, line))
+            self.bot.cmdHandler.parseCmd(":%s PRIVMSG %s :%s%s" % (self.sender.toString(), self.bot.nick, self.bot.cmdChar, line.lstrip(self.bot.cmdChar)))
 
     def handle_write(self):
         if not self.sendBuffer.empty():
