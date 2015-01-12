@@ -77,8 +77,8 @@ class MCPBot(BotBase):
         self.registerCommand('uf',       self.listMembers,['any'], 1, 1, "<class>",                                 "Returns a list of unnamed fields for a given class. Use DCC if the list is long.", allowpub=True)
         self.registerCommand('um',       self.listMembers,['any'], 1, 1, "<class>",                                 "Returns a list of unnamed methods for a given class. Use DCC if the list is long.", allowpub=True)
         self.registerCommand('up',       self.listMembers,['any'], 1, 1, "<class>",                                 "Returns a list of unnamed method parameters for a given class. Use DCC if the list is long.", allowpub=True)
-        self.registerCommand('undo',     self.undoChange, ['any', 'undo_any'], 1, 1, "<srg name>",                  "Undoes the last *STAGED* name change to a given method/field/param. By default you can only undo your own changes.")
-        self.registerCommand('redo',     self.undoChange, ['any', 'undo_any'], 1, 1, "<srg name>",                  "Redoes the last *UNDONE* staged change to a given method/field/param. By default you can only redo your own changes.")
+        self.registerCommand('undo',     self.undoChange, ['any', 'undo_any', 'mcp_team'], 1, 1, "<srg name>",                  "Undoes the last *STAGED* name change to a given method/field/param. By default you can only undo your own changes.")
+        self.registerCommand('redo',     self.undoChange, ['any', 'undo_any', 'mcp_team'], 1, 1, "<srg name>",                  "Redoes the last *UNDONE* staged change to a given method/field/param. By default you can only redo your own changes.")
 
         self.registerCommand('sf',  self.setMember,  ['any'],        2, 999, "<srg name> <new name> [<comment>]", "Sets the MCP name and comment for the SRG field specified. SRG index can also be used.", allowpub=True)
         self.registerCommand('fsf', self.setMember,  ['maintainer', 'mcp_team'], 2, 999, "<srg name> <new name> [<comment>]", "Force sets the MCP name and comment for the SRG field specified. SRG index can also be used.", allowpub=True)
@@ -87,12 +87,12 @@ class MCPBot(BotBase):
         self.registerCommand('sp',  self.setMember,  ['any'],        2, 999, "<srg name> <new name> [<comment>]", "Sets the MCP name and comment for the SRG method parameter specified. SRG index can also be used.", allowpub=True)
         self.registerCommand('fsp', self.setMember,  ['maintainer', 'mcp_team'], 2, 999, "<srg name> <new name> [<comment>]", "Force sets the MCP name and comment for the SRG method parameter specified. SRG index can also be used.", allowpub=True)
 
-        self.registerCommand('lockf',   self.setLocked,  ['lock_control'], 1, 1, "<srg name>", "Locks the given field from being edited. SRG index can also be used.")
-        self.registerCommand('lockm',   self.setLocked,  ['lock_control'], 1, 1, "<srg name>", "Locks the given method from being edited. SRG index can also be used.")
-        self.registerCommand('lockp',   self.setLocked,  ['lock_control'], 1, 1, "<srg name>", "Locks the given method parameter from being edited. SRG index can also be used.")
-        self.registerCommand('unlockf', self.setLocked,  ['lock_control'], 1, 1, "<srg name>", "Unlocks the given field to allow editing. SRG index can also be used.")
-        self.registerCommand('unlockm', self.setLocked,  ['lock_control'], 1, 1, "<srg name>", "Unlocks the given method to allow editing. SRG index can also be used.")
-        self.registerCommand('unlockp', self.setLocked,  ['lock_control'], 1, 1, "<srg name>", "Unlocks the given method parameter to allow editing. SRG index can also be used.")
+        self.registerCommand('lockf',   self.setLocked,  ['lock_control', 'mcp_team'], 1, 1, "<srg name>", "Locks the given field from being edited. SRG index can also be used.")
+        self.registerCommand('lockm',   self.setLocked,  ['lock_control', 'mcp_team'], 1, 1, "<srg name>", "Locks the given method from being edited. SRG index can also be used.")
+        self.registerCommand('lockp',   self.setLocked,  ['lock_control', 'mcp_team'], 1, 1, "<srg name>", "Locks the given method parameter from being edited. SRG index can also be used.")
+        self.registerCommand('unlockf', self.setLocked,  ['lock_control', 'mcp_team'], 1, 1, "<srg name>", "Unlocks the given field to allow editing. SRG index can also be used.")
+        self.registerCommand('unlockm', self.setLocked,  ['lock_control', 'mcp_team'], 1, 1, "<srg name>", "Unlocks the given method to allow editing. SRG index can also be used.")
+        self.registerCommand('unlockp', self.setLocked,  ['lock_control', 'mcp_team'], 1, 1, "<srg name>", "Unlocks the given method parameter to allow editing. SRG index can also be used.")
 
         # Legacy commands that only show a notice
         self.registerCommand('gcf',  self.legacyNotice, ['any'], 1, 1,   "", "", showhelp=False, allowpub=True)
