@@ -2,6 +2,7 @@
 from BotBase import BotBase, BotHandler
 from Database import Database, is_integer
 from optparse import OptionParser
+import JsonHelper
 import time
 from datetime import timedelta, datetime, time as time_class
 import threading
@@ -141,17 +142,6 @@ class MCPBot(BotBase):
                 self.maven_upload_time_str = timestr
                 self.config.set('EXPORT', 'MAVEN_UPLOAD_TIME', timestr, 'The approximate time that the maven upload will take place daily. Will happen within TEST_EXPORT_PERIOD / 2 minutes of this time. Use H:MM format, with 24 hour clock.')
                 self.updateConfig()
-
-
-    def isValid24HourTimeStr(self, timestr):
-        splitted = timestr.split(':')
-        if len(splitted) > 2:
-            return False
-        if not is_integer(splitted[0]) or not (0 <= int(splitted[0]) < 24):
-            return False
-        if len(splitted) == 2 and (not is_integer(splitted[1]) or not (0 <= int(splitted[1] < 60))):
-            return False
-        return True
 
 
     def setMavenTime(self, bot, sender, dest, cmd, args):
@@ -347,6 +337,29 @@ class MCPBot(BotBase):
         self.sendVersionResults(sender, dest, val, status)
 
 
+    def getLatestMappingVersion(self, bot, sender, dest, cmd, args):
+        if len(args) > 0:
+            if args[0] in ['stable', 'snapshot']:
+                mappingType = args[0]
+                version = None
+            else:
+                mappingType = None
+                version = args[0]
+
+            if len(args) > 1:
+                if mappingType:
+                    version = args[1]
+                else:
+                    mappingType = args[1]
+        else:
+            mappingType = None
+            version = None
+
+        #TODO
+
+
+
+
     def getParam(self, bot, sender, dest, cmd, args):
         val, status = self.db.getParam(args)
         self.sendParamResults(sender, dest, val, status)
@@ -362,6 +375,14 @@ class MCPBot(BotBase):
     def getClass(self, bot, sender, dest, cmd, args):
         val, status = self.db.getClass(args)
         self.sendClassResults(sender, dest, val, status)
+
+
+    def getHistory(self, bot, sender, dest, cmd, args):
+        member_type = 'field'
+        if cmd['command'] == 'mh': member_type = 'method'
+        if cmd['command'] == 'ph': member_type = 'method_param'
+        val, status = self.db.getHistory(member_type, args)
+        self.sendHistoryResults(sender, dest, val, status, limit=self.moreCount if not sender.dccSocket else self.moreCountDcc)
 
 
     def findKey(self, bot, sender, dest, cmd, args):
@@ -897,6 +918,18 @@ def getDurationStr(timesecs):
     if s == 1: formatstr += '%d second' % s
     elif s > 1: formatstr += '%d seconds' % s
     return formatstr
+
+
+def isValid24HourTimeStr(self, timestr):
+    splitted = timestr.split(':')
+    if len(splitted) > 2:
+        return False
+    if not is_integer(splitted[0]) or not (0 <= int(splitted[0]) < 24):
+        return False
+    if len(splitted) == 2 and (not is_integer(splitted[1]) or not (0 <= int(splitted[1] < 60))):
+        return False
+    return True
+
 
 def main():
 

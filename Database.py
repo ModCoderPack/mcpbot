@@ -160,6 +160,40 @@ class Database(object):
         return self.execute(sqlrequest, params)
 
 
+    def getHistory(self, table, args):
+        member = args[0]
+        if member[0] == ".": member = member[1:]
+
+        params = {}
+
+        sqlrequest = "SELECT * FROM mcp.%s " % (table + "_vw")
+        if len(args) > 1:
+            versplit = args[1].split('.')
+            if len(versplit) == 2:
+                sqlrequest += "where (mcp_version_code like %(version)s or mc_version_code like %(version)s) "
+            else:
+                sqlrequest += "where mc_version_code like %(version)s "
+            params['version'] = args[1]
+        else: sqlrequest += "WHERE is_current "
+
+        splitted = member.split('.')
+        if len(splitted) == 1:
+            sqlrequest += "AND class_srg_name = srg_member_base_class "
+            params.update({'member':member})
+        else:
+            sqlrequest += "AND (class_srg_name = %(class)s OR class_obf_name = %(class)s) "
+            params.update({'class':splitted[0], 'member':splitted[1]})
+
+        if params['member'].startswith('func_') or params['member'].startswith('field_'):
+            sqlrequest += 'AND srg_name = %(member)s'
+        elif is_integer(params['member'].lstrip('i')):
+            sqlrequest += 'AND srg_index = %(member)s'
+        else:
+            sqlrequest += 'AND (mcp_name = %(member)s OR obf_name = %(member)s)'
+
+        return self.execute(sqlrequest, params)
+
+
     def getClass(self, args):
         sqlrequest = "SELECT * FROM mcp.class_vw "
 
