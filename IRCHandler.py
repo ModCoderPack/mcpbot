@@ -42,7 +42,7 @@ class Sender(object):
 
     def __eq__(self, other):
         return self.nick == other.nick and self.ident == other.ident and self.host == other.host
-    
+
     def __ne__(self, other):
         return self.nick != other.nick or  self.ident != other.ident or  self.host != other.host
 
@@ -53,7 +53,7 @@ class Sender(object):
         self.auth = -1
         self.regnick = ""
         self.authEvent.clear()
-        self.whoisEvent.clear()        
+        self.whoisEvent.clear()
 
     def authenticate(self, level):
         self.auth = level
@@ -178,6 +178,7 @@ class Color(object):
         '§R': '\x16',
         '§N': '\x0f',
         '§C': '\x03',
+        '§I': '\x1D',
     }
 
     @classmethod
@@ -213,8 +214,8 @@ class CmdHandler(object):
         'JOIN':   {'callback':self.onJOIN},
         'PART':   {'callback':self.onPART},
         'MODE':   {'callback':self.onMODE},
-        'KICK':   {'callback':self.onKICK},                                                
-        'QUIT':   {'callback':self.onQUIT},              
+        'KICK':   {'callback':self.onKICK},
+        'QUIT':   {'callback':self.onQUIT},
         'KILL':   {'callback':self.onKILL},
         'NICK':   {'callback':self.onNICK},
         }
@@ -274,13 +275,13 @@ class CmdHandler(object):
                 cmdThread.start()
 
     def threadedEvent(self, event, callback, bot, sender, params):
-        try:    
+        try:
             callback(bot, sender, params)
         except Exception as e:
             self.logger.error("Error while handling event [ %s ] with params %s from user [ %s ]"%(event, params, sender))
             self.logger.error("%s"%e)
             for line in traceback.format_exc().split('\n'):
-                self.logger.error(line)            
+                self.logger.error(line)
 
     def parseCmd(self, msg):
         self.last_event_time = time.time()
@@ -316,7 +317,7 @@ class CmdHandler(object):
                 self.logger.error("Error while handling command [ %s ] with params %s from user [ %s ]"%(self.cmd, self.params, self.sender))
                 self.logger.error("%s"%e)
                 for line in traceback.format_exc().split('\n'):
-                    self.logger.error(line)                
+                    self.logger.error(line)
         else:
             self.logger.debug("Unhandled Cmd > %s %s %s"%(self.sender, self.cmd, self.params))
 
@@ -328,7 +329,7 @@ class CmdHandler(object):
         self.handleEvents('Ping', sender, params)
 
     def onNOTICE(self, sender, params):
-        self.logger.info("[S : %s] [M : %s]"%(sender.nick, " ".join(params)))        
+        self.logger.info("[S : %s] [M : %s]"%(sender.nick, " ".join(params)))
 
         #We received a notice from NickServ. We check if it is an ACC notice
         if sender.nick.lower() == self.bot.nickserv.lower():
@@ -363,7 +364,7 @@ class CmdHandler(object):
         else:
             self.handleEvents('Notice', sender, params)
 
-        
+
 
     def onINVITE(self, sender, params):
         self.logger.info("[S : %s] [M : %s]"%(sender.nick, " ".join(params)))
@@ -372,7 +373,7 @@ class CmdHandler(object):
         self.handleEvents('Invite', sender, params)
 
     def onJOIN(self, sender, params):
-        self.logger.debug("[S : %s] [M : %s]"%(sender.nick, " ".join(params)))        
+        self.logger.debug("[S : %s] [M : %s]"%(sender.nick, " ".join(params)))
         if sender.nick == self.bot.nick:
             self.logger.info("Adding chan %s to chan list"%(params[0]))
             if not params[0] in self.bot.channels:
@@ -383,44 +384,44 @@ class CmdHandler(object):
         self.handleEvents('Join', sender, params)
 
     def onPART(self, sender, params):
-        self.logger.debug("[S : %s] [M : %s]"%(sender.nick, " ".join(params)))        
-        if sender.nick == self.bot.nick:        
+        self.logger.debug("[S : %s] [M : %s]"%(sender.nick, " ".join(params)))
+        if sender.nick == self.bot.nick:
             self.logger.info("Removing chan %s from chan list"%(params[0]))
-            self.bot.channels.remove(params[0])   
+            self.bot.channels.remove(params[0])
             self.bot.updateConfig()
         if sender.nick in self.bot.users:
             self.bot.users[sender.nick].unauthenticate()
-            self.bot.users[sender.nick].whoisEvent.clear()            
+            self.bot.users[sender.nick].whoisEvent.clear()
         self.handleEvents('Part', sender, params)
 
     def onMODE(self, sender, params):
-        self.logger.debug("[S : %s] [M : %s]"%(sender.nick, " ".join(params)))        
+        self.logger.debug("[S : %s] [M : %s]"%(sender.nick, " ".join(params)))
         self.handleEvents('Mode', sender, params)
 
     def onKICK(self, sender, params):
-        self.logger.debug("[S : %s] [M : %s]"%(sender.nick, " ".join(params)))        
-        if params[1] == self.bot.nick:        
+        self.logger.debug("[S : %s] [M : %s]"%(sender.nick, " ".join(params)))
+        if params[1] == self.bot.nick:
             self.logger.info("Removing chan %s from chan list"%(params[0]))
-            self.bot.channels.remove(params[0])   
-            self.bot.updateConfig()           
+            self.bot.channels.remove(params[0])
+            self.bot.updateConfig()
         if sender.nick in self.bot.users:
-            self.bot.users[sender.nick].unauthenticate()                    
-            self.bot.users[sender.nick].whoisEvent.clear()            
+            self.bot.users[sender.nick].unauthenticate()
+            self.bot.users[sender.nick].whoisEvent.clear()
         self.handleEvents('Kick', sender, params)
 
     def onNICK(self, sender, params):
-        self.logger.debug("[S : %s] [M : %s]"%(sender.nick, " ".join(params)))        
+        self.logger.debug("[S : %s] [M : %s]"%(sender.nick, " ".join(params)))
         if sender.nick in self.bot.users:
-            self.bot.users[sender.nick].unauthenticate()                    
+            self.bot.users[sender.nick].unauthenticate()
             self.bot.users[sender.nick].whoisEvent.clear()
         self.handleEvents('Nick', sender, params)
 
     def onQUIT(self, sender, params):
-        self.logger.debug("[S : %s] [M : %s]"%(sender.nick, " ".join(params)))        
+        self.logger.debug("[S : %s] [M : %s]"%(sender.nick, " ".join(params)))
         self.handleEvents('Quit', sender, params)
 
     def onKILL(self, sender, params):
-        self.logger.debug("[S : %s] [M : %s]"%(sender.nick, " ".join(params)))        
+        self.logger.debug("[S : %s] [M : %s]"%(sender.nick, " ".join(params)))
         self.handleEvents('Kill', sender, params)
 
     def onPRIVMSG(self, sender, params):
@@ -434,7 +435,7 @@ class CmdHandler(object):
         elif len(msg) > 0 and msg[0] == CTCPTAG and msg[-1] == CTCPTAG:
             self.onCTCP(sender, dest, msg[1:-1].split())
         else:
-            self.logger.debug("%s %s"%(sender.nick, " ".join(params)))        
+            self.logger.debug("%s %s"%(sender.nick, " ".join(params)))
             self.handleEvents('Privmsg', sender, params)
 
     #######################################################
@@ -448,7 +449,7 @@ class CmdHandler(object):
 
     #RPL_001
     def onRPL_WELCOME(self, sender, params):
-        self.logger.debug("[S : %s] [M : %s]"%(sender.nick, " ".join(params)))        
+        self.logger.debug("[S : %s] [M : %s]"%(sender.nick, " ".join(params)))
         if self.bot.autoJoin and not self.bot.isReady:
             self.bot.isReady = True
             if not self.bot.nspass:
@@ -460,31 +461,31 @@ class CmdHandler(object):
     #RPL_311
     def onRPL_WHOISUSER(self, sender, params):
         self.logger.debug("[S : %s] [M : %s]"%(sender.nick, " ".join(params)))
-        
+
         nick = params[1]
         if nick in self.bot.usersInfo:
             self.bot.usersInfo[nick].ident = params[2]
             self.bot.usersInfo[nick].host  = params[3]
             self.bot.usersInfo[nick].whoisEvent.set()
-            self.logger.debug("%s user added to user list with %s %s"%(nick, self.bot.usersInfo[nick].ident, self.bot.usersInfo[nick].host))        
+            self.logger.debug("%s user added to user list with %s %s"%(nick, self.bot.usersInfo[nick].ident, self.bot.usersInfo[nick].host))
         else:
-            self.logger.error("%s not found in the user list"%nick)        
-        
+            self.logger.error("%s not found in the user list"%nick)
+
     #RPL_312
     def onRPL_WHOISSERVER(self, sender, params):
-        self.logger.debug("[S : %s] [M : %s]"%(sender.nick, " ".join(params)))  
+        self.logger.debug("[S : %s] [M : %s]"%(sender.nick, " ".join(params)))
 
     #RPL_317
     def onRPL_WHOISIDLE(self, sender, params):
-        self.logger.debug("[S : %s] [M : %s]"%(sender.nick, " ".join(params)))  
+        self.logger.debug("[S : %s] [M : %s]"%(sender.nick, " ".join(params)))
 
     #RPL_319
     def onRPL_WHOISCHANNELS(self, sender, params):
-        self.logger.debug("[S : %s] [M : %s]"%(sender.nick, " ".join(params)))  
-        
+        self.logger.debug("[S : %s] [M : %s]"%(sender.nick, " ".join(params)))
+
     #RPL_330
     def onRPL_WHOISACCOUNT(self, sender, params):
-        self.logger.debug("[S : %s] [M : %s]"%(sender.nick, " ".join(params)))  
+        self.logger.debug("[S : %s] [M : %s]"%(sender.nick, " ".join(params)))
         if params[1] in self.bot.users:
             self.bot.users[params[1]].regnick = params[2]
             self.bot.users[params[1]].whoisEvent.set()
@@ -499,7 +500,7 @@ class CmdHandler(object):
         self.logger.info("COMMAND> %s"%command)
         if command.strip() == "":
             return
-        
+
         if not command.split()[0].lower() in self.commands.keys():
             return
 
@@ -523,17 +524,17 @@ class CmdHandler(object):
         #We already know this sender
         if sender.nick in self.bot.users and sender == self.bot.users[sender.nick]:
             self.logger.info("Found user %s in current users" % sender.nick)
-            
+
             if -1 < self.bot.authtimeout < time.time() - self.bot.users[sender.nick].lastAuth:
                 self.bot.users[sender.nick].unauthenticate()
-            
+
             # If current auth is not 3, we retry to authenticate the account but resending the request and resetting the flags
             if self.bot.users[sender.nick].auth != 3:
                 self.logger.info("Reauthenticating user %s" % sender.nick)
                 self.bot.users[sender.nick].unauthenticate()
                 self.bot.sendRaw(self.bot.nickAuth.format(nickserv=self.bot.nickserv, nick=sender.nick) + EOL)
                 self.bot.sendRaw(CmdGenerator.getWHOIS(sender.nick))
-            
+
             cmdThread = threading.Thread(target=self.threadedCommand, name=sender.toString(), args=(callback, cmd, self.bot, self.bot.users[sender.nick], dest, args))
             cmdThread.start()
 
@@ -542,7 +543,7 @@ class CmdHandler(object):
             self.bot.users[sender.nick] = sender
             self.bot.sendRaw(self.bot.nickAuth.format(nickserv=self.bot.nickserv, nick=sender.nick) + EOL)
             self.bot.sendRaw(CmdGenerator.getWHOIS(sender.nick))
-            
+
             cmdThread = threading.Thread(target=self.threadedCommand, name=sender.toString(), args=(callback, cmd, self.bot, self.bot.users[sender.nick], dest, args))
             cmdThread.start()
 
@@ -557,13 +558,13 @@ class CmdHandler(object):
             if not bot.allowunregistered:
                 if not sender.auth == 3:
                     bot.sendNotice(sender.nick, "You need to register your nick before using the bot.")
-                    return                
+                    return
 
             if sender.auth == 3:
                 if not sender.whoisEvent.wait(10):
                     bot.sendNotice(sender.nick, "Error doing a whois. Please retry later.")
                     return
-            
+
             #If we allow unregistered usage, we use the current nick as the registered nick for later on
             if sender.auth == 0 and bot.allowunregistered and not 'AnonUser_' in sender.nick :
                 sender.regnick = sender.nick
@@ -572,7 +573,7 @@ class CmdHandler(object):
             #If we allow unregistered usage, we use the current nick as the registered nick for later on
             if sender.auth == 0 and bot.dccAllowAnon and 'AnonUser_' in sender.nick :
                 sender.regnick = sender.nick
-            
+
             #If the AUTH is not 0 (unregistered) or 3 (authenticated), it means we have a weird account, we return
             if not sender.auth in [0,3]:
                 bot.sendNotice(sender.nick, "You are not properly identified")
@@ -615,7 +616,7 @@ class CmdHandler(object):
     #######################################################
     # CTCP Commands
     def onCTCP(self, sender, dest, msg):
-        #self.logger.debug("[S : %s] [M : %s]"%(sender.nick, " ".join(params)))        
+        #self.logger.debug("[S : %s] [M : %s]"%(sender.nick, " ".join(params)))
 
         if msg[0] == 'VERSION':
             self.bot.sendRaw(CmdGenerator.getNOTICE(sender.nick, "MCPBot v4.0 'You were not expecting me !' by ProfMobius"))
@@ -623,11 +624,11 @@ class CmdHandler(object):
 
         elif msg[0] == 'USERINFO':
             self.bot.sendRaw(CmdGenerator.getNOTICE(sender.nick, "MCPBot v4.0 'You were not expecting me !' by ProfMobius"))
-            self.handleEvents('Userinfo', sender, msg)            
+            self.handleEvents('Userinfo', sender, msg)
 
         elif msg[0] == 'FINGER':
             self.bot.sendRaw(CmdGenerator.getNOTICE(sender.nick, "Don't do that !"))
-            self.handleEvents('Finger', sender, msg)            
+            self.handleEvents('Finger', sender, msg)
 
         elif msg[0] == 'DCC':
             if self.bot.dccActive:
