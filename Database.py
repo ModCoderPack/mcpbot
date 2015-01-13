@@ -161,37 +161,19 @@ class Database(object):
 
 
     def getHistory(self, table, args):
-        member = args[0]
-        if member[0] == ".": member = member[1:]
+        sqlrequest1 = """SELECT *, 'Committed' as status FROM mcp.%s """ % (table + "_history_vw")
+        sqlrequest2 = """SELECT *, 'Staged' as status FROM mcp.%s """ % ('staged_' + table + "_vw")
 
-        params = {}
-
-        sqlrequest = "SELECT * FROM mcp.%s " % (table + "_vw")
-        if len(args) > 1:
-            versplit = args[1].split('.')
-            if len(versplit) == 2:
-                sqlrequest += "where (mcp_version_code like %(version)s or mc_version_code like %(version)s) "
-            else:
-                sqlrequest += "where mc_version_code like %(version)s "
-            params['version'] = args[1]
-        else: sqlrequest += "WHERE is_current "
-
-        splitted = member.split('.')
-        if len(splitted) == 1:
-            sqlrequest += "AND class_srg_name = srg_member_base_class "
-            params.update({'member':member})
+        if args[0].startswith('func_') or args[0].startswith('field_') or args[0].startswith('p_'):
+            sqlrequest1 += 'where srg_name = %(member)s'
+            sqlrequest2 += 'where srg_name = %(member)s'
         else:
-            sqlrequest += "AND (class_srg_name = %(class)s OR class_obf_name = %(class)s) "
-            params.update({'class':splitted[0], 'member':splitted[1]})
+            sqlrequest1 += 'where srg_index = %(member)s'
+            sqlrequest2 += 'where srg_index = %(member)s'
 
-        if params['member'].startswith('func_') or params['member'].startswith('field_'):
-            sqlrequest += 'AND srg_name = %(member)s'
-        elif is_integer(params['member'].lstrip('i')):
-            sqlrequest += 'AND srg_index = %(member)s'
-        else:
-            sqlrequest += 'AND (mcp_name = %(member)s OR obf_name = %(member)s)'
+        sqlrequest = 'select * from (%s union %s) hist order by srg_name, time_stamp desc' % (sqlrequest1, sqlrequest2)
 
-        return self.execute(sqlrequest, params)
+        return self.execute(sqlrequest, {'member': args[0]})
 
 
     def getClass(self, args):

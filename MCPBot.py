@@ -63,10 +63,10 @@ class MCPBot(BotBase):
         self.registerCommand('commit',   self.commitMappings,['mcp_team'], 0, 1, '[<srg_name>|method|field|param]', 'Commits staged mapping changes. If SRG name is specified only that member will be committed. If method/field/param is specified only that member type will be committed. Give no arguments to commit all staged changes.')
         self.registerCommand('maventime',self.setMavenTime,['mcp_team'], 1, 1, '<HH:MM>', 'Changes the time that the Maven upload will occur using 24 hour clock format.')
 
-        self.registerCommand('gp',       self.getParam,   ['any'], 1, 2, "[[<class>.]<method>.]<name> [<version>]", "Returns method parameter information. Defaults to current version. Version can be for MCP or MC. Obf class and method names not supported.", allowpub=True)
+        self.registerCommand('gc',       self.getClass,   ['any'], 1, 2, "<class> [<version>]",                     "Returns class information. Defaults to current version. Version can be for MCP or MC.", allowpub=True)
         self.registerCommand('gf',       self.getMember,  ['any'], 1, 2, "[<class>.]<name> [<version>]",            "Returns field information. Defaults to current version. Version can be for MCP or MC.", allowpub=True)
         self.registerCommand('gm',       self.getMember,  ['any'], 1, 2, "[<class>.]<name> [<version>]",            "Returns method information. Defaults to current version. Version can be for MCP or MC.", allowpub=True)
-        self.registerCommand('gc',       self.getClass,   ['any'], 1, 2, "<class> [<version>]",                     "Returns class information. Defaults to current version. Version can be for MCP or MC.", allowpub=True)
+        self.registerCommand('gp',       self.getParam,   ['any'], 1, 2, "[[<class>.]<method>.]<name> [<version>]", "Returns method parameter information. Defaults to current version. Version can be for MCP or MC. Obf class and method names not supported.", allowpub=True)
         self.registerCommand('find',     self.findKey,    ['any'], 1, 2, "<regex pattern> [<version>]",             "Returns any entries matching a regex pattern. Only returns complete matches.", allowpub=True)
         self.registerCommand('findc',    self.findKey,    ['any'], 1, 2, "<regex pattern> [<version>]",             "Returns class entries matching a regex pattern. Only returns complete matches.", allowpub=True)
         self.registerCommand('findf',    self.findKey,    ['any'], 1, 2, "<regex pattern> [<version>]",             "Returns field entries matching a regex pattern. Only returns complete matches.", allowpub=True)
@@ -77,11 +77,14 @@ class MCPBot(BotBase):
         self.registerCommand('findallf', self.findAllKey, ['any'], 1, 2, "<regex pattern> [<version>]",             "Returns field entries matching a regex pattern. Allows partial matches to be returned.", allowpub=True)
         self.registerCommand('findallm', self.findAllKey, ['any'], 1, 2, "<regex pattern> [<version>]",             "Returns method entries matching a regex pattern. Allows partial matches to be returned.", allowpub=True)
         self.registerCommand('findallp', self.findAllKey, ['any'], 1, 2, "<regex pattern> [<version>]",             "Returns parameter entries matching a regex pattern. Allows partial matches to be returned.", allowpub=True)
+        self.registerCommand('fh',       self.getHistory, ['any'], 1, 1, "<srg name>",                              "Gets the change history for the given field. SRG index is also accepted.", allowpub=True)
+        self.registerCommand('mh',       self.getHistory, ['any'], 1, 1, "<srg name>",                              "Gets the change history for the given method. SRG index is also accepted.", allowpub=True)
+        self.registerCommand('ph',       self.getHistory, ['any'], 1, 1, "<srg name>",                              "Gets the change history for the given method param. SRG index is also accepted.", allowpub=True)
         self.registerCommand('uf',       self.listMembers,['any'], 1, 1, "<class>",                                 "Returns a list of unnamed fields for a given class. Use DCC if the list is long.", allowpub=True)
         self.registerCommand('um',       self.listMembers,['any'], 1, 1, "<class>",                                 "Returns a list of unnamed methods for a given class. Use DCC if the list is long.", allowpub=True)
         self.registerCommand('up',       self.listMembers,['any'], 1, 1, "<class>",                                 "Returns a list of unnamed method parameters for a given class. Use DCC if the list is long.", allowpub=True)
-        self.registerCommand('undo',     self.undoChange, ['any', 'undo_any', 'mcp_team'], 1, 1, "<srg name>",                  "Undoes the last *STAGED* name change to a given method/field/param. By default you can only undo your own changes.")
-        self.registerCommand('redo',     self.undoChange, ['any', 'undo_any', 'mcp_team'], 1, 1, "<srg name>",                  "Redoes the last *UNDONE* staged change to a given method/field/param. By default you can only redo your own changes.")
+        self.registerCommand('undo',     self.undoChange, ['any', 'undo_any', 'mcp_team'], 1, 1, "<srg name>",      "Undoes the last *STAGED* name change to a given method/field/param. By default you can only undo your own changes.")
+        self.registerCommand('redo',     self.undoChange, ['any', 'undo_any', 'mcp_team'], 1, 1, "<srg name>",      "Redoes the last *UNDONE* staged change to a given method/field/param. By default you can only redo your own changes.")
 
         self.registerCommand('sf',  self.setMember,  ['any'],        2, 999, "<srg name> <new name> [<comment>]", "Sets the MCP name and comment for the SRG field specified. SRG index can also be used.", allowpub=True)
         self.registerCommand('fsf', self.setMember,  ['maintainer', 'mcp_team'], 2, 999, "<srg name> <new name> [<comment>]", "Force sets the MCP name and comment for the SRG field specified. SRG index can also be used.", allowpub=True)
@@ -390,7 +393,7 @@ class MCPBot(BotBase):
         if cmd['command'] == 'mh': member_type = 'method'
         if cmd['command'] == 'ph': member_type = 'method_param'
         val, status = self.db.getHistory(member_type, args)
-        self.sendHistoryResults(sender, dest, val, status, limit=self.moreCount if not sender.dccSocket else self.moreCountDcc)
+        self.sendHistoryResults(member_type, sender, dest, val, status, limit=self.moreCount if not sender.dccSocket else self.moreCountDcc)
 
 
     def findKey(self, bot, sender, dest, cmd, args):
@@ -711,8 +714,13 @@ class MCPBot(BotBase):
             for msg in toQueue:
                 sender.addToMsgQueue(msg)
 
-    #TODO:
-    def sendHistoryResults(self, sender, dest, val, status, limit=0, summary=False, is_unnamed=False):
+
+    def sendHistoryResults(self, member_type, sender, dest, val, status, limit):
+        if member_type == 'method_param':
+            member_type_disp = 'Method Param'
+        else:
+            member_type_disp = member_type[0].upper() + member_type[1:]
+
         if status:
             self.sendNotice(sender.nick, "§B" + str(type(status)) + ' : ' + str(status))
             return
@@ -722,47 +730,17 @@ class MCPBot(BotBase):
             return
 
         toQueue = []
-        summary = summary or len(val) > 5
+        self.sendOutput(dest, "===§B " + member_type_disp + " History: {srg_name} §N===".format(**val[0]))
 
         for i, entry in enumerate(val):
-            if not summary:
-                if entry['is_locked']: locked = 'LOCKED'
-                else: locked = 'UNLOCKED'
-                header =                            "===§B MC {mc_version_code}: {class_pkg_name}/{class_srg_name}.{mcp_name} ({class_obf_name}.{obf_name}) §U" + locked + "§N ==="
-                self.sendOutput(dest,        header.format(**entry))
-                if 'srg_member_base_class' in entry and entry['srg_member_base_class'] != entry['class_srg_name']:
-                    self.sendOutput(dest,    "§UBase Class§N : {obf_member_base_class} §B=>§N {srg_member_base_class}".format(**entry))
-                if entry['srg_name'] != entry['mcp_name']:
-                    self.sendOutput(dest,    "§UName§N       : {obf_name} §B=>§N {srg_name} §B=>§N {mcp_name}".format(**entry))
-                else:
-                    self.sendOutput(dest,    "§UName§N       : {obf_name} §B=>§N {srg_name}".format(**entry))
-                if entry['obf_descriptor'] != entry['srg_descriptor']:
-                    self.sendOutput(dest,    "§UDescriptor§N : {obf_descriptor} §B=>§N {srg_descriptor}".format(**entry))
-                else:
-                    self.sendOutput(dest,    "§UDescriptor§N : {obf_descriptor}".format(**entry))
-                self.sendOutput(dest,        "§UComment§N    : {comment}".format(**entry))
-                if 'srg_params' in entry and entry['srg_params']:
-                    self.sendOutput(dest,    "§USRG Params§N : {srg_params}".format(**entry))
-                    self.sendOutput(dest,    "§UMCP Params§N : {mcp_params}".format(**entry))
-                if entry['irc_nick']:
-                    self.sendOutput(dest,   "§ULast Change§N: {last_modified_ts} ({irc_nick})".format(**entry))
-                else:
-                    self.sendOutput(dest,   "§ULast Change§N: {last_modified_ts}".format(**entry))
+            msg = "[{mc_version_code}, {status} {time_stamp}] {irc_nick}: {old_mcp_name} §B=>§N {new_mcp_name}".format(**entry)
+            if entry['undo_irc_nick']:
+                msg = '§R' + msg.replace('§N', '§N§R') + '  Undone {undo_time_stamp}: {undo_irc_nick}'.format(**entry)
 
-                if not i == len(val) - 1:
-                    self.sendOutput(dest, " ".format(**entry))
+            if i < limit:
+                self.sendOutput(dest, msg)
             else:
-                if is_unnamed:
-                    msg = "{srg_name} §B[§N {srg_descriptor} §B]".format(**entry)
-                elif entry['srg_descriptor'].find('(') == 0:
-                    msg = "{class_obf_name}.{obf_name} §B=>§N {class_srg_name}.{mcp_name}{srg_descriptor} §B[§N {srg_name} §B]".format(**entry)
-                else:
-                    msg = "{class_obf_name}.{obf_name} §B=>§N {class_srg_name}.{mcp_name} §B[§N {srg_name} §B]".format(**entry)
-
-                if i < limit:
-                    self.sendOutput(dest, msg)
-                else:
-                    toQueue.append(msg)
+                toQueue.append(msg)
 
         if len(toQueue) > 0:
             self.sendOutput(dest, "§B+ §N%(count)d§B more. Please use %(cmd_char)smore to see %(more)d queued entries." %
@@ -770,6 +748,8 @@ class MCPBot(BotBase):
             sender.clearMsgQueue()
             for msg in toQueue:
                 sender.addToMsgQueue(msg)
+
+        # self.reply("[%s, %s] %s: %s -> %s" % (row['mcpversion'], row['timestamp'], row['nick'], row['oldname'], row['newname']))
 
 
     def sendClassResults(self, sender, dest, val, status, limit=0, summary=False):
