@@ -735,7 +735,7 @@ class MCPBot(BotBase):
         for i, entry in enumerate(val):
             msg = "[{mc_version_code}, {status} {time_stamp}] {irc_nick}: {old_mcp_name} §B=>§N {new_mcp_name}".format(**entry)
             if entry['undo_irc_nick']:
-                msg = '§R' + msg.replace('§N', '§N§R') + '  Undone {undo_time_stamp}: {undo_irc_nick}'.format(**entry)
+                msg = msg + '  §RUndone {undo_time_stamp}: {undo_irc_nick}'.format(**entry)
 
             if i < limit:
                 self.sendOutput(dest, msg)
