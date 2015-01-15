@@ -12,10 +12,10 @@ DONE - add nickserv auth success detection and move channel join to there (unles
 DONE - commit workflow
 - info commands
     - DONE - unnamed members in a class
-    IN PROGRESS - change history
-        IN PROGRESS - staged field view
-        - staged method view
-        - staged param view
+    - DONE - change history
+        - DONE - staged field view
+        - DONE - staged method view
+        - DONE - staged param view
 - DONE - automatic export of CSVs periodically
 - STARTED - create wiki pages for new bot:
     - naming conventions* we really need this
@@ -31,6 +31,7 @@ IN PROGRESS - web interface (started on a Django project)
 DONE - cache long lists of results per user and add a command to display more of the list (!more)
 
 - a class summary command (cs) that would list all methods/fields in summarized format
+    ^ this is now possible using the new find functionality
 
 - find something by date
 <LexManos>  !gf enableEverythingIsScrewedUpMode 20140930 20141130
