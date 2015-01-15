@@ -11,7 +11,7 @@ from MavenHandler import MavenHandler
 import zipfile, os, re
 import psycopg2.extras
 
-__version__ = "0.8.0"
+__version__ = "0.9.0"
 
 class MCPBot(BotBase):
     def __init__(self, configfile=None, nspass=None, backupcfg=False):
@@ -117,6 +117,8 @@ class MCPBot(BotBase):
         self.legacyCommandMap = {'gcc': 'gc', 'gsc': 'gc', 'gcf': 'gf', 'gsf' : 'gf',  'gcm' : 'gm',  'gsm' : 'gm',  'scf' : 'sf',
                                  'ssf': 'sf', 'scm': 'sm', 'ssm': 'sm', 'fscf': 'fsf', 'fssf': 'fsf', 'fscm': 'fsm', 'fssm': 'fsm'}
 
+    def clone(self):
+        return MCPBot(self.configfile, self.nspass, self.backupcfg)
 
     def onStartUp(self):
         super(MCPBot, self).onStartUp()

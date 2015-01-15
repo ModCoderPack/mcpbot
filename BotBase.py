@@ -10,7 +10,7 @@ import json
 import os
 import shutil
 import time
-from IRCHandler import CmdHandler,CmdGenerator,Sender,Color, EOL
+from IRCHandler import CmdHandler, CmdGenerator, Sender, Color, EOL
 from ConfigHandler import AdvConfigParser
 
 
@@ -48,7 +48,7 @@ class BotHandler(object):
             last_start = time.time()
 
             if not self.bot.isRunning:
-                self.bot.resetSockets()
+                self.bot = self.bot.clone()
                 self.start()
 
             try:
@@ -80,6 +80,7 @@ class BotHandler(object):
 class BotBase(object):
     def __init__(self, configfile=None, nspass=None, backupcfg=False):
         self.configfile = configfile if configfile else 'bot.cfg'
+        self.backupcfg = backupcfg
 
         if backupcfg and os.path.exists(self.configfile):
             backupcfgname = self.configfile + '.' + datetime.datetime.now().strftime('%Y%m%d%H%M%S') + '.bak'
@@ -163,7 +164,14 @@ class BotBase(object):
         self.socket = None
         self.dccSocketv4 = None
         self.dccSocketv6 = None
-        self.resetSockets()
+        self.socket = AsyncSocket.AsyncSocket(self, self.host, self.port, self.floodLimit)
+        self.dccSocketv4 = DCCSocket.DCCSocket(self, False)
+        if socket.has_ipv6:
+            try:
+                self.dccSocketv6 = DCCSocket.DCCSocket(self, True)
+            except socket.error, e:
+                if e.message.find('A socket operation was attempted to an unreachable network') != -1:
+                    self.dccSocketv6 = None
         self.cmdHandler = CmdHandler(self)
 
         self.registerCommand('dcc',  self.requestDCC, ['any'], 0, 0, "",            "Requests a DCC connection to the bot.")
@@ -191,15 +199,8 @@ class BotBase(object):
         if self.about_msg and self.about_msg != '':
             self.registerCommand('about', self.aboutcmd, ['any'], 0, 0, '', 'About this bot.', allowpub=True)
 
-    def resetSockets(self):
-        self.socket = AsyncSocket.AsyncSocket(self, self.host, self.port, self.floodLimit)
-        self.dccSocketv4 = DCCSocket.DCCSocket(self, False)
-        if socket.has_ipv6:
-            try:
-                self.dccSocketv6 = DCCSocket.DCCSocket(self, True)
-            except socket.error, e:
-                if e.message.find('A socket operation was attempted to an unreachable network') != -1:
-                    self.dccSocketv6 = None
+    def clone(self):
+        return BotBase(self.configfile, self.nspass, self.backupcfg)
 
     def run(self):
         if self.host == "":
