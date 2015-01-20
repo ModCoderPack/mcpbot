@@ -204,6 +204,8 @@ class BotBase(object):
         if 'about' not in self.txtcmds.keys():
             self.addtxtcmd('about', {})
 
+        self.updateConfig()
+
     def clone(self):
         return BotBase(self.configfile, self.nspass, self.backupcfg)
 
@@ -259,7 +261,7 @@ class BotBase(object):
         group = args[1].lower()
 
         if not group in self.groups:
-            bot.sendNotice(sender.nick, "Group %s does not exist"%args[1])
+            bot.sendNotice(sender.nick, "Group %s does not exist" % args[1])
             return
 
         if not user in self.authUsers:
@@ -274,15 +276,15 @@ class BotBase(object):
         group = args[1].lower()
 
         if not group in self.groups:
-            bot.sendNotice(sender.nick, "Group %s does not exist"%group)
+            bot.sendNotice(sender.nick, "Group %s does not exist" % group)
             return
 
         if not user in self.authUsers:
-            bot.sendNotice(sender.nick, "User %s is not registered"%args[0])
+            bot.sendNotice(sender.nick, "User %s is not registered" % args[0])
             return
 
         if not group in self.authUsers[user]:
-            bot.sendNotice(sender.nick, "User %s in not part of group %s"%(args[0],group))
+            bot.sendNotice(sender.nick, "User %s in not part of group %s" % (args[0],group))
             return
 
         self.authUsers[user].remove(group)
@@ -293,10 +295,10 @@ class BotBase(object):
         user  = args[0].lower()
 
         if not user in self.authUsers:
-            bot.sendNotice(sender.nick, "User %s is not registered"%args[0])
+            bot.sendNotice(sender.nick, "User %s is not registered" % args[0])
             return
 
-        msg = "%s : %s"%(args[0], ", ".join(self.authUsers[user]))
+        msg = "%s : %s" % (args[0], ", ".join(self.authUsers[user]))
         bot.sendNotice(sender.nick, msg)
 
     def userall(self, bot, sender, dest, cmd, args):
@@ -308,10 +310,10 @@ class BotBase(object):
                 groups[group].add(user)
 
         maxlen    = len(max(groups.keys(), key=len))
-        formatstr = "%%%ds : %%s"%(maxlen * -1)
+        formatstr = "%%%ds : %%s" % (maxlen * -1)
 
         for k,v in groups.items():
-            bot.sendNotice(sender.nick, formatstr%(k,list(v)))
+            bot.sendNotice(sender.nick, formatstr % (k,list(v)))
 
     # Ban handling
     def banadd(self, bot, sender, dest, cmd, args):
@@ -329,10 +331,10 @@ class BotBase(object):
         user  = args[0].lower()
 
         if not user in self.banList:
-            bot.sendNotice(sender.nick, "User %s is not banned"%args[0])
+            bot.sendNotice(sender.nick, "User %s is not banned" % args[0])
             return
 
-        msg = "%s : %s"%(args[0], ", ".join(self.banList[user]))
+        msg = "%s : %s" % (args[0], ", ".join(self.banList[user]))
         bot.sendNotice(sender.nick, msg)
 
     def banall(self, bot, sender, dest, cmd, args):
@@ -345,11 +347,11 @@ class BotBase(object):
         command = args[1].lower()
 
         if not user in self.banList:
-            bot.sendNotice(sender.nick, "User %s is not registered"%args[0])
+            bot.sendNotice(sender.nick, "User %s is not registered" % args[0])
             return
 
         if not command in self.banList[user]:
-            bot.sendNotice(sender.nick, "User %s in not banned from using %s"%(args[0],command))
+            bot.sendNotice(sender.nick, "User %s in not banned from using %s" % (args[0],command))
             return
 
         self.banList[user].remove(command)
@@ -374,11 +376,11 @@ class BotBase(object):
         cmd    = args[1].lower()
 
         if not group in self.groups:
-            bot.sendNotice(sender.nick, "Group %s does not exist"%group)
+            bot.sendNotice(sender.nick, "Group %s does not exist" % group)
             return
 
         if not cmd in self.groups[group]['commands']:
-            bot.sendNotice(sender.nick, "Command %s not in group %s"%(cmd, group))
+            bot.sendNotice(sender.nick, "Command %s not in group %s" % (cmd, group))
             return
 
         self.groups[group]['commands'].remove(cmd)
@@ -390,7 +392,7 @@ class BotBase(object):
 
     def groupget(self, bot, sender, dest, cmd, args):
         for group,cmds in self.groups.items():
-            bot.sendNotice(sender.nick, "%s : %s"%(group, cmds))
+            bot.sendNotice(sender.nick, "%s : %s" % (group, cmds))
 
     def groupmeta(self, bot, sender, dest, cmd, args):
         group  = args[0].lower()
@@ -399,11 +401,11 @@ class BotBase(object):
         try:
             value  = eval(" ".join(args[2:]))
         except Exception as e:
-            bot.sendNotice(sender.nick, "Exception : %s"%e)
+            bot.sendNotice(sender.nick, "Exception : %s" % e)
             return
 
         if not group in self.groups:
-            bot.sendNotice(sender.nick, "Group %s does not exist"%group)
+            bot.sendNotice(sender.nick, "Group %s does not exist" % group)
             return
 
         self.groups[group][key] = value
@@ -416,7 +418,7 @@ class BotBase(object):
             data = self.addmissingkeys(data)
             self.txtcmds[cmd.lower()] = data
             if data['text'] and data['text'] != '':
-                self.registerCommand(cmd.lower(), self.txtcmd, data.get('groups'), 0, 0, '', data.get('helpdesc', ''), showhelp=data.get('showhelp', True), allowpub=data.get('allowpub', True))
+                self.registerCommand(cmd.lower(), self.txtcmd, data.get('groups'), 0, 0, '', data.get('helpdesc', '').encode('ascii'), showhelp=data.get('showhelp', True), allowpub=data.get('allowpub', True))
         else:
             self.logger.warning('Attempted to register duplicate command %s' % cmd)
 
@@ -424,13 +426,13 @@ class BotBase(object):
         if 'groups' not in data.keys():
             data['groups'] = ['any']
         if 'helpdesc' not in data.keys():
-            data['helpdesc'] = ''
+            data['helpdesc'] = u''
         if 'showhelp' not in data.keys():
             data['showhelp'] = True
         if 'allowpub' not in data.keys():
             data['allowpub'] = True
         if 'text' not in data.keys():
-            data['text'] = ''
+            data['text'] = u''
         return data
 
     def txtcmd(self, bot, sender, dest, cmd, args):
@@ -451,14 +453,14 @@ class BotBase(object):
                     continue
                 if 'any' in cmdval['groups']:
                     if showall:
-                        bot.sendOutput(dest, formatstr%(cmd, cmdval['descargs'], cmdval['desccmd']))
+                        bot.sendOutput(dest, formatstr % (cmd, cmdval['descargs'], cmdval['desccmd']))
                     else:
                         allowedcmds.append(cmd)
                 elif sender.regnick.lower() in self.authUsers:
                     groups = self.authUsers[sender.regnick.lower()]
                     if 'admin' in groups or len(groups.intersection(set(cmdval['groups']))) > 0:
                         if showall:
-                            bot.sendOutput(dest, formatstr%(cmd, cmdval['descargs'], cmdval['desccmd']))
+                            bot.sendOutput(dest, formatstr % (cmd, cmdval['descargs'], cmdval['desccmd']))
                         else:
                             allowedcmds.append(cmd)
 
@@ -472,13 +474,13 @@ class BotBase(object):
         else:
             if args[0] in self.cmdHandler.commands:
                 showhelp = False
-                cmdval = self.cmdHandler.commands[args[0]]
+                cmdval = self.cmdHandler.commands[args[0].lower()]
                 if cmdval['showhelp']:
                     if 'any' in cmdval['groups']:
                         showhelp = True
                     elif sender.nick.lower() in self.authUsers:
                         groups = self.authUsers[sender.regnick.lower()]
-                        showhelp = 'admin' in groups or len(groups.intersection(set(cmdval['groups']))) > 0
+                        showhelp = len(groups.intersection(set(cmdval['groups']))) > 0
                         if not showhelp:
                             bot.sendNotice(sender.nick, "§BYou do not have permission to use the command for which help was requested.")
                 else:
