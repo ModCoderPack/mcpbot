@@ -13,7 +13,6 @@ class AsyncSocket(asyncore.dispatcher):
         self.port = port
         self.recvBuffer = ""
         self.sendBuffer = Queue.Queue()
-        #self.cmdHandler = CmdHandler(self)
         asyncore.dispatcher.__init__(self)
         self.create_socket(socket.AF_INET, socket.SOCK_STREAM)
         self.logger  = Logger.getLogger("%s-%s-%s"%(__name__, self.bot.nick, self.bot.host)+".AsynSocket", bot.lognormal, bot.logerrors)
@@ -86,7 +85,7 @@ class AsyncSocket(asyncore.dispatcher):
             time.sleep(0.001)
 
         if not self.bot.isIdentified:
-            if self.bot.servpass != "":                
+            if self.bot.servpass != "":
                 self.sendBuffer.put_nowait(CmdGenerator.getPASS(self.bot.servpass))
             self.sendBuffer.put_nowait(CmdGenerator.getNICK(self.bot.nick, self.bot.nick))
             self.sendBuffer.put_nowait(CmdGenerator.getUSER(self.bot.nick))
