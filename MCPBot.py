@@ -692,7 +692,7 @@ class MCPBot(BotBase):
                 if entry['irc_nick']:
                     self.sendOutput(dest,   "§ULast Change§N: {last_modified_ts} ({irc_nick})".format(**entry))
                 else:
-                    self.sendOutput(dest,   "§ULast Change§N: {last_modified_ts}".format(**entry))
+                    self.sendOutput(dest,   "§ULast Change§N: {last_modified_ts} (_bot_update_)".format(**entry))
 
                 if not i == len(val) - 1:
                     self.sendOutput(dest, " ".format(**entry))
