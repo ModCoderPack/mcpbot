@@ -61,20 +61,22 @@ class BotHandler(object):
             except SystemExit:
                 self.bot.logger.error('SystemExit: Shutting down.')
                 self.stop()
-                raise
             except:
                 self.bot.logger.error('Other Exception: Shutting down.')
                 self.stop()
                 raise
 
             if not self.bot.isTerminating:
-                self.bot.logger.warning('IRC connection was lost.')
+                if not self.bot.isRestarting:
+                    self.bot.logger.warning('IRC connection was lost.')
+                    reconnect_attempts += 1
 
                 if time.time() - last_start > self.reset_attempt_secs:
                     reconnect_attempts = 0
 
-                reconnect_attempts += 1
-                restart = reconnect_attempts <= self.max_reconnects
+                restart = (reconnect_attempts <= self.max_reconnects) or self.bot.isRestarting
+            else:
+                restart = False
 
 
 class BotBase(object):
@@ -147,8 +149,8 @@ class BotBase(object):
         for option in self.config.options('BANLIST'):
             self.banList[option] = set(self.config.get('BANLIST',option).lower().split(';') if self.config.get('BANLIST',option).strip() else [])
 
-        self.logger.info("Users  : %s"%self.authUsers)
-        self.logger.info("Groups : %s"%self.groups)
+        self.logger.info("Users  : %s" % self.authUsers)
+        self.logger.info("Groups : %s" % self.groups)
         self.txtcmds = {}
 
         self.updateConfig()
@@ -158,7 +160,8 @@ class BotBase(object):
 
         self.isIdentified = False   #Turn to true when nick/ident commands are sent
         self.isReady      = False   #Turn to true after RPL_ENDOFMOTD. Every join/nick etc commands should be sent once this is True.
-        self.isTerminating     = False   #This is set to true by the stop command to bypass restarting
+        self.isTerminating = False   #This is set to true by the stop command to bypass restarting
+        self.isRestarting = False
         self.isRunning = False
 
         self.socket = None
@@ -194,6 +197,7 @@ class BotBase(object):
 
         self.registerCommand('sendraw',   self.sendRawCmd, ['admin'], 0, 999, "<irccmd>",    "Send a raw IRC cmd.")
         self.registerCommand('shutdown', self.killSelf, ['admin'], 0, 0, "", "Kills the bot.")
+        self.registerCommand('restart', self.restart, ['admin'], 0, 0, '', 'Restarts the bot.')
 
         self.registerCommand('help',      self.helpcmd,    ['any'],   0, 1, "[<command>|*]", "Lists available commands or help about a specific command.", allowpub=True)
 
@@ -254,6 +258,10 @@ class BotBase(object):
     def killSelf(self, bot, sender, dest, cmd, args):
         self.logger.info("Killing self.")
         self.isTerminating = True
+
+    def restart(self, bot, sender, dest, cmd, args):
+        self.logger.info('Restarting...')
+        self.isRestarting = True
 
     # User handling commands
     def useradd(self, bot, sender, dest, cmd, args):
