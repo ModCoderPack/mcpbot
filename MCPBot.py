@@ -375,7 +375,7 @@ class MCPBot(BotBase):
 
     def getParam(self, bot, sender, dest, cmd, args):
         val, status = self.db.getParam(args)
-        self.sendParamResults(sender, dest, val, status)
+        self.sendParamResults(sender, dest, val, status, limit=self.moreCount if not sender.dccSocket else self.moreCountDcc)
 
 
     def getMember(self, bot, sender, dest, cmd, args):
