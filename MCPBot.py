@@ -162,7 +162,9 @@ class MCPBot(BotBase):
 
     def exportTimer(self):
         if not self.next_export:
-            self.next_export = time.time()
+            curtime = time.time()
+            # set the next export time to a number that is a multiple of the test_export_period to keep the export times predictable
+            self.next_export = curtime - (curtime % (self.test_export_period * 60))
 
         self.next_export += (self.test_export_period * 60)
         now = datetime.now()
@@ -182,6 +184,8 @@ class MCPBot(BotBase):
             self.logger.error(e)
 
         if self.test_export_period > 0:
+            while self.next_export - time.time() <= 0:
+                self.next_export += (self.test_export_period * 60)
             self.test_export_thread = threading.Timer(self.next_export - time.time(), self.exportTimer)
             self.test_export_thread.start()
 
