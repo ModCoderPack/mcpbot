@@ -61,6 +61,8 @@ class BotHandler(object):
             except SystemExit:
                 self.bot.logger.error('SystemExit: Shutting down.')
                 self.stop()
+            except asyncore.ExitNow as e:
+                self.bot.logger.error(e.message)
             except:
                 self.bot.logger.error('Other Exception: Shutting down.')
                 self.stop()
@@ -254,6 +256,9 @@ class BotBase(object):
             if self.dccSocketv6:
                 self.dccSocketv6.handle_close()
             self.socket.handle_close()
+
+            # Just in case we missed any somehow
+            asyncore.close_all()
 
     def killSelf(self, bot, sender, dest, cmd, args):
         self.logger.info("Killing self.")
