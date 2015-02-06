@@ -960,7 +960,7 @@ def getDurationStr(timesecs):
     return formatstr
 
 
-def isValid24HourTimeStr(self, timestr):
+def isValid24HourTimeStr(timestr):
     splitted = timestr.split(':')
     if len(splitted) > 2:
         return False
