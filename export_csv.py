@@ -157,7 +157,7 @@ test_exports_nodoc = \
                     on sm.staged_method_pid = m.staged_method_pid
                 where m.srg_name ~ 'func_[0-9]+_[a-zA-Z]+'
                     and m.mcp_version_pid = %(mcp_version)s
-                    and (m.mcp_name is not null or sm.mcp_name is not null)
+                    and (m.mcp_name is not null or sm.new_mcp_name is not null)
                 order by m.srg_name"""
         },
 
