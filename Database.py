@@ -332,7 +332,7 @@ class Database(object):
 
     def doCommit(self, member_type, command, sender, args, srg_name):
         sqlrequest = 'select mcp.commit_mappings(%s, %s, %s, %s, %s);'
-        return self.execute(sqlrequest, (member_type, command, sender.regnick.lower(), args, srg_name))
+        return self.execute(sqlrequest, (member_type, command, sender.regnick.lower(), ' '.join(args), srg_name))
 
 
 def is_integer(s):
