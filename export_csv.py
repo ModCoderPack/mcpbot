@@ -8,7 +8,7 @@
 #################################################################################
 
 __author__ = "bspkrs (bspkrs@gmail.com)"
-__version__ = "0.2.0"
+__version__ = "0.3.0"
 
 from optparse import OptionParser
 import psycopg2
@@ -95,61 +95,53 @@ test_exports = \
     [
         {   'csvfile': "methods.csv", # searge, name, side, desc
             'columns': ['searge', 'name', 'side', 'desc'],
-            'query': """select m.srg_name as searge, coalesce(sm.mcp_name, m.mcp_name) as name,
+            'query': """select m.srg_name as searge, coalesce(sm.new_mcp_name, m.mcp_name) as name,
                     (case when m.is_on_client and not m.is_on_server then 0 when not m.is_on_client and m.is_on_server then 1 else 2 end) as side,
-                    coalesce(sm.comment, m.comment) || (case when p.desc is not null then '\\n \\n' || p.desc else '' end) as desc
+                    coalesce(sm.new_mcp_desc, m.comment) || (case when p.desc is not null then '\\n \\n' || p.desc else '' end) as desc
                 from mcp.method m
-                left join (select method_pid, new_mcp_name as mcp_name, new_mcp_desc as comment, created_ts,
-                        row_number() over (partition by method_pid order by created_ts desc) as row_num
-                    from mcp.staged_method where undo_command_history_pid is null) sm
-                    on sm.method_pid = m.method_pid and sm.row_num = 1
+                left join mcp.staged_method sm
+                    on sm.staged_method_pid = m.staged_method_pid
                 left join (
-                        select mp.method_pid, string_agg('@param ' || coalesce(smp.mcp_name, mp.mcp_name) || ' ' || coalesce(smp.desc, mp.comment), '\\n' order by mp.param_number) as desc
+                        select mp.method_pid, string_agg('@param ' || coalesce(smp.new_mcp_name, mp.mcp_name) || ' ' || coalesce(smp.new_mcp_desc, mp.comment), '\\n' order by mp.param_number) as desc
                         from mcp.method_param mp
-                        left join (select method_param_pid, new_mcp_name as mcp_name, new_mcp_desc as desc, created_ts,
-                                row_number() over (partition by method_param_pid order by created_ts desc) as row_num
-                            from mcp.staged_method_param where undo_command_history_pid is null) smp
-                            on smp.method_param_pid = mp.method_param_pid and smp.row_num = 1
+                        left join mcp.staged_method_param smp
+                            on smp.staged_method_param_pid = mp.staged_method_param_pid
                         where mp.srg_name ~ 'p_i?[0-9]+_'
                             and mp.mcp_version_pid = %(mcp_version)s
-                            and coalesce(mp.mcp_name, smp.mcp_name) is not null and coalesce(mp.comment, smp.desc) is not null
+                            and coalesce(mp.mcp_name, smp.new_mcp_name) is not null and coalesce(mp.comment, smp.new_mcp_desc) is not null
                         group by mp.method_pid
                         ) p on p.method_pid = m.method_pid
                 where m.srg_name ~ 'func_[0-9]+_[a-zA-Z]+'
                     and m.mcp_version_pid = %(mcp_version)s
-                    and (m.mcp_name is not null or sm.mcp_name is not null)
+                    and (m.mcp_name is not null or sm.new_mcp_name is not null)
                 order by m.srg_name"""
         },
 
         {   'csvfile': "fields.csv", # searge, name, side, desc
             'columns': ['searge', 'name', 'side', 'desc'],
-            'query': """select f.srg_name as searge, coalesce(sf.mcp_name, f.mcp_name) as name,
+            'query': """select f.srg_name as searge, coalesce(sf.new_mcp_name, f.mcp_name) as name,
                     (case when f.is_on_client and not f.is_on_server then 0 when not f.is_on_client and f.is_on_server then 1 else 2 end) as side,
-                    coalesce(sf.comment, f.comment) as desc
+                    coalesce(sf.new_mcp_desc, f.comment) as desc
                 from mcp.field f
-                left join (select field_pid, new_mcp_name as mcp_name, new_mcp_desc as comment, created_ts,
-                        row_number() over (partition by field_pid order by created_ts desc) as row_num
-                    from mcp.staged_field where undo_command_history_pid is null) sf
-                    on sf.field_pid = f.field_pid and sf.row_num = 1
+                left join mcp.staged_field sf
+                    on sf.staged_field_pid = f.staged_field_pid
                 where f.srg_name ~ 'field_[0-9]+_[a-zA-Z]+'
                     and f.mcp_version_pid = %(mcp_version)s
-                    and (f.mcp_name is not null or sf.mcp_name is not null)
+                    and (f.mcp_name is not null or sf.new_mcp_name is not null)
                 order by f.srg_name;"""
         },
 
         {   'csvfile': "params.csv", # param, name, side
             'columns': ['param', 'name', 'side'],
-            'query': """select mp.srg_name as param, coalesce(sm.mcp_name, mp.mcp_name) as name,
+            'query': """select mp.srg_name as param, coalesce(sm.new_mcp_name, mp.mcp_name) as name,
                     (case when m.is_on_client and not m.is_on_server then 0 when not m.is_on_client and m.is_on_server then 1 else 2 end) as side
                 from mcp.method_param mp
                 join mcp.method m on m.method_pid = mp.method_pid
-                left join (select method_param_pid, new_mcp_name as mcp_name, created_ts,
-                        row_number() over (partition by method_param_pid order by created_ts desc) as row_num
-                    from mcp.staged_method_param where undo_command_history_pid is null) sm
-                    on sm.method_param_pid = mp.method_param_pid and sm.row_num = 1
+                left join mcp.staged_method_param sm
+                    on sm.staged_method_param_pid = mp.staged_method_param_pid
                 where mp.srg_name ~ 'p_i?[0-9]+_'
                     and mp.mcp_version_pid = %(mcp_version)s
-                    and (mp.mcp_name is not null or sm.mcp_name is not null)
+                    and (mp.mcp_name is not null or sm.new_mcp_name is not null)
                 order by mp.srg_name;"""
         },
     ]
@@ -161,10 +153,8 @@ test_exports_nodoc = \
                     (case when m.is_on_client and not m.is_on_server then 0 when not m.is_on_client and m.is_on_server then 1 else 2 end) as side,
                     '' as desc
                 from mcp.method m
-                left join (select method_pid, new_mcp_name as mcp_name, new_mcp_desc as comment, created_ts,
-                        row_number() over (partition by method_pid order by created_ts desc) as row_num
-                    from mcp.staged_method where undo_command_history_pid is null) sm
-                    on sm.method_pid = m.method_pid and sm.row_num = 1
+                left join mcp.staged_method sm
+                    on sm.staged_method_pid = m.staged_method_pid
                 where m.srg_name ~ 'func_[0-9]+_[a-zA-Z]+'
                     and m.mcp_version_pid = %(mcp_version)s
                     and (m.mcp_name is not null or sm.mcp_name is not null)
