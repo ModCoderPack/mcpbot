@@ -149,7 +149,7 @@ test_exports = \
 test_exports_nodoc = \
     [
         {   'csvfile': test_exports[0]['csvfile'], 'columns': test_exports[0]['columns'],
-            'query': """select m.srg_name as searge, coalesce(sm.mcp_name, m.mcp_name) as name,
+            'query': """select m.srg_name as searge, coalesce(sm.new_mcp_name, m.mcp_name) as name,
                     (case when m.is_on_client and not m.is_on_server then 0 when not m.is_on_client and m.is_on_server then 1 else 2 end) as side,
                     '' as desc
                 from mcp.method m
