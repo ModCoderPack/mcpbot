@@ -177,6 +177,7 @@ class BotBase(object):
             except socket.error, e:
                 if e.message.find('A socket operation was attempted to an unreachable network') != -1:
                     self.dccSocketv6 = None
+        self.readOnly = False
         self.cmdHandler = CmdHandler(self)
 
         self.registerCommand('dcc',  self.requestDCC, ['any'], 0, 0, "",            "Requests a DCC connection to the bot.")
@@ -200,6 +201,7 @@ class BotBase(object):
         self.registerCommand('sendraw',   self.sendRawCmd, ['admin'], 0, 999, "<irccmd>",    "Send a raw IRC cmd.")
         self.registerCommand('shutdown', self.killSelf, ['admin'], 0, 0, "", "Kills the bot.")
         self.registerCommand('restart', self.restart, ['admin'], 0, 0, '', 'Restarts the bot.')
+        self.registerCommand('readonly', self.setReadOnly, ['admin'], 1, 1, '[true|false]', 'Sets Read-Only Mode for commands that are able to set data.')
 
         self.registerCommand('help',      self.helpcmd,    ['any'],   0, 1, "[<command>|*]", "Lists available commands or help about a specific command.", allowpub=True)
 
@@ -267,6 +269,14 @@ class BotBase(object):
     def restart(self, bot, sender, dest, cmd, args):
         self.logger.info('Restarting...')
         self.isRestarting = True
+
+    def setReadOnly(self, bot, sender, dest, cmd, args):
+        self.readOnly = args[0].lower() == 'true'
+        if self.readOnly:
+            self.sendAllChanMessage('%s is now in read-only mode. Commands that change database data are currently disabled.' % self.nick)
+        else:
+            self.sendAllChanMessage('%s is no longer in read-only mode. All commands are now available again.' % self.nick)
+
 
     # User handling commands
     def useradd(self, bot, sender, dest, cmd, args):
@@ -697,8 +707,8 @@ class BotBase(object):
         return self.usersInfo[target].ctcpData['TIME']
 
     #EVENT REGISTRATION METHODS (ONE PER RECOGNISE IRC COMMAND)
-    def registerCommand(self, command, callback, groups, minarg, maxarg, descargs = "", desccmd = "", showhelp = True, allowpub=False):
-        self.cmdHandler.registerCommand(command, callback, groups, minarg, maxarg, descargs, desccmd, showhelp, allowpub)
+    def registerCommand(self, command, callback, groups, minarg, maxarg, descargs = "", desccmd = "", showhelp = True, allowpub=False, readonly=True):
+        self.cmdHandler.registerCommand(command, callback, groups, minarg, maxarg, descargs, desccmd, showhelp, allowpub, readonly)
     def registerEventPing(self, callback):
         self.cmdHandler.registerEvent('Ping', callback)
     def registerEventKick(self, callback):
