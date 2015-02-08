@@ -273,9 +273,9 @@ class BotBase(object):
     def setReadOnly(self, bot, sender, dest, cmd, args):
         self.readOnly = args[0].lower() == 'true'
         if self.readOnly:
-            self.sendAllChanMessage('%s is now in read-only mode. Commands that change database data are currently disabled.' % self.nick)
+            self.sendPrimChanMessage('%s is now in read-only mode. Commands that change database data are currently disabled.' % self.nick)
         else:
-            self.sendAllChanMessage('%s is no longer in read-only mode. All commands are now available again.' % self.nick)
+            self.sendPrimChanMessage('%s is no longer in read-only mode. All commands are now available again.' % self.nick)
 
 
     # User handling commands
