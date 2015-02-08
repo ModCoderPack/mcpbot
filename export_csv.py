@@ -162,7 +162,7 @@ test_exports_nodoc = \
         },
 
         {   'csvfile': test_exports[1]['csvfile'], 'columns': test_exports[1]['columns'],
-            'query': test_exports[1]['query'].replace('coalesce(sf.comment, f.comment)', "''")
+            'query': test_exports[1]['query'].replace('coalesce(sf.new_mcp_desc, f.comment)', "''")
         },
 
         test_exports[2],
