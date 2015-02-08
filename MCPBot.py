@@ -93,9 +93,11 @@ class MCPBot(BotBase):
         self.registerCommand('sp',  self.setMember,  ['any'],        2, 999, "<srg name> <new name> [<comment>]", "Sets the MCP name and comment for the SRG method parameter specified. SRG index can also be used.", allowpub=True)
         self.registerCommand('fsp', self.setMember,  ['maintainer', 'mcp_team'], 2, 999, "<srg name> <new name> [<comment>]", "Force sets the MCP name and comment for the SRG method parameter specified. SRG index can also be used.", allowpub=True)
 
+        self.registerCommand('lock',    self.setLocked,  ['lock_control', 'mcp_team'], 1, 1, "<srg name>", "Locks the given field/method/parameter from being edited. Full SRG name must be used.")
         self.registerCommand('lockf',   self.setLocked,  ['lock_control', 'mcp_team'], 1, 1, "<srg name>", "Locks the given field from being edited. SRG index can also be used.")
         self.registerCommand('lockm',   self.setLocked,  ['lock_control', 'mcp_team'], 1, 1, "<srg name>", "Locks the given method from being edited. SRG index can also be used.")
         self.registerCommand('lockp',   self.setLocked,  ['lock_control', 'mcp_team'], 1, 1, "<srg name>", "Locks the given method parameter from being edited. SRG index can also be used.")
+        self.registerCommand('unlock',  self.setLocked,  ['lock_control', 'mcp_team'], 1, 1, "<srg name>", "Unlocks the given field/method/parameter to allow editing. Full SRG name must be used.")
         self.registerCommand('unlockf', self.setLocked,  ['lock_control', 'mcp_team'], 1, 1, "<srg name>", "Unlocks the given field to allow editing. SRG index can also be used.")
         self.registerCommand('unlockm', self.setLocked,  ['lock_control', 'mcp_team'], 1, 1, "<srg name>", "Unlocks the given method to allow editing. SRG index can also be used.")
         self.registerCommand('unlockp', self.setLocked,  ['lock_control', 'mcp_team'], 1, 1, "<srg name>", "Unlocks the given method parameter to allow editing. SRG index can also be used.")
@@ -461,12 +463,16 @@ class MCPBot(BotBase):
     # Setters
 
     def setLocked(self, bot, sender, dest, cmd, args):
-        member_type = 'method'
+        member_type = None
         is_lock = cmd['command'][0] == 'l'
-        if cmd['command'].find('f') > -1: member_type = 'field'
-        elif cmd['command'].find('p') > -1: member_type = 'method_param'
-        val, status = self.db.setMemberLock(member_type, is_lock, cmd['command'], sender, args)
-        self.sendSetLockResults(member_type, sender, dest, val, status, args[0], is_lock)
+        if cmd['command'].find('f') > -1 or args[0].beginswith('field_'): member_type = 'field'
+        elif cmd['command'].find('m') > -1 or args[0].beginswith('func_'): member_type = 'method'
+        elif cmd['command'].find('p') > -1 or args[0].beginswith('p_'): member_type = 'method_param'
+        if member_type:
+            val, status = self.db.setMemberLock(member_type, is_lock, cmd['command'], sender, args)
+            self.sendSetLockResults(member_type, sender, dest, val, status, args[0], is_lock)
+        else:
+            self.sendNotice(sender.nick, '§BFull SRG name is required for the %s command.' % cmd['command'])
 
 
     def undoChange(self, bot, sender, dest, cmd, args):
