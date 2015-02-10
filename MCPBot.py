@@ -11,7 +11,7 @@ from MavenHandler import MavenHandler
 import zipfile, os, re
 import psycopg2.extras
 
-__version__ = "0.9.0"
+__version__ = "0.10.0"
 
 class MCPBot(BotBase):
     def __init__(self, configfile=None, nspass=None, backupcfg=False):
@@ -400,8 +400,12 @@ class MCPBot(BotBase):
         member_type = 'field'
         if cmd['command'] == 'mh': member_type = 'method'
         if cmd['command'] == 'ph': member_type = 'method_param'
-        val, status = self.db.getHistory(member_type, args)
-        self.sendHistoryResults(member_type, sender, dest, val, status, limit=self.moreCount if not sender.dccSocket else self.moreCountDcc)
+        if isSrgName(args[0]) or is_integer(args[0]) or member_type == 'method_param':
+            val, status = self.db.getHistory(member_type, args)
+            self.sendHistoryResults(member_type, sender, dest, val, status, limit=self.moreCount if not sender.dccSocket else self.moreCountDcc)
+        else:
+            val, status = self.db.searchHistory(member_type, args)
+            self.sendSearchHistoryResults(member_type, sender, dest, val, args[0], status, limit=self.moreCount if not sender.dccSocket else self.moreCountDcc)
 
 
     def findKey(self, bot, sender, dest, cmd, args):
@@ -465,9 +469,9 @@ class MCPBot(BotBase):
     def setLocked(self, bot, sender, dest, cmd, args):
         member_type = None
         is_lock = cmd['command'][0] == 'l'
-        if cmd['command'].find('f') > -1 or args[0].beginswith('field_'): member_type = 'field'
-        elif cmd['command'].find('m') > -1 or args[0].beginswith('func_'): member_type = 'method'
-        elif cmd['command'].find('p') > -1 or args[0].beginswith('p_'): member_type = 'method_param'
+        if cmd['command'].find('f') > -1 or args[0].startswith('field_'): member_type = 'field'
+        elif cmd['command'].find('m') > -1 or args[0].startswith('func_'): member_type = 'method'
+        elif cmd['command'].find('p') > -1 or args[0].startswith('p_'): member_type = 'method_param'
         if member_type:
             val, status = self.db.setMemberLock(member_type, is_lock, cmd['command'], sender, args)
             self.sendSetLockResults(member_type, sender, dest, val, status, args[0], is_lock)
@@ -749,7 +753,7 @@ class MCPBot(BotBase):
         for i, entry in enumerate(val):
             msg = "[{mc_version_code}, {status} {time_stamp}] {irc_nick}: {old_mcp_name} §B=>§N {new_mcp_name}".format(**entry)
             if entry['undo_irc_nick']:
-                msg = msg + '  §RUndone {undo_time_stamp}: {undo_irc_nick}'.format(**entry)
+                msg = msg + '  §B§RUndone {undo_time_stamp}: {undo_irc_nick}'.format(**entry)
 
             if i < limit:
                 self.sendOutput(dest, msg)
@@ -764,6 +768,41 @@ class MCPBot(BotBase):
                 sender.addToMsgQueue(msg)
 
         # self.reply("[%s, %s] %s: %s -> %s" % (row['mcpversion'], row['timestamp'], row['nick'], row['oldname'], row['newname']))
+
+
+    def sendSearchHistoryResults(self, member_type, sender, dest, val, search, status, limit):
+        if member_type == 'method_param':
+            member_type_disp = 'Method Param'
+        else:
+            member_type_disp = member_type[0].upper() + member_type[1:]
+
+        if status:
+            self.sendNotice(sender.nick, "§B" + str(type(status)) + ' : ' + str(status))
+            return
+
+        if len(val) == 0:
+            self.sendOutput(dest, "§BNo results found.")
+            return
+
+        toQueue = []
+        self.sendOutput(dest, "===§B " + member_type_disp + " History: " + search + " §N===".format(**val[0]))
+
+        for i, entry in enumerate(val):
+            msg = "[{mc_version_code} {class_srg_name}.{srg_name}, {status} {time_stamp}] {irc_nick}: {old_mcp_name} §B=>§N {new_mcp_name}".format(**entry)
+            if entry['undo_irc_nick']:
+                msg = msg + '  §B§RUndone {undo_time_stamp}: {undo_irc_nick}'.format(**entry)
+
+            if i < limit:
+                self.sendOutput(dest, msg)
+            else:
+                toQueue.append(msg)
+
+        if len(toQueue) > 0:
+            self.sendOutput(dest, "§B+ §N%(count)d§B more. Please use %(cmd_char)smore to see %(more)d queued entries." %
+                            {'count': len(toQueue), 'cmd_char': self.cmdChar, 'more': min(self.moreCount if not sender.dccSocket else self.moreCountDcc, len(toQueue))})
+            sender.clearMsgQueue()
+            for msg in toQueue:
+                sender.addToMsgQueue(msg)
 
 
     def sendClassResults(self, sender, dest, val, status, limit=0, summary=False):
@@ -977,6 +1016,10 @@ def isValid24HourTimeStr(timestr):
     if len(splitted) == 2 and (not is_integer(splitted[1]) or not (0 <= int(splitted[1] < 60))):
         return False
     return True
+
+
+def isSrgName(name):
+    return name.startswith('field_') or name.startswith('func_') or name.startswith('p_')
 
 
 def sorted_nicely( l, reverse=False ):

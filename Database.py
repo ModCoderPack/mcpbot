@@ -176,6 +176,28 @@ class Database(object):
         return self.execute(sqlrequest, {'member': args[0]})
 
 
+    def searchHistory(self, table, args):
+        sqlrequest1 = "SELECT *, 'Committed' as status FROM mcp.%s " % (table + "_history_vw")
+        sqlrequest2 = "SELECT *, 'Staged' as status FROM mcp.%s " % ('staged_' + table + "_vw")
+
+        sqlrequest1 += 'where (old_mcp_name = %(member)s or new_mcp_name = %(member)s) '
+        sqlrequest2 += 'where (old_mcp_name = %(member)s or new_mcp_name = %(member)s) '
+
+        splitted = args[0].split('.')
+        if len(splitted) > 1:
+            clazz = splitted[0]
+            member = splitted[1]
+            sqlrequest1 += 'and class_srg_name = %(clazz)s'
+            sqlrequest2 += 'and class_srg_name = %(clazz)s'
+        else:
+            clazz = None
+            member = args[0]
+
+        sqlrequest = 'select * from (%s union %s) hist order by srg_name, time_stamp desc' % (sqlrequest1, sqlrequest2)
+
+        return self.execute(sqlrequest, {'clazz': clazz, 'member': member})
+
+
     def getClass(self, args):
         sqlrequest = "SELECT * FROM mcp.class_vw "
 
