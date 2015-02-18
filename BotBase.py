@@ -53,11 +53,11 @@ class BotHandler(object):
 
             try:
                 asyncore.loop()
-            except KeyboardInterrupt as e:
+            except KeyboardInterrupt:
                 print("Keyboard Interrupt: Shutting down.")
                 self.setKilled()
                 self.stop()
-                restart = False
+                raise
             except SystemExit:
                 self.bot.logger.error('SystemExit: Shutting down.')
                 self.stop()
@@ -166,17 +166,9 @@ class BotBase(object):
         self.isRestarting = False
         self.isRunning = False
 
-        self.socket = None
-        self.dccSocketv4 = None
-        self.dccSocketv6 = None
         self.socket = AsyncSocket.AsyncSocket(self, self.host, self.port, self.floodLimit)
-        self.dccSocketv4 = DCCSocket.DCCSocket(self, False)
-        if socket.has_ipv6:
-            try:
-                self.dccSocketv6 = DCCSocket.DCCSocket(self, True)
-            except socket.error, e:
-                if e.message.find('A socket operation was attempted to an unreachable network') != -1:
-                    self.dccSocketv6 = None
+        self.dccSocket = DCCSocket.DCCSocket(self)
+
         self.readOnly = False
         self.cmdHandler = CmdHandler(self)
 
@@ -254,9 +246,7 @@ class BotBase(object):
             self.isRunning = False
             self.isReady = False
             self.isIdentified = False
-            self.dccSocketv4.handle_close()
-            if self.dccSocketv6:
-                self.dccSocketv6.handle_close()
+            self.dccSocket.handle_close()
             self.socket.handle_close()
 
             # Just in case we missed any somehow
@@ -517,17 +507,9 @@ class BotBase(object):
     # DCC Request command, in by default
     def requestDCC(self, bot, sender, dest, cmd, args):
         if self.dccActive:
-            flag = DCCSocket.DCCSocket.isHostv6(sender)
-            if flag and self.dccSocketv6:
-                host, port = self.dccSocketv6.getAddr()
-                if self.dccSocketv6.addPending(sender):
-                    self.sendRaw(CmdGenerator.getDCCCHAT(sender.nick, host, port))
-            elif not flag:
-                host, port = self.dccSocketv4.getAddr()
-                if self.dccSocketv4.addPending(sender):
-                    self.sendRaw(CmdGenerator.getDCCCHAT(sender.nick, host, port))
-            else:
-                self.sendNotice(sender.nick, "§BIPv6 is not supported by this bot.")
+            host, port = self.dccSocket.getAddr()
+            if self.dccSocket.addPending(sender):
+                self.sendRaw(CmdGenerator.getDCCCHAT(sender.nick, host, port))
         else:
             self.sendNotice(sender.nick, "§BDCC is not active on this bot.")
 
