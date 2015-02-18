@@ -73,7 +73,7 @@ class DCCSocket(asyncore.dispatcher):
     def __init__(self, bot):
         self.bot = bot
         asyncore.dispatcher.__init__(self)
-        self.create_socket(socket.AF_INET & socket.AF_INET6, socket.SOCK_STREAM)
+        self.create_socket(socket.AF_INET, socket.SOCK_STREAM)
         self.set_reuse_addr()
         self.bind(('', 0))
         self.listen(5)
