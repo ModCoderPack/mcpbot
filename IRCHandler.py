@@ -560,7 +560,7 @@ class CmdHandler(object):
             #We request the AUTH level of the nick
             if not sender.authEvent.wait(5) or not sender.whoisEvent.wait(5):
                 sender.authenticate(0)
-                return
+                #return
 
             #If we don't accept unregistered usage, we check for AUTH 3 and the WHOIS event
             if not bot.allowunregistered:
