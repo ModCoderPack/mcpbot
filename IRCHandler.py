@@ -471,6 +471,9 @@ class CmdHandler(object):
         else:
             self.logger.error("%s not found in the user list"%nick)
 
+        if params[1] in self.bot.users:
+            self.bot.users[params[1]].whoisEvent.set()
+
     #RPL_312
     def onRPL_WHOISSERVER(self, sender, params):
         self.logger.debug("[S : %s] [M : %s]"%(sender.nick, " ".join(params)))
