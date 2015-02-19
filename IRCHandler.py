@@ -490,6 +490,10 @@ class CmdHandler(object):
             self.bot.users[params[1]].regnick = params[2]
             self.bot.users[params[1]].whoisEvent.set()
 
+            # New auth based only on whois reply
+            self.bot.users[params[1]].authenticate(3)
+            self.logger.info("Auth notice for %s with level %s"%(params[1], 3))
+
     #RPL_376
     def onRPL_ENDOFMOTD(self, sender, params):
         self.logger.debug("[S : %s] [M : %s]"%(sender.nick, " ".join(params)))
@@ -545,7 +549,7 @@ class CmdHandler(object):
         else:
             self.logger.info("Adding and authenticating user %s" % sender.nick)
             self.bot.users[sender.nick] = sender
-            self.bot.sendRaw(self.bot.nickAuth.format(nickserv=self.bot.nickserv, nick=sender.nick) + EOL)
+            #self.bot.sendRaw(self.bot.nickAuth.format(nickserv=self.bot.nickserv, nick=sender.nick) + EOL)     # Removed to only allow whois auth verification
             self.bot.sendRaw(CmdGenerator.getWHOIS(sender.nick))
 
             cmdThread = threading.Thread(target=self.threadedCommand, name=sender.toString(), args=(callback, cmd, self.bot, self.bot.users[sender.nick], dest, args))
@@ -554,8 +558,8 @@ class CmdHandler(object):
     def threadedCommand(self, callback, cmd, bot, sender, dest, args):
         try:
             #We request the AUTH level of the nick
-            if not sender.authEvent.wait(10):
-                bot.sendNotice(sender.nick, "Error contacting nickserv. Please retry later.")
+            if not sender.authEvent.wait(5) or not sender.whoisEvent.wait(5):
+                sender.authenticate(0)
                 return
 
             #If we don't accept unregistered usage, we check for AUTH 3 and the WHOIS event
@@ -564,10 +568,10 @@ class CmdHandler(object):
                     bot.sendNotice(sender.nick, "You need to register your nick before using the bot.")
                     return
 
-            if sender.auth == 3:
-                if not sender.whoisEvent.wait(10):
-                    bot.sendNotice(sender.nick, "Error doing a whois. Please retry later.")
-                    return
+            #if sender.auth == 3:
+            #    if not sender.whoisEvent.wait(5):
+            #        bot.sendNotice(sender.nick, "Error doing a whois. Please retry later.")
+            #        return
 
             #If we allow unregistered usage, we use the current nick as the registered nick for later on
             if sender.auth == 0 and bot.allowunregistered and not 'AnonUser_' in sender.nick :
