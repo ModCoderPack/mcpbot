@@ -419,6 +419,9 @@ class CmdHandler(object):
     def onQUIT(self, sender, params):
         self.logger.debug("[S : %s] [M : %s]"%(sender.nick, " ".join(params)))
         self.handleEvents('Quit', sender, params)
+        if sender.nick in self.bot.users:
+            self.bot.users[sender.nick].unauthenticate()
+            self.bot.users[sender.nick].whoisEvent.clear()
 
     def onKILL(self, sender, params):
         self.logger.debug("[S : %s] [M : %s]"%(sender.nick, " ".join(params)))
