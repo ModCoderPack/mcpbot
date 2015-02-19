@@ -562,7 +562,7 @@ class CmdHandler(object):
                 bot.sendNotice(sender.nick, "Error doing a whois. Please retry later.")
                 return
 
-            if sender.whoisEvent.wait(5) and not sender.authEvent.wait(1):
+            if sender.whoisEvent.wait(5) and not sender.authEvent.wait(2):
                 sender.authenticate(0)
 
             #If we don't accept unregistered usage, we check for AUTH 3 and the WHOIS event
