@@ -11,7 +11,7 @@ from MavenHandler import MavenHandler
 import zipfile, os, re
 import psycopg2.extras
 
-__version__ = "0.10.0"
+__version__ = "0.10.1"
 
 class MCPBot(BotBase):
     def __init__(self, configfile=None, nspass=None, backupcfg=False):
@@ -347,7 +347,7 @@ class MCPBot(BotBase):
         limit = 1
         if cmd['command'][-1:] == 's': limit = 0
         val, status = self.db.getVersions(limit)
-        self.sendVersionResults(sender, dest, val, status, limit=self.moreCount if not sender.dccSocket else self.moreCountDcc)
+        self.sendVersionResults(sender, dest, val, status, limit=self.getOutputLimit(sender, dest))
 
 
     def getLatestMappingVersion(self, bot, sender, dest, cmd, args):
@@ -375,20 +375,20 @@ class MCPBot(BotBase):
             jsonUrl += '&version=' + version
 
         data = JsonHelper.get_remote_json(jsonUrl)
-        self.sendMappingResults(sender, dest, data, mappingType, limit=self.moreCount if not sender.dccSocket else self.moreCountDcc)
+        self.sendMappingResults(sender, dest, data, mappingType, limit=self.getOutputLimit(sender, dest))
 
 
 
     def getParam(self, bot, sender, dest, cmd, args):
         val, status = self.db.getParam(args)
-        self.sendParamResults(sender, dest, val, status, limit=self.moreCount if not sender.dccSocket else self.moreCountDcc)
+        self.sendParamResults(sender, dest, val, status, limit=self.getOutputLimit(sender, dest))
 
 
     def getMember(self, bot, sender, dest, cmd, args):
         member_type = 'field'
         if cmd['command'] == 'gm': member_type = 'method'
         val, status = self.db.getMember(member_type, args)
-        self.sendMemberResults(sender, dest, val, status, limit=self.moreCount if not sender.dccSocket else self.moreCountDcc)
+        self.sendMemberResults(sender, dest, val, status, limit=self.getOutputLimit(sender, dest))
 
 
     def getClass(self, bot, sender, dest, cmd, args):
@@ -402,10 +402,10 @@ class MCPBot(BotBase):
         if cmd['command'] == 'ph': member_type = 'method_param'
         if isSrgName(args[0]) or is_integer(args[0]) or member_type == 'method_param':
             val, status = self.db.getHistory(member_type, args)
-            self.sendHistoryResults(member_type, sender, dest, val, status, limit=self.moreCount if not sender.dccSocket else self.moreCountDcc)
+            self.sendHistoryResults(member_type, sender, dest, val, status, limit=self.getOutputLimit(sender, dest))
         else:
             val, status = self.db.searchHistory(member_type, args)
-            self.sendSearchHistoryResults(member_type, sender, dest, val, args[0], status, limit=self.moreCount if not sender.dccSocket else self.moreCountDcc)
+            self.sendSearchHistoryResults(member_type, sender, dest, val, args[0], status, limit=self.getOutputLimit(sender, dest))
 
 
     def findKey(self, bot, sender, dest, cmd, args):
@@ -419,7 +419,10 @@ class MCPBot(BotBase):
         showMethods = cmd['command'][-1] == 'm'
         showParams = cmd['command'][-1] == 'p'
         showClasses = cmd['command'][-1] == 'c'
-        limit = (self.moreCount / 2 if showAll else self.moreCount) if not sender.dccSocket else (self.moreCountDcc / 2 if showAll else self.moreCountDcc)
+        if showAll:
+            limit = self.getOutputLimit(sender, dest) / 2
+        else:
+            limit = self.getOutputLimit(sender, dest)
 
         if showAll or showFields:
             self.sendOutput(dest, "+++§B FIELDS §N+++")
@@ -449,7 +452,7 @@ class MCPBot(BotBase):
 
 
     def listMembers(self, bot, sender, dest, cmd, args):
-        limit = self.moreCount if not sender.dccSocket else self.moreCountDcc
+        limit = self.getOutputLimit(sender, dest)
         if cmd['command'][-1] == 'f':
             self.sendOutput(dest, "+++§B UNNAMED %sS FOR %s §N+++" % ('FIELD', args[0]))
             val, status = self.db.getUnnamed('field', args)
@@ -576,7 +579,7 @@ class MCPBot(BotBase):
 
         if len(toQueue) > 0:
             self.sendOutput(dest, "§B+ §N%(count)d§B more. Please use %(cmd_char)smore to see %(more)d queued entries." %
-                            {'count': len(toQueue), 'cmd_char': self.cmdChar, 'more': min(self.moreCount if not sender.dccSocket else self.moreCountDcc, len(toQueue))})
+                            {'count': len(toQueue), 'cmd_char': self.cmdChar, 'more': min(self.getOutputLimit(sender, dest), len(toQueue))})
             sender.clearMsgQueue()
             for msg in toQueue:
                 sender.addToMsgQueue(msg)
@@ -608,7 +611,7 @@ class MCPBot(BotBase):
 
         if len(toQueue) > 0:
             self.sendOutput(dest, "§B+ §N%(count)d§B more. Please use %(cmd_char)smore to see %(more)d queued entries." %
-                            {'count': len(toQueue), 'cmd_char': self.cmdChar, 'more': min(self.moreCount if not sender.dccSocket else self.moreCountDcc, len(toQueue))})
+                            {'count': len(toQueue), 'cmd_char': self.cmdChar, 'more': min(self.getOutputLimit(sender, dest), len(toQueue))})
             sender.clearMsgQueue()
             for msg in toQueue:
                 sender.addToMsgQueue(msg)
@@ -667,7 +670,7 @@ class MCPBot(BotBase):
 
         if len(toQueue) > 0:
             self.sendOutput(dest, "§B+ §N%(count)d§B more. Please use %(cmd_char)smore to see %(more)d queued entries." %
-                            {'count': len(toQueue), 'cmd_char': self.cmdChar, 'more': min(self.moreCount if not sender.dccSocket else self.moreCountDcc, len(toQueue))})
+                            {'count': len(toQueue), 'cmd_char': self.cmdChar, 'more': min(self.getOutputLimit(sender, dest), len(toQueue))})
             sender.clearMsgQueue()
             for msg in toQueue:
                 sender.addToMsgQueue(msg)
@@ -727,7 +730,7 @@ class MCPBot(BotBase):
 
         if len(toQueue) > 0:
             self.sendOutput(dest, "§B+ §N%(count)d§B more. Please use %(cmd_char)smore to see %(more)d queued entries." %
-                            {'count': len(toQueue), 'cmd_char': self.cmdChar, 'more': min(self.moreCount if not sender.dccSocket else self.moreCountDcc, len(toQueue))})
+                            {'count': len(toQueue), 'cmd_char': self.cmdChar, 'more': min(self.getOutputLimit(sender, dest), len(toQueue))})
             sender.clearMsgQueue()
             for msg in toQueue:
                 sender.addToMsgQueue(msg)
@@ -762,7 +765,7 @@ class MCPBot(BotBase):
 
         if len(toQueue) > 0:
             self.sendOutput(dest, "§B+ §N%(count)d§B more. Please use %(cmd_char)smore to see %(more)d queued entries." %
-                            {'count': len(toQueue), 'cmd_char': self.cmdChar, 'more': min(self.moreCount if not sender.dccSocket else self.moreCountDcc, len(toQueue))})
+                            {'count': len(toQueue), 'cmd_char': self.cmdChar, 'more': min(self.getOutputLimit(sender, dest), len(toQueue))})
             sender.clearMsgQueue()
             for msg in toQueue:
                 sender.addToMsgQueue(msg)
@@ -799,7 +802,7 @@ class MCPBot(BotBase):
 
         if len(toQueue) > 0:
             self.sendOutput(dest, "§B+ §N%(count)d§B more. Please use %(cmd_char)smore to see %(more)d queued entries." %
-                            {'count': len(toQueue), 'cmd_char': self.cmdChar, 'more': min(self.moreCount if not sender.dccSocket else self.moreCountDcc, len(toQueue))})
+                            {'count': len(toQueue), 'cmd_char': self.cmdChar, 'more': min(self.getOutputLimit(sender, dest), len(toQueue))})
             sender.clearMsgQueue()
             for msg in toQueue:
                 sender.addToMsgQueue(msg)
@@ -850,7 +853,7 @@ class MCPBot(BotBase):
 
         if len(toQueue) > 0:
             self.sendOutput(dest, "§B+ §N%(count)d§B more. Please use %(cmd_char)smore to see %(more)d queued entries." %
-                            {'count': len(toQueue), 'cmd_char': self.cmdChar, 'more': min(self.moreCount if not sender.dccSocket else self.moreCountDcc, len(toQueue))})
+                            {'count': len(toQueue), 'cmd_char': self.cmdChar, 'more': min(self.getOutputLimit(sender, dest), len(toQueue))})
             sender.clearMsgQueue()
             for msg in toQueue:
                 sender.addToMsgQueue(msg)

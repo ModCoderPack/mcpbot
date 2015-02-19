@@ -525,7 +525,7 @@ class BotBase(object):
         elif sender.hasQueuedMsgs():
             sender.lastMoreCmd = time.time()
             count = 0
-            max = self.moreCount if not sender.dccSocket else self.moreCountDcc
+            max = self.getOutputLimit(sender, dest)
 
             while sender.hasQueuedMsgs() and count < max:
                 self.sendOutput(dest, sender.popQueuedMsg())
@@ -537,6 +537,9 @@ class BotBase(object):
                 self.sendOutput(dest, '§B+ §N%d§B more.' % sender.getQueuedMsgCount())
         else:
             self.sendNotice(sender.nick, '§BNo queued messages to return.')
+
+    def getOutputLimit(self, sender, dest):
+        return self.moreCount if not sender.dccSocket or dest.startswith('#') else self.moreCountDcc
 
     # Raw command sender
     def sendRawCmd(self, bot, sender, dest, cmd, args):
