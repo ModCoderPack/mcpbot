@@ -558,9 +558,12 @@ class CmdHandler(object):
     def threadedCommand(self, callback, cmd, bot, sender, dest, args):
         try:
             #We request the AUTH level of the nick
-            if not sender.authEvent.wait(5) or not sender.whoisEvent.wait(5):
+            if not sender.whoisEvent.wait(5):
+                bot.sendNotice(sender.nick, "Error doing a whois. Please retry later.")
+                return
+
+            if sender.whoisEvent.wait(5) and not sender.authEvent.wait(1):
                 sender.authenticate(0)
-                #return
 
             #If we don't accept unregistered usage, we check for AUTH 3 and the WHOIS event
             if not bot.allowunregistered:
