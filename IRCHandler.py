@@ -543,7 +543,7 @@ class CmdHandler(object):
             if self.bot.users[sender.nick].auth != 3:
                 self.logger.info("Reauthenticating user %s" % sender.nick)
                 self.bot.users[sender.nick].unauthenticate()
-                self.bot.sendRaw(self.bot.nickAuth.format(nickserv=self.bot.nickserv, nick=sender.nick) + EOL)
+                #self.bot.sendRaw(self.bot.nickAuth.format(nickserv=self.bot.nickserv, nick=sender.nick) + EOL)
                 self.bot.sendRaw(CmdGenerator.getWHOIS(sender.nick))
 
             cmdThread = threading.Thread(target=self.threadedCommand, name=sender.toString(), args=(callback, cmd, self.bot, self.bot.users[sender.nick], dest, args))
