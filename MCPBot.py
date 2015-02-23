@@ -704,6 +704,11 @@ class MCPBot(BotBase):
                     self.sendOutput(dest,    "§UDescriptor§N : {obf_descriptor} §B=>§N {srg_descriptor}".format(**entry))
                 else:
                     self.sendOutput(dest,    "§UDescriptor§N : {obf_descriptor}".format(**entry))
+                if not entry['is_public']:
+                    if entry['srg_descriptor'][0] == '(':
+                        self.sendOutput(dest,"§UAT§N         : public {class_pkg_name}.{class_srg_name} ".format(**entry).replace('/', '.') + "{srg_name}{srg_descriptor} # {mcp_name}".format(**entry))
+                    else:
+                        self.sendOutput(dest,"§UAT§N         : public {class_pkg_name}.{class_srg_name} {srg_name} # {mcp_name}".format(**entry).replace('/', '.'))
                 self.sendOutput(dest,        "§UComment§N    : {comment}".format(**entry))
                 if 'srg_params' in entry and entry['srg_params']:
                     self.sendOutput(dest,    "§USRG Params§N : {srg_params}".format(**entry))
