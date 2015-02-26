@@ -466,19 +466,19 @@ class BotBase(object):
                     continue
                 if 'any' in cmdval['groups']:
                     if showall:
-                        bot.sendOutput(dest, formatstr % (cmd, cmdval['descargs'], cmdval['desccmd']))
+                        bot.sendNotice(sender.nick, formatstr % (cmd, cmdval['descargs'], cmdval['desccmd']))
                     else:
                         allowedcmds.append(cmd)
                 elif sender.regnick.lower() in self.authUsers:
                     groups = self.authUsers[sender.regnick.lower()]
                     if 'admin' in groups or len(groups.intersection(set(cmdval['groups']))) > 0:
                         if showall:
-                            bot.sendOutput(dest, formatstr % (cmd, cmdval['descargs'], cmdval['desccmd']))
+                            bot.sendNotice(sender.nick, formatstr % (cmd, cmdval['descargs'], cmdval['desccmd']))
                         else:
                             allowedcmds.append(cmd)
 
             if len(allowedcmds) > 0:
-                bot.sendNotice(sender.nick, "§BCommands you have access to use §N(type §B%shelp <command>§N for help on specific commands; prefix commands with %s%s for public output):" % (self.cmdChar, self.cmdChar, self.cmdChar))
+                bot.sendNotice(sender.nick, "§BCommands you have access to use §N(type §B%(cmd_char)shelp <command>§N for help on specific commands or %(cmd_char)shelp * to list help on all commands; prefix commands with %(cmd_char)s%(cmd_char)s for public output):" % {'cmd_char': self.cmdChar})
                 bot.sendNotice(sender.nick, ", ".join(allowedcmds))
                 if self.help_url and self.help_url != '':
                     bot.sendNotice(sender.nick, 'More info can be found at %s' % self.help_url)
