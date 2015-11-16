@@ -248,12 +248,12 @@ class CmdHandler(object):
             self.monitor_thread = threading.Timer(self.next_event_check - time.time(), self.monitorEvents)
             self.monitor_thread.start()
 
-    def registerCommand(self, command, callback, groups, minarg, maxarg, descargs = None, desccmd=None, showhelp=True, allowpub=False, readonly=True):
+    def registerCommand(self, command, callback, groups, minarg, maxarg, descargs = None, desccmd=None, showhelp=True, allowpub=False, allowduringreadonly=True):
         if not groups:
             groups = ['any']
 
         self.commands[command.lower()] = {'command':command.lower(), 'callback':callback, 'groups':groups, 'minarg':minarg, 'maxarg':maxarg,
-                                          'descargs':descargs, 'desccmd':desccmd, 'showhelp':showhelp, 'allowpub': allowpub, 'readonly': readonly}
+                                          'descargs':descargs, 'desccmd':desccmd, 'showhelp':showhelp, 'allowpub': allowpub, 'allowduringreadonly': allowduringreadonly}
         for group in groups:
             if not group in self.bot.groups:
                 #self.bot.groups[group]= set()
@@ -523,7 +523,7 @@ class CmdHandler(object):
         if cmd_char_cnt <= 1 or not cmd['allowpub']:
             dest = sender.nick
 
-        if not cmd['readonly'] and self.bot.readOnly:
+        if not cmd['allowduringreadonly'] and self.bot.readOnly:
             self.bot.sendOutput(dest, '%s is currently in read-only mode. Please try your command again later.' % self.bot.nick)
             return
 

@@ -692,8 +692,8 @@ class BotBase(object):
         return self.usersInfo[target].ctcpData['TIME']
 
     #EVENT REGISTRATION METHODS (ONE PER RECOGNISE IRC COMMAND)
-    def registerCommand(self, command, callback, groups, minarg, maxarg, descargs = "", desccmd = "", showhelp = True, allowpub=False, readonly=True):
-        self.cmdHandler.registerCommand(command, callback, groups, minarg, maxarg, descargs, desccmd, showhelp, allowpub, readonly)
+    def registerCommand(self, command, callback, groups, minarg, maxarg, descargs = "", desccmd = "", showhelp = True, allowpub=False, allowduringreadonly=True):
+        self.cmdHandler.registerCommand(command, callback, groups, minarg, maxarg, descargs, desccmd, showhelp, allowpub, allowduringreadonly)
     def registerEventPing(self, callback):
         self.cmdHandler.registerEvent('Ping', callback)
     def registerEventKick(self, callback):
