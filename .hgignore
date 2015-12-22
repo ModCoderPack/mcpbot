@@ -10,3 +10,4 @@ testcsv/*
 *.bak
 export/
 *.log.*
+maven_test.py
