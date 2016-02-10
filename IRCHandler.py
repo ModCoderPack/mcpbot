@@ -574,7 +574,7 @@ class CmdHandler(object):
             #If we don't accept unregistered usage, we check for AUTH 3 and the WHOIS event
             if not bot.allowunregistered:
                 if not sender.auth == 3:
-                    bot.sendNotice(sender.nick, "You need to register your nick before using the bot.")
+                    bot.sendNotice(sender.nick, "You need to register your nick before using the bot. Use '/msg NickServ help register' to learn how to register.")
                     return
 
             #if sender.auth == 3:
@@ -585,7 +585,7 @@ class CmdHandler(object):
             #If we allow unregistered usage, we use the current nick as the registered nick for later on
             if sender.auth == 0 and bot.allowunregistered and not 'AnonUser_' in sender.nick :
                 sender.regnick = sender.nick
-                bot.sendNotice(sender.nick, "You should really register your nick ! Try '/msg nickserv help' to see how to do it.")
+                bot.sendNotice(sender.nick, "You should really register your nick! Use '/msg NickServ help register' to learn how to register.")
 
             #If we allow unregistered usage, we use the current nick as the registered nick for later on
             if sender.auth == 0 and bot.dccAllowAnon and 'AnonUser_' in sender.nick :
@@ -593,7 +593,7 @@ class CmdHandler(object):
 
             #If the AUTH is not 0 (unregistered) or 3 (authenticated), it means we have a weird account, we return
             if not sender.auth in [0,3]:
-                bot.sendNotice(sender.nick, "You are not properly identified")
+                bot.sendNotice(sender.nick, "You are not properly identified. Use '/msg NickServ help' to learn how to identify with services.")
                 return
 
             userValid = False
