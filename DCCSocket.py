@@ -190,15 +190,21 @@ class DCCSocket(asyncore.dispatcher):
     def addPending(self, sender):
         try:
             addr_info = socket.getaddrinfo(sender.host, None)
-            if len(addr_info) >= 2:
-                ip = addr_info[1][4][0]
-            else:
-                ip = addr_info[0][4][0]
+            ip = None
+            for entry in addr_info:
+                if len(entry[4]) == 2:
+                    ip = entry[4][0]
+                    break
+
+            if not ip:
+                self.logger.info('Unable to find IPv4 address in address info: ' + str(addr_info))
+                return False
+
             self.logger.info("Adding %s - %s to the pending list" % (ip, sender))
             self.pending[ip] = sender
             return True
         except Exception as e:
-            self.bot.sendNotice(sender.nick, "Error while initialiasing DCC connection.")
+            self.bot.sendNotice(sender.nick, "Error while initializing DCC connection.")
             print str(e)
             return False
 
