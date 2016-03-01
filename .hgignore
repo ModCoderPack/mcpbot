@@ -6,7 +6,6 @@ syntax: glob
 *.cfg
 testcsv/*
 *.csv
-*.zip
 *.bak
 export/
 *.log.*
