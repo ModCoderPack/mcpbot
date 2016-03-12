@@ -44,6 +44,7 @@ class MCPBot(BotBase):
         self.maven_stable_nodoc_path = self.config.get('EXPORT', 'MAVEN_STABLE_NODOC_PATH', self.maven_stable_path.replace('mcp_stable', 'mcp_stable_nodoc'))
         self.maven_upload_time_str = self.config.get('EXPORT', 'MAVEN_UPLOAD_TIME', '3:00', 'The approximate time that the maven upload will take place daily. Will happen within TEST_EXPORT_PERIOD / 2 minutes of this time. Use H:MM format, with 24 hour clock.')
         self.upload_retry_count = self.config.geti('EXPORT', 'UPLOAD_RETRY_COUNT', '3', 'Number of times to retry the maven upload if it fails. Attempts will be made 3 minutes apart.')
+        self.srg_base_url = self.config.get('EXPORT', 'SRG_BASE_URL', 'http://export.mcpbot.bspk.rs/mcp/{mc_version_code}/mcp-{mc_version_code}-srg.zip', 'Base URL for downloading SRG files.')
         self.last_export = None
         self.next_export = None
         self.test_export_thread = None
@@ -62,6 +63,7 @@ class MCPBot(BotBase):
         self.registerCommand('latest',   self.getLatestMappingVersion, ['any'], 0, 2, '[snapshot|stable] [<mcversion>]', 'Gets a list of the latest mapping versions.', allowpub=True)
         self.registerCommand('commit', self.commitMappings, ['mcp_team'], 0, 1, '[<srg_name>|method|field|param]', 'Commits staged mapping changes. If SRG name is specified only that member will be committed. If method/field/param is specified only that member type will be committed. Give no arguments to commit all staged changes.', allowduringreadonly=False)
         self.registerCommand('maventime',self.setMavenTime,['mcp_team'], 1, 1, '<HH:MM>', 'Changes the time that the Maven upload will occur using 24 hour clock format.')
+        self.registerCommand('srg',      self.getSrgUrl,  ['any'], 1, 1, '<MC Version>', 'Gets the URL of the SRG zip file for the Minecraft version specified.', allowpub=True)
 
         self.registerCommand('gc',       self.getClass,   ['any'], 1, 2, "<class> [<version>]",                     "Returns class information. Defaults to current version. Version can be for MCP or MC.", allowpub=True)
         self.registerCommand('gf',       self.getMember,  ['any'], 1, 2, "[<class>.]<name> [<version>]",            "Returns field information. Defaults to current version. Version can be for MCP or MC.", allowpub=True)
@@ -225,6 +227,19 @@ class MCPBot(BotBase):
             dest = sender.nick
 
         self.sendOutput(dest, 'Semi-live (every %d min), Snapshot (daily ~%s EST), and Stable (committed) MCPBot mapping exports can be found here: %s' % (self.test_export_period, self.maven_upload_time_str, self.test_export_url))
+
+
+    def getSrgUrl(self, bot, sender, dest, cmd, args):
+        if dest == self.nick:
+            dest = sender.nick
+
+        val, status = self.db.getVersions(0)
+        for entry in val:
+            if entry['mc_version_code'] == args[0]:
+                self.sendOutput(dest, self.srg_base_url.format(**entry))
+                return
+
+        self.sendOutput(sender.nick, 'Invalid MC version number specified.')
 
 
     def doMavenPush(self, isSnapshot, now):
