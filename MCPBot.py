@@ -401,7 +401,8 @@ class MCPBot(BotBase):
 
     def getMember(self, bot, sender, dest, cmd, args):
         member_type = 'field'
-        if cmd['command'] == 'gm': member_type = 'method'
+        if cmd['command'] == 'gm' or args[0].startswith('func_'): member_type = 'method'
+        if args[0].startswith('field_'): member_type = 'field'
         val, status = self.db.getMember(member_type, args)
         self.sendMemberResults(sender, dest, val, status, limit=self.getOutputLimit(sender, dest))
 
@@ -413,8 +414,9 @@ class MCPBot(BotBase):
 
     def getHistory(self, bot, sender, dest, cmd, args):
         member_type = 'field'
-        if cmd['command'] == 'mh': member_type = 'method'
-        if cmd['command'] == 'ph': member_type = 'method_param'
+        if cmd['command'] == 'mh' or args[0].startswith('func_'): member_type = 'method'
+        if cmd['command'] == 'ph' or args[0].startswith('p_'): member_type = 'method_param'
+        if args[0].startswith('field_'): member_type = 'field'
         if isSrgName(args[0]) or is_integer(args[0]) or member_type == 'method_param':
             val, status = self.db.getHistory(member_type, args)
             self.sendHistoryResults(member_type, sender, dest, val, status, limit=self.getOutputLimit(sender, dest))
@@ -430,9 +432,9 @@ class MCPBot(BotBase):
 
     def findAllKey(self, bot, sender, dest, cmd, args):
         showAll = cmd['command'][-1] in ('d', 'l')
-        showFields = cmd['command'][-1] == 'f'
-        showMethods = cmd['command'][-1] == 'm'
-        showParams = cmd['command'][-1] == 'p'
+        showFields = cmd['command'][-1] == 'f' or args[0].find('field_') > -1
+        showMethods = cmd['command'][-1] == 'm' or args[0].find('func_') > -1
+        showParams = cmd['command'][-1] == 'p' or args[0].find('p_') > -1
         showClasses = cmd['command'][-1] == 'c'
         if showAll:
             limit = self.getOutputLimit(sender, dest) / 2
