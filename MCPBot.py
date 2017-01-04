@@ -564,8 +564,6 @@ class MCPBot(BotBase):
                                      export_path=os.path.normpath(os.path.join(self.base_export_path, self.stable_export_path)))
                 self.doMavenPush(isSnapshot=False, now=datetime.now())
 
-        self.setReadOnly(self, sender, dest, cmd, ['false'])
-
 
     # Send Results
 
