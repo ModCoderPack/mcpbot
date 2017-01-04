@@ -82,7 +82,7 @@ class BotHandler(object):
 
 
 class BotBase(object):
-    def __init__(self, configfile=None, nspass=None, backupcfg=False):
+    def __init__(self, configfile=None, backupcfg=False):
         self.configfile = configfile if configfile else 'bot.cfg'
         self.backupcfg = backupcfg
 
@@ -92,8 +92,6 @@ class BotBase(object):
 
         self.config     = AdvConfigParser()
         self.config.read(self.configfile)
-
-        self.nspass     = nspass
 
         self.host       = self.config.get('SERVER', 'HOST', '')
         self.port       = self.config.geti('SERVER', 'PORT', '6667')
@@ -110,6 +108,7 @@ class BotBase(object):
         self.nsreply    = self.config.get('NICKSERV', 'NSREPLY',  "PRIVMSG {nickserv} :identify {nspass}", 'Reply to an identify request')
 
         self.nick        = self.config.get('BOT', 'NICK', "PyBot")
+        self.nspass      = self.config.get('BOT', 'NICKSERV_PASS', '')
         self.cmdChar     = self.config.get('BOT', 'CMDCHAR', "*")
         self.moreCount   = self.config.geti('BOT', 'MORECMDCOUNT', '10', 'The number of queued messages to send each time a user executes the more command.')
         self.moreCountDcc= self.config.geti('BOT', 'MORECMDCOUNTDCC', '100', 'The number of queued messages to send each time a user executes the more command in a DCC session.')

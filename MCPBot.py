@@ -11,11 +11,11 @@ from MavenHandler import MavenHandler
 import zipfile, os, re
 import psycopg2.extras
 
-__version__ = "0.10.1"
+__version__ = "0.10.2"
 
 class MCPBot(BotBase):
-    def __init__(self, configfile=None, nspass=None, backupcfg=False):
-        super(MCPBot, self).__init__(configfile=configfile, nspass=nspass, backupcfg=backupcfg)
+    def __init__(self, configfile=None, backupcfg=False):
+        super(MCPBot, self).__init__(configfile=configfile, backupcfg=backupcfg)
 
         self.dbhost = self.config.get('DATABASE', 'HOST', "")
         self.dbport = self.config.geti('DATABASE', 'PORT', "0")
@@ -1059,7 +1059,6 @@ def main():
 
     parser = OptionParser(version='%prog ' + __version__,
                           usage="%prog [options]")
-    parser.add_option('-N', '--ns-pass', default=None, help='The NICKSERV password to use.')
     parser.add_option('-C', '--config', default=None, help='The config filename to use.')
     parser.add_option('-B', '--backup-config', default=False, action='store_true', help='Creates a backup of the config file prior to running [default: %default]')
     parser.add_option('-W', '--wait', default='15', help='Number of seconds to wait when attempting to restore the IRC connection [default: %default]')
@@ -1068,7 +1067,7 @@ def main():
 
     options, args = parser.parse_args()
 
-    BotHandler(MCPBot(configfile=options.config, nspass=options.ns_pass, backupcfg=options.backup_config),
+    BotHandler(MCPBot(configfile=options.config, backupcfg=options.backup_config),
                reconnect_wait=int(options.wait), reset_attempt_secs=int(options.reset_attempts_time),
                max_reconnects=int(options.max_reconnects))\
         .start().run()
