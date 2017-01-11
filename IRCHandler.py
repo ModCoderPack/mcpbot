@@ -243,7 +243,7 @@ class CmdHandler(object):
             self.logger.warning('Event Monitor: time since last event (%s) exceeds timeout (%s).' % (getDurationStr(delta), getDurationStr(self.bot.monitortimeout)))
             self.bot.onShuttingDown()
         else:
-            self.logger.debug('Event Monitor: time since last event: %s' % getDurationStr(delta))
+            # self.logger.debug('Event Monitor: time since last event: %s' % getDurationStr(delta))
             self.next_event_check = self.next_event_check + self.bot.monitorperiod
             self.monitor_thread = threading.Timer(self.next_event_check - time.time(), self.monitorEvents)
             self.monitor_thread.start()
@@ -574,7 +574,7 @@ class CmdHandler(object):
             #If we don't accept unregistered usage, we check for AUTH 3 and the WHOIS event
             if not bot.allowunregistered:
                 if not sender.auth == 3:
-                    bot.sendNotice(sender.nick, "You need to register your nick before using the bot. Use '/msg NickServ help register' to learn how to register.")
+                    bot.sendNotice(sender.nick, "You need to register or group your nick before using the bot. Use '/msg NickServ help register' to learn how to register or '/msg NickServ group' to try grouping your current nick to your account.")
                     return
 
             #if sender.auth == 3:
