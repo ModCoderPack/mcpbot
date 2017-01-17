@@ -32,7 +32,7 @@ class MCPBot(BotBase):
         self.test_export_path = self.config.get('EXPORT', 'TEST_EXPORT_PATH', 'testcsv', 'Path under BASE_EXPORT_PATH to write the test CSV files to.')
         self.stable_export_path = self.config.get('EXPORT', 'STABLE_EXPORT_PATH', 'stablecsv', 'Path under BASE_EXPORT_PATH to write the stable CSV files to.')
         self.test_export_url = self.config.get('EXPORT', 'TEST_EXPORT_URL', 'http://export.mcpbot.bspk.rs')
-        self.exports_json_url = self.config.get('EXPORT', 'EXPORTS_JSON_URL', 'http://export.mcpbot.bspk.rs/versions.json?limit=1')
+        self.exports_json_url = self.config.get('EXPORT', 'EXPORTS_JSON_URL', 'http://export.mcpbot.bspk.rs/versions.json')
         self.maven_repo_url = self.config.get('EXPORT', 'MAVEN_REPO_URL', 'http://files.minecraftforge.net/maven/manage/upload/de/oceanlabs/mcp/')
         self.maven_repo_user = self.config.get('EXPORT', 'MAVEN_REPO_USER', 'mcp')
         self.maven_repo_pass = self.config.get('EXPORT', 'MAVEN_REPO_PASS', '')
@@ -63,6 +63,7 @@ class MCPBot(BotBase):
         self.registerCommand('latest',   self.getLatestMappingVersion, ['any'], 0, 2, '[snapshot|stable] [<mcversion>]', 'Gets a list of the latest mapping versions.', allowpub=True)
         self.registerCommand('commit', self.commitMappings, ['mcp_team'], 0, 1, '[<srg_name>|method|field|param]', 'Commits staged mapping changes. If SRG name is specified only that member will be committed. If method/field/param is specified only that member type will be committed. Give no arguments to commit all staged changes.', allowduringreadonly=False)
         self.registerCommand('maventime',self.setMavenTime,['mcp_team'], 1, 1, '<HH:MM>', 'Changes the time that the Maven upload will occur using 24 hour clock format.')
+
         self.registerCommand('srg',      self.getSrgUrl,  ['any'], 1, 1, '<MC Version>', 'Gets the URL of the SRG zip file for the Minecraft version specified.', allowpub=True)
 
         self.registerCommand('gc',       self.getClass,   ['any'], 1, 2, "<class> [<version>]",                     "Returns class information. Defaults to current version. Version can be for MCP or MC.", allowpub=True)
@@ -122,7 +123,7 @@ class MCPBot(BotBase):
                                  'ssf': 'sf', 'scm': 'sm', 'ssm': 'sm', 'fscf': 'fsf', 'fssf': 'fsf', 'fscm': 'fsm', 'fssm': 'fsm'}
 
     def clone(self):
-        return MCPBot(self.configfile, self.nspass, self.backupcfg)
+        return MCPBot(self.configfile, False)
 
     def onStartUp(self):
         super(MCPBot, self).onStartUp()
@@ -289,6 +290,7 @@ class MCPBot(BotBase):
             self.sendPrimChanMessage("%s Pushing %s mappings to Forge Maven." % (typeStr, chanStr))
 
             tries = 0
+            self.logger.info('Pushing ' + stdZipName)
             success = MavenHandler.upload(self.maven_repo_url, self.maven_repo_user, self.maven_repo_pass,
                     stdZipName, local_path=stdZipDirPath, remote_path=stdZipDir, logger=self.logger)
             while tries < self.upload_retry_count and not success:
@@ -313,6 +315,7 @@ class MCPBot(BotBase):
             if success:
                 self.sendPrimChanOpNotice(success)
                 tries = 0
+                self.logger.info('Pushing ' + nodocZipName)
                 success = MavenHandler.upload(self.maven_repo_url, self.maven_repo_user, self.maven_repo_pass,
                         nodocZipName, local_path=nodocZipDirPath, remote_path=nodocZipDir, logger=self.logger)
                 while tries < self.upload_retry_count and not success:
@@ -332,6 +335,28 @@ class MCPBot(BotBase):
                 if success:
                     self.sendPrimChanOpNotice(success)
                     self.sendPrimChanMessage('Semi-live (every %d min), Snapshot (daily ~%s EST), and Stable (committed) MCPBot mapping exports can be found here: %s' % (self.test_export_period, self.maven_upload_time_str, self.test_export_url))
+
+            # push json file to maven
+            if success and JsonHelper.save_remote_json_to_path(self.exports_json_url, os.path.join(self.base_export_path, 'versions.json')):
+                tries = 0
+                self.logger.info('Pushing versions.json')
+                success = MavenHandler.upload(self.maven_repo_url, self.maven_repo_user, self.maven_repo_pass,
+                        'versions.json', local_path=self.base_export_path, remote_path='', logger=self.logger)
+                while tries < self.upload_retry_count and not success:
+                    tries += 1
+                    self.logger.warning('*** Upload attempt failed. Trying again in 3 minutes. ***')
+                    time.sleep(180)
+                    success = MavenHandler.upload(self.maven_repo_url, self.maven_repo_user, self.maven_repo_pass,
+                            'versions.json', local_path=self.base_export_path, remote_path='', logger=self.logger)
+
+                if success and tries == 0:
+                    self.logger.info('Maven upload successful.')
+                elif success and tries > 0:
+                    self.logger.info('Maven upload successful after %d %s.' % (tries, 'retry' if tries == 1 else 'retries'))
+                else:
+                    self.logger.error('*** Maven upload failed after %d retries. ***' % tries)
+            elif success:
+                self.logger.error('*** Remote JSON was not successfully retrieved. ***')
 
 
     # def sqlRequest(self, bot, sender, dest, cmd, args):
@@ -380,7 +405,7 @@ class MCPBot(BotBase):
                 elif args[1].lower() in ['stable', 'snapshot']:
                     mappingType = args[1].lower()
 
-        jsonUrl = self.exports_json_url
+        jsonUrl = self.exports_json_url + '?limit=1'
 
         # if not version:
         #     val, status = self.db.getVersions(1)
