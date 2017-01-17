@@ -2,12 +2,12 @@
 
 import Logger
 import AsyncSocket
-import asyncore, socket
+import asyncore
 import DCCSocket
 import threading
 import datetime
 import json
-import os
+import os, sys, subprocess
 import shutil
 import time
 from IRCHandler import CmdHandler, CmdGenerator, Sender, Color, EOL
@@ -69,7 +69,9 @@ class BotHandler(object):
                 raise
 
             if not self.bot.isTerminating:
-                if not self.bot.isRestarting:
+                if self.bot.isRestarting:
+                    restart_program()
+                else:
                     self.bot.logger.warning('IRC connection was lost.')
                     reconnect_attempts += 1
 
@@ -79,6 +81,10 @@ class BotHandler(object):
                 restart = (reconnect_attempts <= self.max_reconnects) or self.bot.isRestarting
             else:
                 restart = False
+
+def restart_program():
+    python = sys.executable
+    os.execl(python, python, *sys.argv)
 
 
 class BotBase(object):
@@ -192,6 +198,7 @@ class BotBase(object):
         self.registerCommand('sendraw',   self.sendRawCmd, ['admin'], 0, 999, "<irccmd>",    "Send a raw IRC cmd.")
         self.registerCommand('shutdown', self.killSelf, ['admin'], 0, 0, "", "Kills the bot.")
         self.registerCommand('restart', self.restart, ['admin'], 0, 0, '', 'Restarts the bot.')
+        self.registerCommand('fpull', self.fpull, ['admin'], 0, 0, '', 'Pulls and updates the bot code.')
         self.registerCommand('readonly', self.setReadOnly, ['admin'], 1, 1, '[true|false]', 'Sets Read-Only Mode for commands that are able to set data.')
 
         self.registerCommand('help',      self.helpcmd,    ['any'],   0, 1, "[<command>|*]", "Lists available commands or help about a specific command.", allowpub=True)
@@ -206,7 +213,7 @@ class BotBase(object):
         self.updateConfig()
 
     def clone(self):
-        return BotBase(self.configfile, self.nspass, self.backupcfg)
+        return BotBase(self.configfile, self.backupcfg)
 
     def run(self):
         if self.host == "":
@@ -266,6 +273,31 @@ class BotBase(object):
         else:
             self.sendPrimChanMessage('%s is no longer in read-only mode. All commands are now available again.' % self.nick)
 
+    def fpull(self, bot, sender, dest, cmd, args):
+        """Pulls from the repository to update the bot."""
+
+        commands = ["hg pull",
+                    "hg update"]
+
+        for command in commands:
+            child = subprocess.Popen(command.split(),
+                                     stdout=subprocess.PIPE,
+                                     stderr=subprocess.PIPE)
+            (out, err) = child.communicate()
+            ret = child.returncode
+
+            for line in (out + err).splitlines():
+                self.sendOutput(dest, line.decode("utf-8"))
+
+            if ret != 0:
+                if ret < 0:
+                    cause = "signal"
+                    ret *= -1
+                else:
+                    cause = "status"
+                self.logger.error('Command "%s" returned %s %d' % (command, cause, ret))
+            else:
+                self.sendOutput(dest, 'Successfully pulled and updated.')
 
     # User handling commands
     def useradd(self, bot, sender, dest, cmd, args):
