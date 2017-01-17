@@ -34,7 +34,8 @@ def save_remote_json_to_path(url, path):
     :type path: str
     :rtype: bool
     """
-    os.remove(path)
+    if os.path.exists(path):
+        os.remove(path)
     req = urllib2.Request(url, headers={'User-Agent': "Magic Browser"})
     r = urllib2.urlopen(req)
     with open(path, 'w') as f:

@@ -62,7 +62,8 @@ class MCPBot(BotBase):
         self.registerCommand('exports',  self.getExportsURL, ['any'], 0, 0, '', 'Gets the URL where all mapping exports can be found.', allowpub=True)
         self.registerCommand('latest',   self.getLatestMappingVersion, ['any'], 0, 2, '[snapshot|stable] [<mcversion>]', 'Gets a list of the latest mapping versions.', allowpub=True)
         self.registerCommand('commit', self.commitMappings, ['mcp_team'], 0, 1, '[<srg_name>|method|field|param]', 'Commits staged mapping changes. If SRG name is specified only that member will be committed. If method/field/param is specified only that member type will be committed. Give no arguments to commit all staged changes.', allowduringreadonly=False)
-        self.registerCommand('maventime',self.setMavenTime,['mcp_team'], 1, 1, '<HH:MM>', 'Changes the time that the Maven upload will occur using 24 hour clock format.')
+        self.registerCommand('maventime',self.setMavenTime,['mcp_team'], 0, 1, '<HH:MM>', 'Changes the time that the Maven upload will occur using 24 hour clock format.')
+        self.registerCommand('pj', self.push_json_to_maven, ['mcp_team'], 0, 0, '', 'Pushes the version.json file to Maven.')
 
         self.registerCommand('srg',      self.getSrgUrl,  ['any'], 1, 1, '<MC Version>', 'Gets the URL of the SRG zip file for the Minecraft version specified.', allowpub=True)
 
@@ -158,11 +159,15 @@ class MCPBot(BotBase):
 
     def setMavenTime(self, bot, sender, dest, cmd, args):
         self.sendNotice(sender.nick, '===§B Maven Time Change §N===')
-        if not isValid24HourTimeStr(args[0]):
-            self.sendNotice(sender.nick, '%s is not a valid time string!' % args[0])
+        if args[0]:
+            if not isValid24HourTimeStr(args[0]):
+                self.sendNotice(sender.nick, '%s is not a valid time string!' % args[0])
+            else:
+                self.processMavenTimeString(args[0])
+                self.sendNotice(sender.nick, 'Maven upload time has been changed to %s' % args[0])
         else:
-            self.processMavenTimeString(args[0])
-            self.sendNotice(sender.nick, 'Maven upload time has been changed to %s' % args[0])
+            self.sendNotice(sender.nick, 'Maven Time: ' + self.maven_upload_time_str)
+
 
 
     def exportTimer(self):
@@ -336,27 +341,35 @@ class MCPBot(BotBase):
                     self.sendPrimChanOpNotice(success)
                     self.sendPrimChanMessage('Semi-live (every %d min), Snapshot (daily ~%s EST), and Stable (committed) MCPBot mapping exports can be found here: %s' % (self.test_export_period, self.maven_upload_time_str, self.test_export_url))
 
-            # push json file to maven
-            if success and JsonHelper.save_remote_json_to_path(self.exports_json_url, os.path.join(self.base_export_path, 'versions.json')):
-                tries = 0
-                self.logger.info('Pushing versions.json')
-                success = MavenHandler.upload(self.maven_repo_url, self.maven_repo_user, self.maven_repo_pass,
-                        'versions.json', local_path=self.base_export_path, remote_path='', logger=self.logger)
-                while tries < self.upload_retry_count and not success:
-                    tries += 1
-                    self.logger.warning('*** Upload attempt failed. Trying again in 3 minutes. ***')
-                    time.sleep(180)
-                    success = MavenHandler.upload(self.maven_repo_url, self.maven_repo_user, self.maven_repo_pass,
-                            'versions.json', local_path=self.base_export_path, remote_path='', logger=self.logger)
+            if success:
+                self.push_json_to_maven(None, None, None, None, None)
 
-                if success and tries == 0:
-                    self.logger.info('Maven upload successful.')
-                elif success and tries > 0:
-                    self.logger.info('Maven upload successful after %d %s.' % (tries, 'retry' if tries == 1 else 'retries'))
-                else:
-                    self.logger.error('*** Maven upload failed after %d retries. ***' % tries)
-            elif success:
-                self.logger.error('*** Remote JSON was not successfully retrieved. ***')
+
+    def push_json_to_maven(self, bot, sender, dest, cmd, args):
+        # push json file to maven
+        if JsonHelper.save_remote_json_to_path(self.exports_json_url,
+                                                           os.path.join(self.base_export_path, 'versions.json')):
+            tries = 0
+            self.logger.info('Pushing versions.json')
+            success = MavenHandler.upload(self.maven_repo_url, self.maven_repo_user, self.maven_repo_pass,
+                                          'versions.json', local_path=self.base_export_path, remote_path='',
+                                          logger=self.logger)
+            while tries < self.upload_retry_count and not success:
+                tries += 1
+                self.logger.warning('*** Upload attempt failed. Trying again in 3 minutes. ***')
+                time.sleep(180)
+                success = MavenHandler.upload(self.maven_repo_url, self.maven_repo_user, self.maven_repo_pass,
+                                              'versions.json', local_path=self.base_export_path, remote_path='',
+                                              logger=self.logger)
+
+            if success and tries == 0:
+                self.logger.info('Maven upload successful.')
+            elif success and tries > 0:
+                self.logger.info('Maven upload successful after %d %s.' % (tries, 'retry' if tries == 1 else 'retries'))
+            else:
+                self.logger.error('*** Maven upload failed after %d retries. ***' % tries)
+        else:
+            self.logger.error('*** Remote JSON was not successfully retrieved. ***')
 
 
     # def sqlRequest(self, bot, sender, dest, cmd, args):
