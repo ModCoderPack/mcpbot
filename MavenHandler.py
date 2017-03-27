@@ -54,8 +54,8 @@ class MavenHandler:
     def do_put(cls, url, auth, data, logger=None):
         try:
             r = requests.put(url, auth=auth, data=data)
-        except requests.ConnectTimeout as e:
-            return e.response.status_code
+        except:
+            return 1
         return r.status_code
 
 
