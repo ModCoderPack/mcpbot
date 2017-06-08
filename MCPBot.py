@@ -743,9 +743,10 @@ class MCPBot(BotBase):
 
         for i, entry in enumerate(val):
             if not summary:
+                is_constructor = 'is_constructor' in entry and entry['is_constructor']
                 if entry['is_locked']: locked = 'LOCKED'
                 else: locked = 'UNLOCKED'
-                header =                            "===§B MC {mc_version_code}: {class_pkg_name}/{class_srg_name}.{mcp_name} ({class_obf_name}.{obf_name}) §U" + locked + "§N ==="
+                header =                     "===§B MC {mc_version_code}: {class_pkg_name}/{class_srg_name}.{mcp_name} ({class_obf_name}.{obf_name}) §U" + locked + "§N ==="
                 self.sendOutput(dest,        header.format(**entry))
                 if 'srg_member_base_class' in entry and entry['srg_member_base_class'] != entry['class_srg_name']:
                     self.sendOutput(dest,    "§UBase Class§N : {obf_member_base_class} §B=>§N {srg_member_base_class}".format(**entry))
@@ -759,7 +760,10 @@ class MCPBot(BotBase):
                     self.sendOutput(dest,    "§UDescriptor§N : {obf_descriptor}".format(**entry))
                 if not entry['is_public']:
                     if entry['srg_descriptor'][0] == '(':
-                        self.sendOutput(dest,"§UAT§N         : public {class_pkg_name}.{class_srg_name} ".format(**entry).replace('/', '.') + "{srg_name}{srg_descriptor} # {mcp_name}".format(**entry))
+                        if is_constructor:
+                            self.sendOutput(dest,"§UAT§N         : public {class_pkg_name}.{class_srg_name} ".format(**entry).replace('/', '.') + "<init>{srg_descriptor} # {mcp_name}".format(**entry))
+                        else:
+                            self.sendOutput(dest,"§UAT§N         : public {class_pkg_name}.{class_srg_name} ".format(**entry).replace('/', '.') + "{srg_name}{srg_descriptor} # {mcp_name}".format(**entry))
                     else:
                         self.sendOutput(dest,"§UAT§N         : public {class_pkg_name}.{class_srg_name} {srg_name} # {mcp_name}".format(**entry).replace('/', '.'))
                 self.sendOutput(dest,        "§UComment§N    : {comment}".format(**entry))
