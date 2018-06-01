@@ -375,29 +375,30 @@ class MCPBot(BotBase):
 
     def push_xml_to_maven(self, bot, sender, dest, cmd, args):
         # push json file to maven
-        if JsonHelper.save_remote_json_to_path('http://export.mcpbot.bspk.rs/mcp_snapshot/maven-metadata.xml',
-                                                           os.path.join(self.base_export_path, 'mcp_snapshot/maven-metadata.xml')):
-            tries = 0
-            self.logger.info('Pushing maven-metadata.xml')
-            success = MavenHandler.upload(self.maven_repo_url, self.maven_repo_user, self.maven_repo_pass,
-                                          'maven-metadata.xml', local_path=os.path.join(self.base_export_path, 'mcp_snapshot'), remote_path='mcp_snapshot',
-                                          logger=self.logger)
-            while tries < self.upload_retry_count and not success:
-                tries += 1
-                self.logger.warning('*** Upload attempt failed. Trying again in 3 minutes. ***')
-                time.sleep(180)
+        for channel in ['mcp_snapshot','mcp_stable']:
+            if JsonHelper.save_remote_json_to_path('http://export.mcpbot.bspk.rs/%s/maven-metadata.xml' % channel,
+                                                               os.path.join(self.base_export_path, '%s/maven-metadata.xml' % channel)):
+                tries = 0
+                self.logger.info('Pushing maven-metadata.xml')
                 success = MavenHandler.upload(self.maven_repo_url, self.maven_repo_user, self.maven_repo_pass,
-                                              'maven-metadata.xml', local_path=os.path.join(self.base_export_path, 'mcp_snapshot'), remote_path='mcp_snapshot',
+                                              'maven-metadata.xml', local_path=os.path.join(self.base_export_path, channel), remote_path=channel,
                                               logger=self.logger)
+                while tries < self.upload_retry_count and not success:
+                    tries += 1
+                    self.logger.warning('*** Upload attempt failed. Trying again in 3 minutes. ***')
+                    time.sleep(180)
+                    success = MavenHandler.upload(self.maven_repo_url, self.maven_repo_user, self.maven_repo_pass,
+                                                  'maven-metadata.xml', local_path=os.path.join(self.base_export_path, channel), remote_path=channel,
+                                                  logger=self.logger)
 
-            if success and tries == 0:
-                self.logger.info('Maven upload successful.')
-            elif success and tries > 0:
-                self.logger.info('Maven upload successful after %d %s.' % (tries, 'retry' if tries == 1 else 'retries'))
+                if success and tries == 0:
+                    self.logger.info('Maven upload successful.')
+                elif success and tries > 0:
+                    self.logger.info('Maven upload successful after %d %s.' % (tries, 'retry' if tries == 1 else 'retries'))
+                else:
+                    self.logger.error('*** Maven upload failed after %d retries. ***' % tries)
             else:
-                self.logger.error('*** Maven upload failed after %d retries. ***' % tries)
-        else:
-            self.logger.error('*** Remote XML was not successfully retrieved. ***')
+                self.logger.error('*** Remote XML was not successfully retrieved. ***')
 
 
     # def sqlRequest(self, bot, sender, dest, cmd, args):
