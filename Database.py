@@ -350,7 +350,7 @@ class Database(object):
     def removeComment(self, member_type, command, sender, args):
         params = {'member_type': member_type, 'nick': sender.regnick.lower(),
                   'command': command, 'params': ' '.join(args), 'srg_name': args[0]}
-        sqlrequest = """select mcp.remove_member_comment(%(member_type)s, %(command)s, %(nick)s, %(params)s, %(srg_name)s,) as result;"""
+        sqlrequest = """select mcp.remove_member_comment(%(member_type)s, %(command)s, %(nick)s, %(params)s, %(srg_name)s) as result;"""
         return self.execute(sqlrequest, params)
 
 
