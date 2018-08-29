@@ -90,6 +90,10 @@ class MCPBot(BotBase):
         self.registerCommand('undo', self.undoChange, ['any', 'undo_any', 'mcp_team'], 1, 1, "<srg name>",      "Undoes the last *STAGED* name change to a given method/field/param. By default you can only undo your own changes.", allowduringreadonly=False)
         self.registerCommand('redo', self.undoChange, ['any', 'undo_any', 'mcp_team'], 1, 1, "<srg name>",      "Redoes the last *UNDONE* staged change to a given method/field/param. By default you can only redo your own changes.", allowduringreadonly=False)
 
+        self.registerCommand('rfc',      self.removeComment, ['maintainer','mcp_team'], 1, 1, "<srg_name>", 'Blanks out the field comment.')
+        self.registerCommand('rmc',      self.removeComment, ['maintainer','mcp_team'], 1, 1, "<srg_name>", 'Blanks out the method comment.')
+        self.registerCommand('rpc',      self.removeComment, ['maintainer','mcp_team'], 1, 1, "<srg_name>", 'Blanks out the method parameter comment.')
+
         self.registerCommand('sf', self.setMember, ['any'], 2, 999, "<srg name> <new name> [<comment>]", "Sets the MCP name and comment for the SRG field specified. SRG index can also be used.", allowpub=True, allowduringreadonly=False)
         self.registerCommand('fsf', self.setMember, ['maintainer', 'mcp_team'], 2, 999, "<srg name> <new name> [<comment>]", "Force sets the MCP name and comment for the SRG field specified. SRG index can also be used.", allowpub=True, allowduringreadonly=False)
         self.registerCommand('sm', self.setMember, ['any'], 2, 999, "<srg name> <new name> [<comment>]", "Sets the MCP name and comment for the SRG method specified. SRG index can also be used.", allowpub=True, allowduringreadonly=False)
@@ -585,6 +589,14 @@ class MCPBot(BotBase):
         if is_forced:
             self.sendOutput(dest, "§R!!! CAREFUL, YOU ARE FORCING AN UPDATE TO A %s !!!" % member_type.upper().replace('_', ' '))
         val, status = self.db.setMember(member_type, is_forced, bypass_lock, cmd['command'], sender, args)
+        self.sendSetMemberResults(member_type, sender, dest, val, status, args[0])
+
+
+    def removeComment(self, bot, sender, dest, cmd, args):
+        member_type = 'method'
+        if cmd['command'].find('rfc') > -1: member_type = 'field'
+        elif cmd['command'].find('rpc') > -1: member_type = 'method_param'
+        val, status = self.db.removeComment(member_type, cmd['command'], sender, args)
         self.sendSetMemberResults(member_type, sender, dest, val, status, args[0])
 
 
