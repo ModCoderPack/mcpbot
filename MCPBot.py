@@ -64,7 +64,7 @@ class MCPBot(BotBase):
         self.registerCommand('latest',   self.getLatestMappingVersion, ['any'], 0, 2, '[snapshot|stable] [<mcversion>]', 'Gets a list of the latest mapping versions.', allowpub=True)
         self.registerCommand('commit', self.commitMappings, ['mcp_team'], 0, 1, '[<srg_name>|method|field|param]', 'Commits staged mapping changes. If SRG name is specified only that member will be committed. If method/field/param is specified only that member type will be committed. Give no arguments to commit all staged changes.', allowduringreadonly=False)
         self.registerCommand('maventime',self.setMavenTime,['mcp_team'], 0, 1, '<HH:MM>', 'Changes the time that the Maven upload will occur using 24 hour clock format.')
-        self.registerCommand('pj', self.push_json_to_maven, ['mcp_team'], 0, 0, '', 'Pushes the version.json file to Maven.')
+        self.registerCommand('pushmaven', self.doSnapshotPush, ['mcp_team'], 0, 0, '', 'Pushes the version.json file to Maven.')
 
         self.registerCommand('srg',      self.getSrgUrl,  ['any'], 1, 1, '<MC Version>', 'Gets the URL of the SRG zip file for the Minecraft version specified.', allowpub=True)
 
@@ -253,6 +253,10 @@ class MCPBot(BotBase):
         self.sendOutput(sender.nick, 'Invalid MC version number specified.')
 
 
+    def doSnapshotPush(self, bot, sender, dest, cmd, args):
+        self.doMavenPush(True, datetime.now())
+
+
     def doMavenPush(self, isSnapshot, now):
         basePath = self.base_export_path
         if isSnapshot:
@@ -352,13 +356,18 @@ class MCPBot(BotBase):
                 if not status:
                     self.push_json_to_maven(None, None, None, None, None)
                     self.push_xml_to_maven(None, None, None, None, None)
+                else:
+                    self.logger.error(str(status))
 
 
     def push_json_to_maven(self, bot, sender, dest, cmd, args):
         # push json file to maven
+        self.logger.info('Generating and pushing json to Maven...')
         json_data = {}
         results, status = self.db.getAvailableVersions()
         if status:
+            self.logger.error('Error getting available versions from the DB!')
+            self.logger.error(str(status))
             return
 
         for result in results:
@@ -399,6 +408,7 @@ class MCPBot(BotBase):
     def push_xml_to_maven(self, bot, sender, dest, cmd, args):
         # push xml files to maven
         for channel in ['mcp_snapshot','mcp_stable']:
+            self.logger.info('Generating and pushing xml to Maven...')
             metadata = ET.Element('metadata')
             ET.SubElement(metadata, 'groupId').text = 'de.oceanlabs.mcp'
             ET.SubElement(metadata, 'artifactId').text = channel
@@ -407,7 +417,7 @@ class MCPBot(BotBase):
 
             results, status = self.db.getAvailableVersions(version_type=channel.lstrip('mcp_'))
             if status:
-                self.logger.error('Error getting available versions from the DB!')
+                self.logger.error('Error getting available versions from the DB for channel %s!' % channel)
                 self.logger.error(str(status))
                 return
 
