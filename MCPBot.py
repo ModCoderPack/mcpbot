@@ -357,6 +357,7 @@ class MCPBot(BotBase):
                     self.push_json_to_maven(None, None, None, None, None)
                     self.push_xml_to_maven(None, None, None, None, None)
                 else:
+                    self.logger.error('Error adding new version to VERSIONS_AVAILABLE!')
                     self.logger.error(str(status))
 
 

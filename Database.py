@@ -377,7 +377,7 @@ class Database(object):
 
     def addAvailableVersion(self, mc_version, version_type, version_code):
         sqlrequest = 'select mcp.add_available_version(%s, %s, %s);'
-        return self.execute((sqlrequest, (mc_version, version_type, version_code)))
+        return self.execute(sqlrequest, (mc_version, version_type, version_code))
 
 
 def is_integer(s):
