@@ -352,7 +352,7 @@ class MCPBot(BotBase):
 
             if success:
                 splitted = chanStr.split('_')
-                result, status = self.db.addAvailableVersion(result['mc_version_code'], splitted[0], splitted[1])
+                results, status = self.db.addAvailableVersion(result[0]['MC_VERSION_CODE'], splitted[0], splitted[1])
                 if not status:
                     self.push_json_to_maven(None, None, None, None, None)
                     self.push_xml_to_maven(None, None, None, None, None)
