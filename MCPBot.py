@@ -372,9 +372,9 @@ class MCPBot(BotBase):
             return
 
         for result in results:
-            if not result['MC_VERSION_CODE'] in json_data.keys():
-                json_data[result['MC_VERSION_CODE']] = {'snapshot': [], 'stable': []}
-            json_data[result['MC_VERSION_CODE']][result['VERSION_TYPE']].append(int(result['VERSION_CODE']))
+            if not result['mc_version_code'] in json_data.keys():
+                json_data[result['mc_version_code']] = {'snapshot': [], 'stable': []}
+            json_data[result['mc_version_code']][result['version_type']].append(int(result['version_code']))
 
         # Create local file to upload to Maven
         file_to_create = os.path.join(self.base_export_path, 'versions.json')
@@ -425,7 +425,7 @@ class MCPBot(BotBase):
             count = 0
 
             for result in results:
-                version_string = result['VERSION_CODE'] + '-' + result['MC_VERSION_CODE']
+                version_string = result['version_code'] + '-' + result['mc_version_code']
                 if count == 0:
                     ET.SubElement(versioning, 'release').text = version_string
                 ET.SubElement(versions, 'version').text = version_string
