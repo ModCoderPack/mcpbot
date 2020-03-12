@@ -81,6 +81,17 @@ class Database(object):
         return self.execute(sqlrequest, cursor_type=cursor_type)
 
 
+    def getAvailableVersions(self, version_type=None, cursor_type=psycopg2.extras.DictCursor):
+        sqlrequest = 'select * from mcp.versions_available_vw '
+        if version_type:
+            sqlrequest += 'where VERSION_TYPE = %s '
+        sqlrequest += 'order by mc_version_pid desc, VERSION_TYPE, cast (VERSION_CODE as INTEGER) desc '
+        if version_type:
+            return self.execute(sqlrequest, (version_type,), cursor_type=cursor_type)
+        else:
+            return self.execute(sqlrequest, cursor_type=cursor_type)
+
+
     def getParam(self, args):
         arg1 = args[0]
         if arg1[0] == ".": arg1 = arg1[1:]
@@ -362,6 +373,11 @@ class Database(object):
     def doCommit(self, member_type, command, sender, args, srg_name):
         sqlrequest = 'select mcp.commit_mappings(%s, %s, %s, %s, %s);'
         return self.execute(sqlrequest, (member_type, command, sender.regnick.lower(), ' '.join(args), srg_name))
+
+
+    def addAvailableVersion(self, mc_version, version_type, version_code):
+        sqlrequest = 'select mcp.add_available_version(%s, %s, %s);'
+        return self.execute((sqlrequest, (mc_version, version_type, version_code)))
 
 
 def is_integer(s):

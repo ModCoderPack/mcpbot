@@ -3,12 +3,13 @@ from BotBase import BotBase, BotHandler
 from Database import Database, is_integer
 from optparse import OptionParser
 import JsonHelper
+import xml.etree.cElementTree as ET
 import time
 from datetime import timedelta, datetime, time as time_class
 import threading
 import export_csv
 from MavenHandler import MavenHandler
-import zipfile, os, re
+import zipfile, os, re, json
 import psycopg2.extras
 
 __version__ = "0.10.2"
@@ -346,14 +347,32 @@ class MCPBot(BotBase):
                     self.sendPrimChanMessage('Semi-live (every %d min), Snapshot (daily ~%s EST), and Stable (committed) MCPBot mapping exports can be found here: %s' % (self.test_export_period, self.maven_upload_time_str, self.test_export_url))
 
             if success:
-                self.push_json_to_maven(None, None, None, None, None)
-                self.push_xml_to_maven(None, None, None, None, None)
+                splitted = chanStr.split('_')
+                result, status = self.db.addAvailableVersion(result['mc_version_code'], splitted[0], splitted[1])
+                if not status:
+                    self.push_json_to_maven(None, None, None, None, None)
+                    self.push_xml_to_maven(None, None, None, None, None)
 
 
     def push_json_to_maven(self, bot, sender, dest, cmd, args):
         # push json file to maven
-        if JsonHelper.save_remote_json_to_path(self.exports_json_url,
-                                                           os.path.join(self.base_export_path, 'versions.json')):
+        json_data = {}
+        results, status = self.db.getAvailableVersions()
+        if status:
+            return
+
+        for result in results:
+            if not result['MC_VERSION_CODE'] in json_data.keys():
+                json_data[result['MC_VERSION_CODE']] = {'snapshot': [], 'stable': []}
+            json_data[result['MC_VERSION_CODE']][result['VERSION_TYPE']].append(int(result['VERSION_CODE']))
+
+        # Create local file to upload to Maven
+        file_to_create = os.path.join(self.base_export_path, 'versions.json')
+        if os.path.exists(file_to_create):
+            os.remove(file_to_create)
+        with open(file_to_create, 'w') as f:
+            f.write(json.dumps(json_data))
+        if os.path.exists(file_to_create):
             tries = 0
             self.logger.info('Pushing versions.json')
             success = MavenHandler.upload(self.maven_repo_url, self.maven_repo_user, self.maven_repo_pass,
@@ -378,10 +397,38 @@ class MCPBot(BotBase):
 
 
     def push_xml_to_maven(self, bot, sender, dest, cmd, args):
-        # push json file to maven
+        # push xml files to maven
         for channel in ['mcp_snapshot','mcp_stable']:
-            if JsonHelper.save_remote_json_to_path('http://export.mcpbot.bspk.rs/%s/maven-metadata.xml' % channel,
-                                                               os.path.join(self.base_export_path, '%s/maven-metadata.xml' % channel)):
+            metadata = ET.Element('metadata')
+            ET.SubElement(metadata, 'groupId').text = 'de.oceanlabs.mcp'
+            ET.SubElement(metadata, 'artifactId').text = channel
+            versioning = ET.SubElement(metadata, 'versioning')
+            versions = ET.SubElement(versioning, 'versions')
+
+            results, status = self.db.getAvailableVersions(version_type=channel.lstrip('mcp_'))
+            if status:
+                self.logger.error('Error getting available versions from the DB!')
+                self.logger.error(str(status))
+                return
+
+            count = 0
+
+            for result in results:
+                version_string = result['VERSION_CODE'] + '-' + result['MC_VERSION_CODE']
+                if count == 0:
+                    ET.SubElement(versioning, 'release').text = version_string
+                ET.SubElement(versions, 'version').text = version_string
+                count += 1
+
+            ET.SubElement(versioning, 'lastUpdated').text = datetime.now().strftime('%Y%m%d%H%M%S')
+            # Need to save the local copy of the file here
+
+            file_to_create = os.path.join(self.base_export_path, '%s/maven-metadata.xml' % channel)
+            if os.path.exists(file_to_create):
+                os.remove(file_to_create)
+            with open(file_to_create, 'w') as f:
+                f.write(ET.tostring(metadata, encoding='utf8', method='xml'))
+            if os.path.exists(file_to_create):
                 tries = 0
                 self.logger.info('Pushing maven-metadata.xml')
                 success = MavenHandler.upload(self.maven_repo_url, self.maven_repo_user, self.maven_repo_pass,
